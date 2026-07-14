@@ -7,14 +7,16 @@ import {
   db,
   eq,
   isNull,
+  knowledgeChunks,
   messages,
+  sql,
   toolInvocations,
   tools,
 } from "@voiceify/db";
 import { executeHttpTool } from "@voiceify/tools";
 import { resolveBasePersonaId } from "@voiceify/shared";
 import {
-  createScribeRealtimeToken,
+  handleScribeRealtimeToken,
   handleVoiceRespond,
   handleVoiceTranscribe,
   handleVoiceVoices,
@@ -44,15 +46,12 @@ voiceRoutes.post("/warmup", async (c) => {
 });
 
 voiceRoutes.post("/transcribe/token", async (c) => {
-  try {
-    const token = await createScribeRealtimeToken();
-    return c.json(token);
-  } catch (err) {
-    return c.json(
-      { error: err instanceof Error ? err.message : "Token failed" },
-      500,
-    );
-  }
+  // Uses guardRequest when VOICEIFY_API_KEY is set (rate limit + optional key)
+  return handleScribeRealtimeToken(c.req.raw);
+});
+
+voiceRoutes.get("/transcribe/token", async (c) => {
+  return handleScribeRealtimeToken(c.req.raw);
 });
 
 voiceRoutes.post("/transcribe", async (c) => {
@@ -151,6 +150,36 @@ voiceRoutes.post(
       .from(tools)
       .where(eq(tools.orgId, orgId));
 
+    // Lightweight knowledge retrieval (ILIKE) — inject top chunks into the prompt
+    const knowledgeTerms = body.message
+      .split(/\s+/)
+      .map((w) => w.replace(/[^a-zA-Z0-9]/g, ""))
+      .filter((w) => w.length >= 4)
+      .slice(0, 4);
+    let knowledgeHint = "";
+    if (knowledgeTerms.length) {
+      const pattern = `%${knowledgeTerms[0]}%`;
+      try {
+        const hits = await db
+          .select({ content: knowledgeChunks.content })
+          .from(knowledgeChunks)
+          .where(
+            and(
+              eq(knowledgeChunks.orgId, orgId),
+              sql`${knowledgeChunks.content} ILIKE ${pattern}`,
+            ),
+          )
+          .limit(4);
+        if (hits.length) {
+          knowledgeHint = `\n\n[Knowledge base]\n${hits
+            .map((h) => `- ${h.content.slice(0, 400)}`)
+            .join("\n")}\nUse this when answering.`;
+        }
+      } catch {
+        /* knowledge optional — never fail the turn */
+      }
+    }
+
     const toolHint =
       orgTools.length > 0
         ? `\nAvailable tools: ${orgTools.map((t) => t.slug).join(", ")}. If the user wants to book/order/route, confirm details then call the matching tool via TOOL_CALL JSON.`
@@ -218,8 +247,8 @@ voiceRoutes.post(
     }
 
     const enrichMessage = toolResult
-      ? `${body.message}\n\n[System: tool ${toolResult.name} returned ${JSON.stringify(toolResult.result)}. Summarize confirmation for the caller.]`
-      : body.message + toolHint;
+      ? `${body.message}${knowledgeHint}\n\n[System: tool ${toolResult.name} returned ${JSON.stringify(toolResult.result)}. Summarize confirmation for the caller.]`
+      : body.message + toolHint + knowledgeHint;
 
     const stream = new ReadableStream({
       async start(controller) {

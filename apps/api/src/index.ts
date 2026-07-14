@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { serve } from "@hono/node-server";
 import { auth } from "@voiceify/auth";
+import { handleHealth } from "@voiceify/voice";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { AppEnv } from "./lib/types.js";
@@ -19,12 +20,27 @@ import { voiceRoutes } from "./routes/voice.js";
 const PORT = Number(process.env.PORT ?? 3001);
 const WEB_ORIGIN = process.env.WEB_ORIGIN ?? "http://localhost:5173";
 
+/** Build CORS allowlist from WEB_ORIGIN + BETTER_AUTH_TRUSTED_ORIGINS + local defaults. */
+function corsOrigins(): string[] {
+  const fromTrusted = (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const defaults = [
+    WEB_ORIGIN,
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",
+  ];
+  return [...new Set([...defaults, ...fromTrusted])];
+}
+
 const app = new Hono<AppEnv>();
 
 app.use(
   "*",
   cors({
-    origin: [WEB_ORIGIN, "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8080"],
+    origin: corsOrigins(),
     allowHeaders: [
       "Content-Type",
       "Authorization",
@@ -36,13 +52,25 @@ app.use(
   }),
 );
 
-app.get("/health", (c) =>
-  c.json({
-    ok: true,
+function healthPayload() {
+  return {
+    ok: true as const,
+    status: "ok" as const,
     service: "voiceify-api",
     ts: new Date().toISOString(),
-  }),
-);
+  };
+}
+
+app.get("/health", async (c) => {
+  const voice = await handleHealth().json();
+  return c.json({ ...healthPayload(), ...voice, ok: true, status: "ok" });
+});
+
+/** Dashboard / voice client historically probes /api/health */
+app.get("/api/health", async (c) => {
+  const voice = await handleHealth().json();
+  return c.json({ ...healthPayload(), ...voice, ok: true, status: "ok" });
+});
 
 app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 

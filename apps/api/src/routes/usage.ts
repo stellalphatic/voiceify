@@ -42,6 +42,23 @@ usageRoutes.get("/:orgId/usage", requireOrg("usage:read"), async (c) => {
   });
 });
 
+function stripeConfigured(): boolean {
+  const key = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
+  // Ignore placeholder values like sk_test_... from .env.example
+  if (!key || key.includes("...")) return false;
+  return key.startsWith("sk_test_") || key.startsWith("sk_live_");
+}
+
+function billingMode(): "disabled" | "stripe_test" | "stripe_live" | "manual" {
+  if (process.env.STRIPE_ENABLED === "true" && stripeConfigured()) {
+    const key = process.env.STRIPE_SECRET_KEY!;
+    return key.startsWith("sk_live_") ? "stripe_live" : "stripe_test";
+  }
+  // Stripe is optional. Platform admin grants credits; orgs can use demo top-up when allowed.
+  if (process.env.ALLOW_DEMO_TOPUP === "false") return "disabled";
+  return "manual";
+}
+
 usageRoutes.get("/:orgId/billing", requireOrg("billing:read"), async (c) => {
   const orgId = c.get("orgId");
   const ledger = await db
@@ -56,29 +73,55 @@ usageRoutes.get("/:orgId/billing", requireOrg("billing:read"), async (c) => {
     .where(eq(subscriptions.orgId, orgId))
     .limit(5);
   const allPlans = await db.select().from(plans);
+  const mode = billingMode();
   return c.json({
     creditBalanceCents: c.get("organization").creditBalanceCents,
     ledger,
     subscriptions: subs,
     plans: allPlans,
+    billing: {
+      mode,
+      stripeEnabled: mode === "stripe_test" || mode === "stripe_live",
+      topupAvailable: mode === "manual" || mode === "stripe_test",
+      message:
+        mode === "disabled"
+          ? "Card payments are not enabled. Ask a platform admin to grant credits."
+          : mode === "manual"
+            ? "Stripe is not connected. Credits can be granted by an admin or via demo top-up."
+            : "Stripe checkout is available for credit top-ups.",
+    },
   });
 });
 
-/** Stripe Test Mode top-up (demo). Without Stripe keys, credits are granted directly. */
+/**
+ * Credit top-up. Stripe is optional (STRIPE_ENABLED=true + valid STRIPE_SECRET_KEY).
+ * Default path grants demo credits without any payment provider.
+ */
 usageRoutes.post(
   "/:orgId/billing/topup",
   requireOrg("billing:manage"),
   async (c) => {
     const orgId = c.get("orgId");
+    const mode = billingMode();
+    if (mode === "disabled") {
+      return c.json(
+        {
+          error:
+            "Credit top-up is disabled. Contact a platform admin to assign credits.",
+        },
+        403,
+      );
+    }
+
     const body = z
       .object({
         amountCents: z.number().int().positive().max(1_000_000).default(2500),
       })
       .parse(await c.req.json().catch(() => ({ amountCents: 2500 })));
 
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (stripeKey?.startsWith("sk_test_")) {
-      // For FYP: record intent then grant (skip live charge without stripe SDK install)
+    if (mode === "stripe_test" || mode === "stripe_live") {
+      // Live Checkout / PaymentIntents land when STRIPE_ENABLED=true and SDK is wired.
+      // Test mode currently records a ledger grant (no live charge until Stripe is fully integrated).
       const balanceAfter = await grantCredits({
         orgId,
         amountCents: body.amountCents,
@@ -87,7 +130,7 @@ usageRoutes.post(
         refId: `test_${Date.now()}`,
       });
       return c.json({
-        mode: "stripe_test",
+        mode,
         creditBalanceCents: balanceAfter,
         chargedCents: body.amountCents,
       });
@@ -96,12 +139,12 @@ usageRoutes.post(
     const balanceAfter = await grantCredits({
       orgId,
       amountCents: body.amountCents,
-      reason: "demo_topup",
-      refType: "demo",
-      refId: `demo_${Date.now()}`,
+      reason: "manual_topup",
+      refType: "manual",
+      refId: `manual_${Date.now()}`,
     });
     return c.json({
-      mode: "demo",
+      mode: "manual",
       creditBalanceCents: balanceAfter,
       chargedCents: body.amountCents,
     });
