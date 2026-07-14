@@ -40,10 +40,23 @@ services:
         required: false
     environment:
       PORT: "3001"
-      DATABASE_URL: ${DATABASE_URL:-postgresql://voiceify:voiceify@postgres:5432/voiceify}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:8080}
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-voiceify}:${POSTGRES_PASSWORD:-voiceify}@postgres:5432/${POSTGRES_DB:-voiceify}
+      REDIS_URL: redis://redis:6379
+      APP_URL: ${APP_URL:-http://localhost:8080}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:8080}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
+      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-http://localhost:8080,http://localhost:5173}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      AUTO_APPROVE_SIGNUPS: ${AUTO_APPROVE_SIGNUPS:-false}
+      STRIPE_ENABLED: ${STRIPE_ENABLED:-false}
+      ALLOW_DEMO_TOPUP: ${ALLOW_DEMO_TOPUP:-true}
+      UPLOAD_DIR: /app/data/uploads
+    volumes:
+      - uploads:/app/data/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,7 +74,8 @@ services:
         ]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 8
+      start_period: 40s
 
   worker:
     build:
@@ -72,8 +86,8 @@ services:
       - path: .env
         required: false
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://voiceify:voiceify@postgres:5432/voiceify}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-voiceify}:${POSTGRES_PASSWORD:-voiceify}@postgres:5432/${POSTGRES_DB:-voiceify}
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,6 +107,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # HTTP edge for local/dev and IP access (http://HOST:8080)
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
@@ -104,6 +119,29 @@ services:
       - api
       - web
 
+  # Production TLS for voiceify.metapresence.co (ports 80 + 443)
+  # Start with: docker compose --profile tls up -d --build
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    profiles: ["tls"]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-voiceify.metapresence.co}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@metapresence.co}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+
 volumes:
   pgdata:
   redisdata:
+  uploads:
+  caddy_data:
+  caddy_config:

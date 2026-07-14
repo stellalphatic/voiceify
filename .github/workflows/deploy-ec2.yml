@@ -20,9 +20,6 @@ jobs:
     if: github.repository == 'stellalphatic/voiceify'
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -32,10 +29,16 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            APP_DIR="${{ secrets.EC2_APP_DIR || '/home/ubuntu/voiceify' }}"
+            APP_DIR="${{ secrets.EC2_APP_DIR }}"
+            if [ -z "$APP_DIR" ]; then APP_DIR="/home/ubuntu/voiceify"; fi
             cd "$APP_DIR"
             git fetch origin main
             git reset --hard origin/main
-            docker compose pull || true
-            docker compose up -d --build
+            # Compose runs DB migrations inside the api entrypoint
+            if [ -f .env ] && grep -q '^DOMAIN=' .env; then
+              docker compose --profile tls up -d --build
+            else
+              docker compose up -d --build
+            fi
+            sleep 8
             docker compose exec -T api node -e "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

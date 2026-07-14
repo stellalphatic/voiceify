@@ -58,7 +58,12 @@ pnpm docker:up
 
 ## Deployment
 
-Production guide (EC2 + CI/CD): [docs/deployment/ec2.md](docs/deployment/ec2.md)
+**Full go-live (API keys, EC2 size, DNS, TLS for voiceify.metapresence.co):**  
+[docs/deployment/GO_LIVE.md](docs/deployment/GO_LIVE.md)
+
+Quick EC2 notes: [docs/deployment/ec2.md](docs/deployment/ec2.md)
+
+Stripe is **optional** (`STRIPE_ENABLED=false`). Credits work via `/admin` or dashboard Settings demo top-up.
 
 ## Security
 

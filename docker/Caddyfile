@@ -1,0 +1,32 @@
+# Production TLS edge for Voiceify
+# Set DOMAIN=voiceify.metapresence.co (and EMAIL for Let's Encrypt) in .env
+
+{
+	email {$ACME_EMAIL:admin@metapresence.co}
+}
+
+{$DOMAIN:localhost} {
+	encode gzip
+
+	handle /api/* {
+		reverse_proxy api:3001
+	}
+
+	handle /health {
+		reverse_proxy api:3001
+	}
+
+	handle /widget.js {
+		reverse_proxy web:80
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}
