@@ -1,0 +1,108 @@
+/*
+ * sharp-corners.css — Zero roundness site-wide (pixel UI)
+ * Loaded last. Requires html[data-pixel="on"].
+ */
+
+[data-pixel='on'] {
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-pill: 0;
+
+  --d-radius-sm: 0;
+  --d-radius-md: 0;
+  --d-radius-lg: 0;
+}
+
+[data-pixel='on'] .vfy-dash,
+[data-pixel='on'] .vfy-modal-backdrop {
+  --d-radius-sm: 0;
+  --d-radius-md: 0;
+  --d-radius-lg: 0;
+}
+
+/* Tailwind rounded-* utilities */
+[data-pixel='on'] [class*='rounded'] {
+  border-radius: 0 !important;
+}
+
+/* Inline border-radius (error boundary, docs code blocks, etc.) */
+[data-pixel='on'] [style*='border-radius'],
+[data-pixel='on'] [style*='borderRadius'] {
+  border-radius: 0 !important;
+}
+
+/* Interactive + surface primitives */
+[data-pixel='on'] :where(
+  button,
+  input,
+  textarea,
+  select,
+  optgroup,
+  fieldset,
+  legend,
+  .btn,
+  .btn-primary,
+  .btn-ghost,
+  .navbar,
+  .mobile-menu,
+  .mobile-link,
+  .theme-toggle-btn,
+  .skip-to-content,
+  .card,
+  .lp-btn,
+  .ap-card,
+  .ap-input,
+  .ap-tabs,
+  .ap-submit,
+  .ap-oauth-btn,
+  .demo-console,
+  .demo-persona-btn,
+  .demo-lang-btn,
+  .demo-msg__bubble,
+  .vfy-card,
+  .vfy-stat,
+  .vfy-panel,
+  .vfy-modal,
+  .vfy-chart-card,
+  .vfy-side,
+  .vfy-top,
+  .vfy-btn,
+  .vfy-top-cta,
+  .vfy-side-link,
+  .vfy-side-cmd,
+  .vfy-side-pro,
+  .vfy-top-burger,
+  .vfy-top-iconbtn,
+  .footer-social-link
+) {
+  border-radius: 0 !important;
+}
+
+/* Focus rings — square */
+[data-pixel='on'] :where(
+  a,
+  button,
+  [role='button'],
+  input,
+  textarea,
+  select,
+  summary,
+  [tabindex]
+):focus-visible {
+  border-radius: 0 !important;
+}
+
+[data-pixel='on'] ::-webkit-scrollbar-thumb {
+  border-radius: 0 !important;
+}
+
+[data-pixel='on'] .recharts-default-tooltip {
+  border-radius: 0 !important;
+}
+
+/* Final pass — zero every remaining radius (page CSS, inline, utilities) */
+[data-pixel='on'] * {
+  border-radius: 0 !important;
+}

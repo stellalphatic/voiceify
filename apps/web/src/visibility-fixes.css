@@ -1,0 +1,421 @@
+/*
+ * visibility-fixes.css — Readable text + no overlap (dark & light)
+ */
+
+/* ── Stronger readable text tokens ───────────────────────────── */
+[data-theme="dark"],
+:root {
+  --color-text-secondary: #b8b8b8;
+  --color-text-muted: #8f8f8f;
+  --text-2: #b8b8b8;
+  --text-3: #8f8f8f;
+}
+
+[data-theme="light"] {
+  --color-text-secondary: #3a3a3a;
+  --color-text-muted: #5c5c5c;
+  --text-2: #3a3a3a;
+  --text-3: #5c5c5c;
+}
+
+/* Page tokens inherit readable secondary/muted */
+.lp {
+  --lp-muted: var(--color-text-secondary);
+  --lp-dim: var(--color-text-muted);
+}
+
+.ap {
+  --ap-muted: var(--color-text-secondary);
+  --ap-dim: var(--color-text-muted);
+}
+
+/* ── Global text & placeholders ──────────────────────────────── */
+body {
+  color: var(--color-text-primary);
+}
+
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+input,
+textarea,
+select,
+button {
+  color: inherit;
+}
+
+/* Eyebrows / labels — not too faint */
+.lp-eyebrow,
+.ap-brand-eyebrow,
+.section-eyebrow,
+.vfy-page-eyebrow {
+  color: var(--color-text-secondary) !important;
+}
+
+/* ── Buttons: correct on-accent text both themes ─────────────── */
+.lp-btn--primary,
+.lp-hero-prompt-btn,
+.lp-pricing-cta--primary,
+.lp-path-cta,
+.ap-submit,
+.navbar-actions .navbar-cta,
+.vfy-top-cta,
+.vfy-btn--primary,
+.btn-primary {
+  color: var(--color-voice-on-accent) !important;
+}
+
+/* Ghost / secondary buttons */
+.lp-btn--ghost {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+}
+
+[data-theme="light"] .lp-btn--ghost:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--color-border-strong);
+}
+
+[data-theme="dark"] .lp-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Light mode: navbar readable ─────────────────────────────── */
+[data-theme="light"] .navbar {
+  --nb-bg: rgba(255, 255, 255, 0.9) !important;
+  --nb-bg-2: rgba(255, 255, 255, 0.97) !important;
+  --nb-border: rgba(0, 0, 0, 0.09) !important;
+  --nb-border-2: rgba(0, 0, 0, 0.15) !important;
+  --nb-text: #111111 !important;
+  --nb-muted: #444444 !important;
+  --nb-dim: #666666 !important;
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.04) inset,
+    0 8px 28px -12px rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-theme="light"] .navbar-links a {
+  color: var(--nb-muted) !important;
+}
+
+[data-theme="light"] .navbar-links a:hover,
+[data-theme="light"] .navbar-links a.active {
+  color: var(--nb-text) !important;
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .navbar-actions .navbar-signin {
+  color: var(--nb-text) !important;
+  border-color: var(--nb-border-2) !important;
+}
+
+[data-theme="light"] .navbar-actions .navbar-signin:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .navbar-hamburger {
+  color: var(--nb-text) !important;
+  border-color: var(--nb-border-2) !important;
+}
+
+[data-theme="light"] .theme-toggle-btn,
+[data-theme="light"] [data-theme-toggle] {
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border) !important;
+  background: var(--color-bg-secondary) !important;
+}
+
+[data-theme="light"] .mobile-link {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="light"] .mobile-link:hover,
+[data-theme="light"] .mobile-link.active {
+  color: var(--color-text-primary);
+}
+
+.mobile-link.active {
+  color: var(--color-accent) !important;
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent) !important;
+}
+
+/* ── Light mode: landing cards & messages ────────────────────── */
+[data-theme="light"] .lp-msg--user {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+[data-theme="light"] .lp-msg--agent {
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-bg-secondary));
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+[data-theme="light"] .lp-msg-label,
+[data-theme="light"] .lp-call-card-label {
+  color: var(--color-text-muted);
+}
+
+[data-theme="light"] .lp-hero-prompt-row {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
+}
+
+[data-theme="light"] .lp-hero-chip {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+[data-theme="light"] .lp-hero-chip.is-active {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+}
+
+[data-theme="light"] .lp-path-card,
+[data-theme="light"] .lp-pricing-card,
+[data-theme="light"] .lp-feat-card,
+[data-theme="light"] .lp-persona-card {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
+}
+
+[data-theme="light"] .lp-faq-item {
+  border-color: var(--color-border);
+}
+
+/* ── Light mode: demo console ────────────────────────────────── */
+[data-theme="light"] .demo-console__header {
+  background: var(--color-bg-tertiary);
+}
+
+[data-theme="light"] .demo-persona-btn,
+[data-theme="light"] .demo-lang-btn {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border);
+}
+
+[data-theme="light"] .demo-persona-btn:hover:not(:disabled),
+[data-theme="light"] .demo-lang-btn:hover:not(:disabled) {
+  background: var(--color-bg-elevated);
+}
+
+[data-theme="light"] .demo-controls {
+  background: var(--color-bg-secondary);
+}
+
+[data-theme="light"] .demo-msg--user {
+  background: var(--color-bg-tertiary);
+}
+
+[data-theme="light"] .demo-msg--assistant .demo-msg__bubble {
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-bg-secondary));
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+/* ── Light mode: auth form ───────────────────────────────────── */
+[data-theme="light"] .ap-card {
+  background: var(--color-bg-primary);
+  border-color: var(--color-border);
+}
+
+[data-theme="light"] .ap-input {
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+[data-theme="light"] .ap-label {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="light"] .ap-oauth-btn {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+[data-theme="light"] .ap-title,
+[data-theme="light"] .ap-tab.is-active {
+  color: var(--color-text-primary);
+}
+
+[data-theme="light"] .ap-sub,
+[data-theme="light"] .ap-tab {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="light"] .ap-tabs {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border);
+}
+
+[data-theme="light"] .ap-form-side {
+  background: var(--color-bg-primary);
+}
+
+[data-theme="light"] .vfy-page-title,
+[data-theme="light"] .vfy-page-sub,
+[data-theme="light"] .vfy-stat-value,
+[data-theme="light"] .vfy-stat-label {
+  color: var(--color-text-primary);
+}
+
+[data-theme="light"] .vfy-page-eyebrow,
+[data-theme="light"] .vfy-stat-sub {
+  color: var(--color-text-muted);
+}
+
+/* ── Dashboard topbar (light) ────────────────────────────────── */
+[data-theme="light"] .vfy-top {
+  background: color-mix(in srgb, var(--color-bg-primary) 92%, transparent);
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="light"] .vfy-side {
+  background: var(--color-bg-secondary);
+  border-right-color: var(--color-border);
+}
+
+[data-theme="light"] .vfy-dash .agent-card,
+[data-theme="light"] .vfy-dash .ac-stats {
+  background: var(--d-card);
+  border-color: var(--d-border);
+}
+
+[data-theme="light"] .vfy-dash .btn-sandbox {
+  color: var(--d-accent);
+  background: var(--d-accent-soft);
+  border-color: var(--d-accent-line);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   OVERLAP / STACKING FIXES
+   ══════════════════════════════════════════════════════════════ */
+
+.navbar {
+  z-index: 200 !important;
+}
+
+.mobile-menu {
+  z-index: 190 !important;
+}
+
+.mobile-menu-backdrop {
+  z-index: 189 !important;
+}
+
+.scroll-progress {
+  z-index: 210;
+  pointer-events: none;
+}
+
+/* Content sits above ambient backdrop */
+.lp,
+.demo-page,
+.docs-page,
+.ap,
+.vfy-dash,
+.footer-techy,
+.min-h-screen.bg-voice-bg {
+  position: relative;
+  z-index: 1;
+}
+
+/* Clear floating navbar on all primary pages */
+.lp-hero {
+  padding-top: calc(14px + 56px + clamp(1.75rem, 4vw, 2.75rem));
+}
+
+.demo-page {
+  padding-top: calc(14px + 56px + 28px);
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+@media (max-width: 768px) {
+  .lp-hero {
+    padding-top: calc(10px + 52px + clamp(1.5rem, 4vw, 2rem));
+  }
+
+  .demo-page {
+    padding-top: calc(10px + 52px + 20px);
+  }
+}
+
+/* Auth is a standalone page (no PublicLayout navbar) — keep normal top padding */
+@media (max-width: 1024px) {
+  .ap-form-side {
+    padding-top: clamp(20px, 4vw, 28px) !important;
+    justify-content: flex-start !important;
+  }
+}
+
+/* Navbar flex — prevent crush/overlap between logo & actions */
+.navbar {
+  min-width: 0;
+}
+
+.navbar-logo,
+.navbar-links,
+.navbar-actions {
+  min-width: 0;
+}
+
+.navbar-links {
+  flex-shrink: 1;
+}
+
+/* Demo console: chat scrolls, controls stay put */
+.demo-console {
+  min-height: 0;
+}
+
+.demo-chat {
+  min-height: 120px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Dashboard: page actions wrap without covering titles */
+.vfy-page-head {
+  row-gap: 12px;
+}
+
+.vfy-page-head-titles {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.vfy-page-title,
+.vfy-page-sub {
+  overflow-wrap: anywhere;
+}
+
+.vfy-top {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.vfy-top-crumbs {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Footer never tucked under floating UI */
+.footer-techy--minimal {
+  margin-top: 0;
+  clear: both;
+}
+
+/* FAQ / long headings */
+.lp-faq-q,
+.lp-h1,
+.lp-h2,
+.lp-lead {
+  overflow-wrap: anywhere;
+}

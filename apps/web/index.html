@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Theme bootstrap — prevents flash of wrong theme -->
+    <script>
+      (function () {
+        var KEY = 'ag-theme';
+        var t = localStorage.getItem(KEY);
+        if (t !== 'light' && t !== 'dark') {
+          var keys = ['voiceify-theme', 'theme'];
+          for (var i = 0; i < keys.length; i++) {
+            var v = localStorage.getItem(keys[i]);
+            if (v === 'light' || v === 'dark') {
+              t = v;
+              try { localStorage.setItem(KEY, v); } catch (e) {}
+              break;
+            }
+          }
+          for (var j = 0; j < keys.length; j++) {
+            try { localStorage.removeItem(keys[j]); } catch (e) {}
+          }
+        }
+        document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+        document.documentElement.setAttribute('data-pixel', 'on');
+      })();
+    </script>
+
+    <!-- ── Primary SEO ───────────────────────────── -->
+    <title>Voiceify — Never Miss a Call During Rush Hour</title>
+    <meta name="description" content="Voice agents that answer when your front desk can't — bookings, appointments, and support in under a second. Save 3+ hours a day. English, Urdu, 40+ languages." />
+    <meta name="keywords" content="voice AI, conversational AI, voice agents, customer support automation, voice bots, AI agents" />
+    <meta name="author" content="Voiceify" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="canonical" href="https://voiceify.ai/" />
+
+    <!-- ── Open Graph ───────────────────────────── -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:site_name"   content="Voiceify" />
+    <meta property="og:title"       content="Voiceify — Never Miss a Call During Rush Hour" />
+    <meta property="og:description" content="Answer every call during rush hour. Save 3+ hours a day with AI voice agents for restaurants, clinics, and support." />
+    <meta property="og:url"         content="https://voiceify.ai/" />
+    <meta property="og:image"       content="https://voiceify.ai/og-image.svg" />
+    <meta property="og:image:type"  content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt"   content="Voiceify — Voice AI That Sounds Human" />
+
+    <!-- ── Twitter / X ──────────────────────────── -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="Voiceify — Never Miss a Call During Rush Hour" />
+    <meta name="twitter:description" content="Answer every call during rush hour. Save 3+ hours a day with AI voice agents." />
+    <meta name="twitter:image"       content="https://voiceify.ai/og-image.svg" />
+    <meta name="twitter:image:alt"   content="Voiceify — Voice AI That Sounds Human" />
+
+    <!-- ── Favicon (emerald to match brand) ─────── -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23000000'/><path d='M4 16h2M9 11v10M13 7v18M16 5v22M19 7v18M23 11v10M26 16h2' stroke='%23ffffff' stroke-width='2' stroke-linecap='round'/></svg>" />
+
+    <!-- ── Preconnect to known origins ──────────── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- ── Structured data (Organization + SoftwareApplication) ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://voiceify.ai/#organization",
+          "name": "Voiceify",
+          "url": "https://voiceify.ai/",
+          "logo": "https://voiceify.ai/og-image.svg",
+          "sameAs": [
+            "https://twitter.com/voiceify",
+            "https://github.com/voiceify",
+            "https://linkedin.com/company/voiceify"
+          ]
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "Voiceify",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "url": "https://voiceify.ai/",
+          "publisher": { "@id": "https://voiceify.ai/#organization" },
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD",
+            "availability": "https://schema.org/InStock"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "reviewCount": "127"
+          }
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      <div style="padding:24px;font-family:system-ui,sans-serif;color:#fff;background:#08090c;">
+        Voiceify requires JavaScript to run. Please enable JavaScript in your browser.
+      </div>
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
