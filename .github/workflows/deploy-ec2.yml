@@ -1,0 +1,41 @@
+name: Deploy to EC2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - ".github/workflows/ci.yml"
+
+concurrency:
+  group: deploy-ec2-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: SSH deploy via Docker Compose
+    runs-on: ubuntu-latest
+    if: github.repository == 'stellalphatic/voiceify'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            APP_DIR="${{ secrets.EC2_APP_DIR || '/home/ubuntu/voiceify' }}"
+            cd "$APP_DIR"
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose pull || true
+            docker compose up -d --build
+            docker compose exec -T api node -e "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
