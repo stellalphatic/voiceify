@@ -18,6 +18,7 @@ import {
 import { setAuthToken } from '../components/RequireAuth';
 import {
   apiJson,
+  getSession,
   setActiveOrgId,
   signInEmail,
   signUpEmail,
@@ -67,6 +68,7 @@ export default function AuthPage() {
   const [agreed, setAgreed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -136,9 +138,27 @@ export default function AuthPage() {
         : await signInEmail({ email: email.trim(), password });
 
       if (!authResult.ok) {
-        setErrors({ form: authResult.error });
+        const msg = authResult.error;
+        const isPending =
+          /pending/i.test(msg) || /approval/i.test(msg) || /suspended/i.test(msg);
+        if (isPending || (isSignUp && /pending|approval/i.test(msg))) {
+          setPendingApproval(true);
+          setErrors({});
+        } else {
+          setErrors({ form: msg });
+        }
         setLoading(false);
         return;
+      }
+
+      // Sign-up often creates the user in pending status; session may be blocked.
+      if (isSignUp) {
+        const session = await getSession().catch(() => null);
+        if (!session) {
+          setPendingApproval(true);
+          setLoading(false);
+          return;
+        }
       }
 
       setAuthToken('session');
@@ -162,15 +182,24 @@ export default function AuthPage() {
         } else {
           setActiveOrgId(orgs.organizations[0].id);
         }
-      } catch {
-        /* org bootstrap is best-effort; dashboard can create later */
+      } catch (orgErr) {
+        const msg =
+          orgErr instanceof Error ? orgErr.message : 'Unable to load workspace';
+        if (/pending|approval|suspended|rejected/i.test(msg)) {
+          setPendingApproval(true);
+          setLoading(false);
+          return;
+        }
       }
 
       navigate(redirect ? decodeURIComponent(redirect) : '/dashboard');
     } catch (err) {
-      setErrors({
-        form: err instanceof Error ? err.message : 'Authentication failed',
-      });
+      const msg = err instanceof Error ? err.message : 'Authentication failed';
+      if (/pending|approval|suspended|rejected/i.test(msg)) {
+        setPendingApproval(true);
+      } else {
+        setErrors({ form: msg });
+      }
     } finally {
       setLoading(false);
     }
@@ -258,15 +287,34 @@ export default function AuthPage() {
 
             <header className="ap-header">
               <h1 className="ap-title" id="auth-heading">
-                {isSignUp ? 'Create your account' : 'Welcome back'}
+                {pendingApproval
+                  ? 'Account pending approval'
+                  : isSignUp
+                    ? 'Create your account'
+                    : 'Welcome back'}
               </h1>
               <p className="ap-sub">
-                {isSignUp
-                  ? 'Start free with 100 minutes — no credit card required.'
-                  : 'Sign in to manage your voice agents and API keys.'}
+                {pendingApproval
+                  ? 'A platform admin must approve your signup before you can sign in. You will be able to use the dashboard once approved.'
+                  : isSignUp
+                    ? 'Start free with included credits. No card required.'
+                    : 'Sign in to manage your voice agents and API keys.'}
               </p>
             </header>
 
+            {pendingApproval && (
+              <div className="ap-form" role="status">
+                <p className="ap-field-error" style={{ color: 'inherit', opacity: 0.85 }}>
+                  We saved your request for <strong>{email.trim() || 'your email'}</strong>.
+                  Contact your Voiceify admin if you need faster access.
+                </p>
+                <Link to={tabHref('signin')} className="ap-submit" style={{ display: 'inline-flex', justifyContent: 'center', marginTop: 16 }}>
+                  Back to sign in
+                </Link>
+              </div>
+            )}
+
+            {!pendingApproval && (
             <form onSubmit={handleSubmit} className="ap-form" noValidate>
               {isSignUp && (
                 <div className="ap-row">
@@ -447,41 +495,46 @@ export default function AuthPage() {
                 )}
               </button>
             </form>
+            )}
 
-            <div className="ap-divider">or continue with</div>
+            {!pendingApproval && (
+              <>
+                <div className="ap-divider">or continue with</div>
 
-            <div className="ap-oauth">
-              <button type="button" className="ap-oauth-btn" id="auth-google-btn">
-                <GoogleIcon />
-                Google
-              </button>
-              <button type="button" className="ap-oauth-btn">
-                <GitHubIcon />
-                GitHub
-              </button>
-            </div>
+                <div className="ap-oauth">
+                  <button type="button" className="ap-oauth-btn" id="auth-google-btn" disabled title="OAuth providers are not enabled yet">
+                    <GoogleIcon />
+                    Google
+                  </button>
+                  <button type="button" className="ap-oauth-btn" disabled title="OAuth providers are not enabled yet">
+                    <GitHubIcon />
+                    GitHub
+                  </button>
+                </div>
 
-            <p className="ap-switch">
-              {isSignUp ? (
-                <>
-                  Already have an account?{' '}
-                  <Link to={tabHref('signin')}>Sign in</Link>
-                </>
-              ) : (
-                <>
-                  New to Voiceify?{' '}
-                  <Link to={tabHref('signup')}>Create a free account</Link>
-                </>
-              )}
-            </p>
+                <p className="ap-switch">
+                  {isSignUp ? (
+                    <>
+                      Already have an account?{' '}
+                      <Link to={tabHref('signin')}>Sign in</Link>
+                    </>
+                  ) : (
+                    <>
+                      New to Voiceify?{' '}
+                      <Link to={tabHref('signup')}>Create a free account</Link>
+                    </>
+                  )}
+                </p>
+              </>
+            )}
 
             <Link to="/demo" className="ap-demo-link">
               <Mic size={15} aria-hidden />
-              Try live voice demo — no account needed
+              Try live voice demo - no account needed
               <Play size={13} aria-hidden />
             </Link>
 
-            {!isSignUp && (
+            {!isSignUp && !pendingApproval && (
               <p className="ap-fine">
                 By continuing you agree to our{' '}
                 <Link to="/terms" className="ap-link">

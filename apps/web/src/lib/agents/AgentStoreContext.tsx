@@ -145,6 +145,29 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
 
   const updateAgent = useCallback((agent: AppAgent) => {
     setAgents((prev) => prev.map((a) => (a.id === agent.id ? { ...a, ...agent } : a)));
+
+    // Persist server agents so edits survive refresh / other clients
+    const activeOrg = getActiveOrgId();
+    if (activeOrg && agent.serverId) {
+      void apiJson(`/api/orgs/${activeOrg}/agents/${agent.serverId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: agent.name,
+          type: agent.type,
+          language: agent.language,
+          greeting: agent.greeting,
+          voiceId: agent.voice,
+          capabilities: Object.fromEntries(
+            (agent.capabilities ?? []).map((c) => [c, true]),
+          ),
+          triggers: Object.fromEntries(
+            (agent.triggers ?? []).map((t) => [t, true]),
+          ),
+        }),
+      }).catch(() => {
+        /* keep optimistic local state; refresh later */
+      });
+    }
   }, []);
 
   const getAgentById = useCallback(

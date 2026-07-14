@@ -219,7 +219,7 @@ export default function FeaturesPage() {
                   'Twilio & Vonage SIP Trunking',
                   'Salesforce & HubSpot CRM',
                   'Google Calendar & Outlook',
-                  'Stripe Payments',
+                  'Credit Wallet',
                   'Custom n8n workflows (Custom plan)',
                 ].map(item => (
                   <li key={item} className="flex items-start gap-2.5 text-sm text-voice-muted">

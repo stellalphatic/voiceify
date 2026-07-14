@@ -68,6 +68,7 @@ import {
 import '../dashboard.css';
 import { useVoiceAgentFromRecord } from '../lib/voice-agent/useVoiceAgentFromRecord';
 import { useAgentStore } from '../lib/agents/AgentStoreContext';
+import { apiJson, getActiveOrgId } from '../lib/auth/client';
 import {
   resolveLanguageMode,
   type StoredVoiceAgent,
@@ -2190,13 +2191,79 @@ const AgentsView = ({
 
 
 const SettingsView = () => {
+  const [billing, setBilling] = useState<{
+    creditBalanceCents: number;
+    billing?: {
+      mode: string;
+      stripeEnabled: boolean;
+      topupAvailable: boolean;
+      message: string;
+    };
+  } | null>(null);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+  const orgId = getActiveOrgId();
+
+  useEffect(() => {
+    if (!orgId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiJson<NonNullable<typeof billing>>(
+          `/api/orgs/${orgId}/billing`,
+        );
+        if (!cancelled) setBilling(data);
+      } catch (err) {
+        if (!cancelled) {
+          setBillingError(
+            err instanceof Error ? err.message : 'Unable to load billing',
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  const topUp = async () => {
+    if (!orgId || !billing?.billing?.topupAvailable) return;
+    setBillingBusy(true);
+    setBillingError(null);
+    try {
+      const result = await apiJson<{
+        creditBalanceCents: number;
+        mode: string;
+      }>(`/api/orgs/${orgId}/billing/topup`, {
+        method: 'POST',
+        body: JSON.stringify({ amountCents: 2500 }),
+      });
+      setBilling((prev) =>
+        prev
+          ? {
+              ...prev,
+              creditBalanceCents: result.creditBalanceCents,
+            }
+          : prev,
+      );
+    } catch (err) {
+      setBillingError(
+        err instanceof Error ? err.message : 'Top-up failed',
+      );
+    } finally {
+      setBillingBusy(false);
+    }
+  };
+
   return (
     <div className="max-w-3xl">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
           <p className="vfy-page-eyebrow">// settings · workspace</p>
           <h1 className="vfy-page-title">Settings</h1>
-          <p className="vfy-page-sub">Voice agents use server-managed API keys in development — no manual setup needed for sandbox or demo.</p>
+          <p className="vfy-page-sub">
+            Voice pipeline keys stay on the server. Manage credits without Stripe when it is not configured.
+          </p>
         </div>
       </div>
 
@@ -2204,17 +2271,58 @@ const SettingsView = () => {
         <div className="bg-voice-surface border border-voice-border rounded-2xl p-6 shadow-sm">
           <h3 className="text-lg font-bold text-voice-text mb-4 flex items-center gap-2">
             <Zap className="w-5 h-5 text-voice-accent" />
+            Credits &amp; billing
+          </h3>
+          {!orgId && (
+            <p className="text-sm text-voice-muted">Select or create a workspace first.</p>
+          )}
+          {billingError && (
+            <p className="text-sm text-red-500 mb-3" role="alert">{billingError}</p>
+          )}
+          {billing && (
+            <>
+              <p className="text-3xl font-bold text-voice-text mb-1">
+                ${(billing.creditBalanceCents / 100).toFixed(2)}
+              </p>
+              <p className="text-sm text-voice-muted mb-4">
+                {billing.billing?.message ?? 'Credit wallet'}
+                {billing.billing?.mode
+                  ? ` · mode: ${billing.billing.mode}`
+                  : ''}
+              </p>
+              <button
+                type="button"
+                className="vfy-btn vfy-btn-primary"
+                disabled={billingBusy || !billing.billing?.topupAvailable}
+                onClick={() => void topUp()}
+              >
+                {billingBusy ? 'Adding…' : 'Add $25 demo credits'}
+              </button>
+              {!billing.billing?.stripeEnabled && (
+                <p className="text-xs text-voice-muted mt-3">
+                  Stripe is optional and currently off. Platform admins can also grant credits from /admin.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="bg-voice-surface border border-voice-border rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold text-voice-text mb-4 flex items-center gap-2">
+            <Zap className="w-5 h-5 text-voice-accent" />
             Voice Pipeline (Server-managed)
           </h3>
           <p className="text-sm text-voice-muted mb-4">
-            Gemini (LLM), ElevenLabs (TTS + Scribe STT), and the voice pipeline run on the server via <code className="text-voice-text">.env.local</code>.
-            Dashboard agents and the sandbox connect automatically — you do not paste API keys in the browser.
+            Gemini (LLM), Groq, and ElevenLabs (TTS + Scribe STT) run on the API server.
+            You never paste provider keys into the browser.
           </p>
           <div className="flex items-center gap-4 p-4 bg-voice-bg border border-voice-border rounded-xl">
             <CheckCircle2 className="w-5 h-5 text-voice-success-bright shrink-0" />
             <div className="flex-1">
               <h4 className="text-sm font-medium text-voice-text">Keys configured on server</h4>
-              <p className="text-xs text-voice-muted">Set <code>GEMINI_API_KEY</code> and <code>ELEVENLABS_API_KEY</code> in your local env or deployment secrets.</p>
+              <p className="text-xs text-voice-muted">
+                Set <code>GEMINI_API_KEY</code>, <code>GROQ_API_KEY</code>, and <code>ELEVENLABS_API_KEY</code> in <code>.env</code>.
+              </p>
             </div>
           </div>
         </div>
@@ -2222,20 +2330,19 @@ const SettingsView = () => {
         <div className="bg-voice-surface border border-voice-border rounded-2xl p-6 shadow-sm">
           <h3 className="text-lg font-bold text-voice-text mb-4 flex items-center gap-2">
             <Code className="w-5 h-5 text-voice-text" />
-            Webhooks (Premium)
+            Tools &amp; webhooks
           </h3>
           <p className="text-sm text-voice-muted mb-4">
-            Configure n8n webhooks for advanced automation flows.
+            HTTP tools and Automation Packs are managed via the API. Configure outbound webhooks from your org tools endpoints.
           </p>
           <div className="flex items-center gap-4 p-4 bg-voice-bg border border-voice-border rounded-xl">
             <AlertCircle className="w-5 h-5 text-voice-accent" />
             <div className="flex-1">
-              <h4 className="text-sm font-medium text-voice-text">Webhook Integration Active</h4>
-              <p className="text-xs text-voice-muted">Events are being sent to your n8n workflow.</p>
+              <h4 className="text-sm font-medium text-voice-text">API-first integrations</h4>
+              <p className="text-xs text-voice-muted">
+                Use OpenAPI at <code>/api/openapi.json</code> for tools, packs, and usage.
+              </p>
             </div>
-            <button className="text-xs bg-voice-surface hover:bg-voice-border text-voice-text border border-voice-border px-3 py-1.5 rounded-lg transition-colors">
-              Configure
-            </button>
           </div>
         </div>
       </div>
