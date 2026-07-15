@@ -22,6 +22,23 @@ async function authFetch(path: string, init?: RequestInit): Promise<Response> {
   });
 }
 
+function extractAuthError(body: unknown, fallback: string): string {
+  if (!body || typeof body !== "object") return fallback;
+  const o = body as Record<string, unknown>;
+  if (typeof o.message === "string" && o.message.trim()) return o.message;
+  if (typeof o.error === "string" && o.error.trim()) return o.error;
+  if (o.error && typeof o.error === "object") {
+    const nested = o.error as Record<string, unknown>;
+    if (typeof nested.message === "string" && nested.message.trim()) {
+      return nested.message;
+    }
+  }
+  if (typeof o.code === "string" && o.code.trim()) {
+    return `${fallback} (${o.code})`;
+  }
+  return fallback;
+}
+
 export async function getSession(): Promise<AuthSession | null> {
   const res = await authFetch("/get-session", { method: "GET" });
   if (!res.ok) return null;
@@ -36,11 +53,17 @@ export async function signInEmail(input: {
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const res = await authFetch("/sign-in/email", {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      email: input.email.trim().toLowerCase(),
+      password: input.password,
+    }),
   });
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { message?: string };
-    return { ok: false, error: body.message ?? "Sign in failed" };
+    const body = await res.json().catch(() => ({}));
+    return {
+      ok: false,
+      error: extractAuthError(body, `Sign in failed (${res.status})`),
+    };
   }
   return { ok: true };
 }
@@ -52,17 +75,26 @@ export async function signUpEmail(input: {
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const res = await authFetch("/sign-up/email", {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      email: input.email.trim().toLowerCase(),
+      password: input.password,
+      name: input.name,
+    }),
   });
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { message?: string };
-    return { ok: false, error: body.message ?? "Sign up failed" };
+    const body = await res.json().catch(() => ({}));
+    return {
+      ok: false,
+      error: extractAuthError(body, `Sign up failed (${res.status})`),
+    };
   }
   return { ok: true };
 }
 
 export async function signOut(): Promise<void> {
-  await authFetch("/sign-out", { method: "POST", body: "{}" }).catch(() => undefined);
+  await authFetch("/sign-out", { method: "POST", body: "{}" }).catch(
+    () => undefined,
+  );
 }
 
 export async function apiJson<T>(
@@ -78,8 +110,13 @@ export async function apiJson<T>(
     ...init,
   });
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Request failed (${res.status})`);
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+    };
+    throw new Error(
+      body.error ?? body.message ?? `Request failed (${res.status})`,
+    );
   }
   return res.json() as Promise<T>;
 }

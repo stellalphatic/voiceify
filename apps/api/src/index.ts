@@ -72,7 +72,9 @@ app.get("/api/health", async (c) => {
   return c.json({ ...healthPayload(), ...voice, ok: true, status: "ok" });
 });
 
-app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+app.on(["GET", "POST", "PUT", "PATCH", "DELETE"], "/api/auth/*", (c) =>
+  auth.handler(c.req.raw),
+);
 
 app.route("/api/admin", adminRoutes);
 app.route("/api/orgs", orgsRoutes);

@@ -17,6 +17,21 @@ function requireEnv(name: "BETTER_AUTH_URL" | "BETTER_AUTH_SECRET"): string {
   return value;
 }
 
+function parseTrustedOrigins(baseURL: string): string[] {
+  const fromEnv = (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const web = process.env.WEB_ORIGIN?.trim();
+  const origins = new Set<string>([baseURL, ...fromEnv]);
+  if (web) origins.add(web);
+  // Local / IP testing without TLS
+  origins.add("http://localhost:5173");
+  origins.add("http://127.0.0.1:5173");
+  origins.add("http://localhost:8080");
+  return [...origins];
+}
+
 /**
  * Better Auth instance sharing @voiceify/db tables.
  * Organizations use custom helpers in `./org.ts`.
@@ -27,9 +42,11 @@ export function createAuth() {
   const platformAdminEmail = (
     process.env.PLATFORM_ADMIN_EMAIL ?? "admin@metapresence.co"
   ).toLowerCase();
+  const baseURL = requireEnv("BETTER_AUTH_URL").replace(/\/$/, "");
+  const isHttps = baseURL.startsWith("https://");
 
   return betterAuth({
-    baseURL: requireEnv("BETTER_AUTH_URL"),
+    baseURL,
     secret: requireEnv("BETTER_AUTH_SECRET"),
     database: drizzleAdapter(getDb(), {
       provider: "pg",
@@ -42,6 +59,7 @@ export function createAuth() {
     }),
     emailAndPassword: {
       enabled: true,
+      minPasswordLength: 8,
     },
     user: {
       additionalFields: {
@@ -111,10 +129,23 @@ export function createAuth() {
     session: {
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
+      cookieCache: {
+        enabled: true,
+        maxAge: 60 * 5,
+      },
     },
-    trustedOrigins: process.env.BETTER_AUTH_TRUSTED_ORIGINS
-      ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((o) => o.trim())
-      : undefined,
+    trustedOrigins: parseTrustedOrigins(baseURL),
+    advanced: {
+      // Caddy terminates TLS; force Secure cookies in production HTTPS deploys
+      useSecureCookies: isHttps || process.env.NODE_ENV === "production",
+      trustedProxyHeaders: true,
+      defaultCookieAttributes: {
+        sameSite: "lax",
+        path: "/",
+        httpOnly: true,
+        secure: isHttps || process.env.NODE_ENV === "production",
+      },
+    },
   });
 }
 
