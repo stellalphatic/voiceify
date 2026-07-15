@@ -15,7 +15,11 @@ import {
   user,
   type UserStatus,
 } from "@voiceify/db";
-import { setUserStatus } from "@voiceify/auth";
+import {
+  getResendConfig,
+  sendTransactionalEmail,
+  setUserStatus,
+} from "@voiceify/auth";
 import { Hono } from "hono";
 import { z } from "zod";
 import { grantCredits } from "../lib/credits.js";
@@ -272,4 +276,34 @@ adminRoutes.get("/usage", async (c) => {
 
 adminRoutes.get("/me", async (c) => {
   return c.json({ user: c.get("user") });
+});
+
+adminRoutes.get("/email-status", async (c) => {
+  const cfg = getResendConfig();
+  return c.json({
+    configured: cfg.configured,
+    from: cfg.configured ? cfg.from : null,
+    hint: cfg.configured
+      ? "Resend key is loaded in the API container."
+      : "Set RESEND_API_KEY (and RESEND_FROM_EMAIL) in the host .env, then recreate the api container.",
+  });
+});
+
+adminRoutes.post("/test-email", async (c) => {
+  const body = z
+    .object({
+      to: z.string().email().optional(),
+    })
+    .parse(await c.req.json().catch(() => ({})));
+  const to = body.to ?? c.get("user").email;
+  const result = await sendTransactionalEmail({
+    to,
+    subject: "Voiceify test email",
+    text: "If you received this, Resend is configured correctly for Voiceify.",
+    html: "<p>If you received this, Resend is configured correctly for Voiceify.</p>",
+  });
+  if (!result.ok) {
+    return c.json({ ok: false, error: result.error }, 502);
+  }
+  return c.json({ ok: true, id: result.id ?? null, to });
 });

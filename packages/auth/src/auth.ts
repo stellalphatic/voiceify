@@ -6,6 +6,7 @@ import {
   verification,
 } from "@voiceify/db";
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { eq } from "drizzle-orm";
 
@@ -25,11 +26,14 @@ function parseTrustedOrigins(baseURL: string): string[] {
   const web = process.env.WEB_ORIGIN?.trim();
   const origins = new Set<string>([baseURL, ...fromEnv]);
   if (web) origins.add(web);
-  // Local / IP testing without TLS
   origins.add("http://localhost:5173");
   origins.add("http://127.0.0.1:5173");
   origins.add("http://localhost:8080");
   return [...origins];
+}
+
+function forbidden(message: string): never {
+  throw new APIError("FORBIDDEN", { message });
 }
 
 /**
@@ -43,6 +47,7 @@ export function createAuth() {
     process.env.PLATFORM_ADMIN_EMAIL ?? "admin@metapresence.co"
   ).toLowerCase();
   const baseURL = requireEnv("BETTER_AUTH_URL").replace(/\/$/, "");
+  const appURL = (process.env.APP_URL ?? baseURL).replace(/\/$/, "");
   const isHttps = baseURL.startsWith("https://");
 
   return betterAuth({
@@ -60,22 +65,30 @@ export function createAuth() {
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
+      // Pending accounts should not get a session on signup (was throwing → HTTP 500).
+      autoSignIn: autoApprove,
       revokeSessionsOnPasswordReset: true,
-      sendResetPassword: async ({ user, url }) => {
+      sendResetPassword: async ({ user: resetUser, url }) => {
         const { passwordResetEmail, sendTransactionalEmail } = await import(
           "./email.js"
         );
         const content = passwordResetEmail({
-          name: user.name || user.email,
+          name: resetUser.name || resetUser.email,
           resetUrl: url,
         });
-        // Fire-and-forget to avoid reset-email timing attacks
-        void sendTransactionalEmail({
-          to: user.email,
+        // Await so Docker logs show Resend failures (timing leak is secondary to deliverability).
+        const result = await sendTransactionalEmail({
+          to: resetUser.email,
           subject: content.subject,
           html: content.html,
           text: content.text,
         });
+        if (!result.ok) {
+          console.error(
+            "[voiceify/auth] password reset email failed:",
+            result.error,
+          );
+        }
       },
     },
     user: {
@@ -109,6 +122,26 @@ export function createAuth() {
               },
             };
           },
+          after: async (created) => {
+            if (created.status !== "pending") return;
+            const {
+              pendingSignupAdminEmail,
+              sendTransactionalEmail,
+              isEmailConfigured,
+            } = await import("./email.js");
+            if (!isEmailConfigured()) return;
+            const content = pendingSignupAdminEmail({
+              userEmail: created.email,
+              userName: created.name || created.email,
+              adminUrl: `${appURL}/admin`,
+            });
+            void sendTransactionalEmail({
+              to: platformAdminEmail,
+              subject: content.subject,
+              html: content.html,
+              text: content.text,
+            });
+          },
         },
       },
       session: {
@@ -125,18 +158,20 @@ export function createAuth() {
               .limit(1);
 
             if (!row) {
-              throw new Error("User not found");
+              forbidden("User not found");
             }
             if (row.status === "pending") {
-              throw new Error(
+              forbidden(
                 "Your account is pending admin approval. Please wait for Voiceify to approve your signup.",
               );
             }
             if (row.status === "rejected") {
-              throw new Error("Your account request was rejected.");
+              forbidden("Your account request was rejected.");
             }
             if (row.status === "suspended") {
-              throw new Error("Your account has been suspended. Contact support.");
+              forbidden(
+                "Your account has been suspended. Contact support.",
+              );
             }
             return { data: sessionData };
           },
@@ -153,7 +188,6 @@ export function createAuth() {
     },
     trustedOrigins: parseTrustedOrigins(baseURL),
     advanced: {
-      // Caddy terminates TLS; force Secure cookies in production HTTPS deploys
       useSecureCookies: isHttps || process.env.NODE_ENV === "production",
       trustedProxyHeaders: true,
       defaultCookieAttributes: {

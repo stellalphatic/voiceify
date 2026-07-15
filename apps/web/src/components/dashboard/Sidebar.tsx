@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useAuthAccountOptional } from '../../lib/auth/AuthAccountContext';
+import { setConsoleMode } from '../../lib/auth/console-mode';
 
 type NavItem = {
   id: string;
@@ -137,7 +138,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div>
             <p className="vfy-side-section-title">Platform</p>
             <nav className="vfy-side-nav">
-              <Link to="/admin" className="vfy-side-link" data-tooltip="Admin">
+              <Link
+                to="/admin"
+                className="vfy-side-link"
+                data-tooltip="Admin"
+                onClick={() => setConsoleMode('admin')}
+              >
                 <Shield size={18} strokeWidth={2.25} />
                 <span className="vfy-side-collapse-hide">Super admin</span>
               </Link>

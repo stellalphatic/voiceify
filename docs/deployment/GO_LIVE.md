@@ -59,10 +59,21 @@ Put the result in `.env` as `BETTER_AUTH_SECRET=...`
 Required for “Forgot password”. Without it, reset requests succeed for privacy but no email is delivered.
 
 1. Create an account at [Resend](https://resend.com/)
-2. **API Keys → Create** → copy into `.env` as `RESEND_API_KEY=re_...`
-3. Verify a sending domain (or use Resend’s onboarding sender for tests)
-4. Set `RESEND_FROM_EMAIL="Voiceify <noreply@your-domain.com>"`
-5. Recreate the `api` container after editing `.env`
+2. **API Keys → Create** → copy into `.env` as `RESEND_API_KEY=re_...` (no surrounding quotes)
+3. Verify a sending domain, then set `RESEND_FROM_EMAIL=Voiceify <noreply@your-verified-domain>`
+4. Recreate API so Compose injects the new vars:
+
+```bash
+docker compose up -d --force-recreate api
+docker compose exec -T api printenv RESEND_API_KEY | head -c 8
+# should print re_… prefix (not empty, not starting with a quote)
+curl -s https://your-domain/api/health | jq .emailConfigured
+# true
+```
+
+5. In **/admin → overview**, click **Send test email to me**. Check `docker compose logs api --tail=80` for `[voiceify/email]`.
+
+**Signup note:** with `AUTO_APPROVE_SIGNUPS=false`, new users are `pending` and cannot sign in until you approve them in `/admin → Users`. That used to look like a cryptic HTTP 500; it now returns a clear pending message.
 
 Reset flow: `/auth?mode=forgot` → email link → `/auth/reset-password?token=…`
 

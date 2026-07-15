@@ -1,3 +1,5 @@
+import { homePathForSuperAdmin } from "./console-mode";
+
 const API_BASE = "";
 
 export type AuthUser = {
@@ -34,6 +36,16 @@ function extractAuthError(body: unknown, fallback: string): string {
     if (typeof nested.message === "string" && nested.message.trim()) {
       return nested.message;
     }
+  }
+  // Better Auth / better-call sometimes nests under `body` or `status`
+  if (o.body && typeof o.body === "object") {
+    const nested = o.body as Record<string, unknown>;
+    if (typeof nested.message === "string" && nested.message.trim()) {
+      return nested.message;
+    }
+  }
+  if (typeof o.statusText === "string" && o.statusText.trim()) {
+    return o.statusText;
   }
   if (typeof o.code === "string" && o.code.trim()) {
     return `${fallback} (${o.code})`;
@@ -142,19 +154,26 @@ export async function resetPassword(input: {
 }
 
 export function postAuthHomePath(user: AuthUser): "/admin" | "/dashboard" {
-  return user.platformRole === "super_admin" ? "/admin" : "/dashboard";
+  if (user.platformRole === "super_admin") {
+    return homePathForSuperAdmin();
+  }
+  return "/dashboard";
 }
 
 /** Prefer /api/admin/me when additionalFields are missing from the session payload. */
 export async function resolvePostAuthHome(): Promise<"/admin" | "/dashboard"> {
   try {
     const me = await apiJson<{ user: { platformRole?: string } }>("/api/admin/me");
-    if (me.user.platformRole === "super_admin") return "/admin";
+    if (me.user.platformRole === "super_admin") {
+      return homePathForSuperAdmin();
+    }
   } catch {
     /* not a platform admin */
   }
   const session = await getSession();
-  if (session?.user) return postAuthHomePath(session.user);
+  if (session?.user?.platformRole === "super_admin") {
+    return homePathForSuperAdmin();
+  }
   return "/dashboard";
 }
 

@@ -1,6 +1,5 @@
 /**
  * Transactional email via Resend (password reset, admin notifications).
- * No-ops with a clear log when RESEND_API_KEY is unset (local/dev).
  */
 
 type SendEmailInput = {
@@ -10,50 +9,94 @@ type SendEmailInput = {
   text: string;
 };
 
+/** Strip wrapping quotes that break keys when .env uses RESEND_API_KEY="re_..." badly. */
+export function cleanEnvValue(value: string | undefined): string {
+  if (!value) return "";
+  let v = value.trim();
+  if (
+    (v.startsWith('"') && v.endsWith('"')) ||
+    (v.startsWith("'") && v.endsWith("'"))
+  ) {
+    v = v.slice(1, -1).trim();
+  }
+  return v;
+}
+
+export function getResendConfig(): {
+  apiKey: string;
+  from: string;
+  configured: boolean;
+} {
+  const apiKey = cleanEnvValue(process.env.RESEND_API_KEY);
+  const from =
+    cleanEnvValue(process.env.RESEND_FROM_EMAIL) ||
+    "Voiceify <onboarding@resend.dev>";
+  return { apiKey, from, configured: Boolean(apiKey) };
+}
+
 export function isEmailConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY?.trim());
+  return getResendConfig().configured;
 }
 
 export async function sendTransactionalEmail(
   input: SendEmailInput,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from =
-    process.env.RESEND_FROM_EMAIL?.trim() ||
-    "Voiceify <onboarding@resend.dev>";
+): Promise<{ ok: true; id?: string } | { ok: false; error: string }> {
+  const { apiKey, from, configured } = getResendConfig();
 
-  if (!apiKey) {
+  if (!configured) {
     console.warn(
       "[voiceify/email] RESEND_API_KEY missing — email not sent:",
       input.subject,
       "→",
       input.to,
     );
-    return { ok: false, error: "Email service is not configured" };
+    return { ok: false, error: "Email service is not configured (RESEND_API_KEY)" };
   }
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [input.to],
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [input.to],
+        subject: input.subject,
+        html: input.html,
+        text: input.text,
+      }),
+    });
+
+    const bodyText = await res.text().catch(() => "");
+    if (!res.ok) {
+      console.error("[voiceify/email] Resend error", res.status, bodyText);
+      return {
+        ok: false,
+        error: `Resend ${res.status}: ${bodyText.slice(0, 280) || res.statusText}`,
+      };
+    }
+
+    let id: string | undefined;
+    try {
+      const parsed = JSON.parse(bodyText) as { id?: string };
+      id = parsed.id;
+    } catch {
+      /* ignore */
+    }
+    console.info("[voiceify/email] sent", {
+      to: input.to,
       subject: input.subject,
-      html: input.html,
-      text: input.text,
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    console.error("[voiceify/email] Resend error", res.status, body);
-    return { ok: false, error: `Email send failed (${res.status})` };
+      from,
+      id: id ?? null,
+    });
+    return { ok: true, id };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Email send failed";
+    console.error("[voiceify/email] network error", message);
+    return { ok: false, error: message };
   }
-
-  return { ok: true };
 }
 
 export function passwordResetEmail(params: {
@@ -69,6 +112,23 @@ export function passwordResetEmail(params: {
       <p><a href="${escapeAttr(params.resetUrl)}" style="display:inline-block;padding:10px 16px;background:#0d9488;color:#fff;text-decoration:none;border-radius:6px">Reset password</a></p>
       <p style="color:#555;font-size:14px">Or paste this link into your browser:<br/>${escapeHtml(params.resetUrl)}</p>
       <p style="color:#555;font-size:14px">If you did not request this, you can ignore this email.</p>
+    </div>
+  `;
+  return { subject, html, text };
+}
+
+export function pendingSignupAdminEmail(params: {
+  userEmail: string;
+  userName: string;
+  adminUrl: string;
+}): { subject: string; html: string; text: string } {
+  const subject = `Voiceify signup pending: ${params.userEmail}`;
+  const text = `New signup awaiting approval:\nName: ${params.userName}\nEmail: ${params.userEmail}\nApprove at: ${params.adminUrl}\n`;
+  const html = `
+    <div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111">
+      <p>New Voiceify signup is waiting for approval.</p>
+      <p><strong>${escapeHtml(params.userName)}</strong><br/>${escapeHtml(params.userEmail)}</p>
+      <p><a href="${escapeAttr(params.adminUrl)}">Open admin portal</a></p>
     </div>
   `;
   return { subject, html, text };

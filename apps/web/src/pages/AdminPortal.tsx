@@ -15,7 +15,13 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { apiJson, getSession, signOut } from "../lib/auth/client";
+import {
+  apiJson,
+  getSession,
+  setActiveOrgId,
+  signOut,
+} from "../lib/auth/client";
+import { setConsoleMode } from "../lib/auth/console-mode";
 import { clearAuthToken } from "../components/RequireAuth";
 import "../admin.css";
 
@@ -103,6 +109,12 @@ export default function AdminPortal() {
   const [orgQuery, setOrgQuery] = useState("");
   const [creditDraft, setCreditDraft] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [emailStatus, setEmailStatus] = useState<{
+    configured: boolean;
+    from: string | null;
+    hint: string;
+  } | null>(null);
+  const [emailTestMsg, setEmailTestMsg] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -145,12 +157,50 @@ export default function AdminPortal() {
       setUsers(us.users);
       setOrgs(og.organizations);
       setUsage(ug);
+      const es = await apiJson<{
+        configured: boolean;
+        from: string | null;
+        hint: string;
+      }>("/api/admin/email-status").catch(() => null);
+      setEmailStatus(es);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load admin data");
     } finally {
       setLoading(false);
     }
   }, [navigate]);
+
+  async function openWorkspace() {
+    setConsoleMode("workspace");
+    try {
+      const orgs = await apiJson<{ organizations: Array<{ id: string }> }>("/api/orgs");
+      if (!orgs.organizations.length) {
+        const created = await apiJson<{ organization: { id: string } }>("/api/orgs", {
+          method: "POST",
+          body: JSON.stringify({ name: "Platform Admin Workspace" }),
+        });
+        setActiveOrgId(created.organization.id);
+      } else {
+        setActiveOrgId(orgs.organizations[0].id);
+      }
+    } catch {
+      /* workspace API may still work with empty org list on next screen */
+    }
+    navigate("/dashboard");
+  }
+
+  async function sendTestEmail() {
+    setEmailTestMsg(null);
+    try {
+      const result = await apiJson<{ ok: boolean; to: string; id: string | null }>(
+        "/api/admin/test-email",
+        { method: "POST", body: "{}" },
+      );
+      setEmailTestMsg(`Test email sent to ${result.to}${result.id ? ` (id ${result.id})` : ""}`);
+    } catch (err) {
+      setEmailTestMsg(err instanceof Error ? err.message : "Test email failed");
+    }
+  }
 
   useEffect(() => {
     void loadAll();
@@ -313,8 +363,16 @@ export default function AdminPortal() {
               </button>
             );
           })}
+          <button
+            type="button"
+            className="adm-nav-item adm-nav-item--link"
+            onClick={() => void openWorkspace()}
+          >
+            <LayoutDashboard size={18} aria-hidden />
+            Open my workspace
+          </button>
           <p className="adm-muted" style={{ padding: "12px 16px", fontSize: 12 }}>
-            Credits, approvals, and usage are managed here. Tenant workspaces are separate accounts.
+            Switch to the tenant dashboard to create agents and test voice. Come back here for approvals and credits.
           </p>
         </aside>
 
@@ -341,6 +399,34 @@ export default function AdminPortal() {
             <section className="adm-section">
               <h1>Platform overview</h1>
               <p className="adm-muted">Approve signups, fund credits, and monitor usage.</p>
+              {emailStatus && (
+                <div className="adm-card" style={{ marginBottom: 16 }}>
+                  <h2 style={{ fontSize: 16, margin: "0 0 8px" }}>Email (Resend)</h2>
+                  <p className="adm-muted">
+                    {emailStatus.configured
+                      ? `Configured · from ${emailStatus.from ?? "unknown"}`
+                      : emailStatus.hint}
+                  </p>
+                  <div className="adm-actions" style={{ marginTop: 12 }}>
+                    <button
+                      type="button"
+                      className="adm-btn"
+                      disabled={!emailStatus.configured}
+                      onClick={() => void sendTestEmail()}
+                    >
+                      Send test email to me
+                    </button>
+                    <button
+                      type="button"
+                      className="adm-btn adm-btn--ghost"
+                      onClick={() => void openWorkspace()}
+                    >
+                      Open workspace
+                    </button>
+                  </div>
+                  {emailTestMsg && <p className="adm-muted" style={{ marginTop: 8 }}>{emailTestMsg}</p>}
+                </div>
+              )}
               <div className="adm-stats">
                 <article className="adm-stat">
                   <span>Users</span>

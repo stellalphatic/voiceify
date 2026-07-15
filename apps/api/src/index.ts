@@ -53,11 +53,15 @@ app.use(
 );
 
 function healthPayload() {
+  const emailConfigured = Boolean(
+    (process.env.RESEND_API_KEY ?? "").trim().replace(/^["']|["']$/g, ""),
+  );
   return {
     ok: true as const,
     status: "ok" as const,
     service: "voiceify-api",
     ts: new Date().toISOString(),
+    emailConfigured,
   };
 }
 

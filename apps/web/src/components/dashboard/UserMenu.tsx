@@ -7,6 +7,7 @@ import { LogOut, Settings, Shield, User } from 'lucide-react';
 import { clearAuthToken } from '../RequireAuth';
 import { signOut } from '../../lib/auth/client';
 import { useAuthAccountOptional } from '../../lib/auth/AuthAccountContext';
+import { setConsoleMode } from '../../lib/auth/console-mode';
 
 interface Props {
   name?: string;
@@ -110,7 +111,10 @@ export default function UserMenu({
               to="/admin"
               role="menuitem"
               className="flex items-center gap-2 px-3 py-2 text-sm text-voice-text hover:bg-voice-border/40"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setConsoleMode('admin');
+                setOpen(false);
+              }}
             >
               <Shield size={14} />
               Super admin

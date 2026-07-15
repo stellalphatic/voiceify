@@ -42,9 +42,7 @@ interface RequireAuthProps {
 
 export default function RequireAuth({ children }: RequireAuthProps) {
   const location = useLocation();
-  const [state, setState] = useState<"loading" | "yes" | "no" | "admin-redirect">(
-    "loading",
-  );
+  const [state, setState] = useState<"loading" | "yes" | "no">("loading");
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
@@ -64,7 +62,11 @@ export default function RequireAuth({ children }: RequireAuthProps) {
 
       try {
         const me = await apiJson<{
-          user: { platformRole?: "user" | "super_admin"; email?: string; name?: string };
+          user: {
+            platformRole?: "user" | "super_admin";
+            email?: string;
+            name?: string;
+          };
         }>("/api/admin/me");
         if (me.user.platformRole === "super_admin") {
           nextUser = {
@@ -80,14 +82,6 @@ export default function RequireAuth({ children }: RequireAuthProps) {
 
       if (cancelled) return;
       setUser(nextUser);
-
-      if (
-        nextUser.platformRole === "super_admin" &&
-        location.pathname.startsWith("/dashboard")
-      ) {
-        setState("admin-redirect");
-        return;
-      }
       setState("yes");
     })();
     return () => {
@@ -101,10 +95,6 @@ export default function RequireAuth({ children }: RequireAuthProps) {
         Checking session…
       </div>
     );
-  }
-
-  if (state === "admin-redirect") {
-    return <Navigate to="/admin" replace />;
   }
 
   if (state === "no" || !user) {
