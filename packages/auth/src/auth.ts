@@ -24,6 +24,9 @@ function requireEnv(name: "BETTER_AUTH_URL" | "BETTER_AUTH_SECRET"): string {
  */
 export function createAuth() {
   const autoApprove = process.env.AUTO_APPROVE_SIGNUPS === "true";
+  const platformAdminEmail = (
+    process.env.PLATFORM_ADMIN_EMAIL ?? "admin@metapresence.co"
+  ).toLowerCase();
 
   return betterAuth({
     baseURL: requireEnv("BETTER_AUTH_URL"),
@@ -60,11 +63,14 @@ export function createAuth() {
       user: {
         create: {
           before: async (data) => {
+            const email = String(data.email ?? "").toLowerCase();
+            const isPlatformAdmin = email === platformAdminEmail;
             return {
               data: {
                 ...data,
-                status: autoApprove ? "approved" : "pending",
-                platformRole: "user",
+                status:
+                  isPlatformAdmin || autoApprove ? "approved" : "pending",
+                platformRole: isPlatformAdmin ? "super_admin" : "user",
               },
             };
           },

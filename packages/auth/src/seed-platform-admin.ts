@@ -1,6 +1,9 @@
 /**
  * Seed / upsert platform super-admin.
  * Prefer PLATFORM_ADMIN_EMAIL + PLATFORM_ADMIN_PASSWORD from env.
+ *
+ * Sign-up may create the user then fail session creation if status was
+ * still pending; we always promote afterward so this script is idempotent.
  */
 import "dotenv/config";
 import { db, eq, user } from "@voiceify/db";
@@ -21,13 +24,27 @@ async function main() {
     .limit(1);
 
   if (!existing.length) {
-    const result = await auth.api.signUpEmail({
-      body: { email, password, name },
-    });
-    if (!result) {
-      throw new Error("Failed to create admin user via Better Auth");
+    try {
+      const result = await auth.api.signUpEmail({
+        body: { email, password, name },
+      });
+      if (result) {
+        console.info(`[seed:admin] created ${email}`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const [createdAnyway] = await db
+        .select()
+        .from(user)
+        .where(eq(user.email, email))
+        .limit(1);
+      if (!createdAnyway) {
+        throw new Error(`Failed to create admin user: ${msg}`);
+      }
+      console.info(
+        `[seed:admin] user row created (session hook blocked); continuing promote`,
+      );
     }
-    console.info(`[seed:admin] created ${email}`);
   } else {
     console.info(`[seed:admin] user exists ${email}`);
   }
