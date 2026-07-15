@@ -60,6 +60,23 @@ export function createAuth() {
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, url }) => {
+        const { passwordResetEmail, sendTransactionalEmail } = await import(
+          "./email.js"
+        );
+        const content = passwordResetEmail({
+          name: user.name || user.email,
+          resetUrl: url,
+        });
+        // Fire-and-forget to avoid reset-email timing attacks
+        void sendTransactionalEmail({
+          to: user.email,
+          subject: content.subject,
+          html: content.html,
+          text: content.text,
+        });
+      },
     },
     user: {
       additionalFields: {

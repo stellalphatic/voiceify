@@ -6,13 +6,13 @@ import {
   Bot,
   Search,
   Settings,
-  Sparkles,
+  Shield,
   TerminalSquare,
   Users,
   Webhook,
-  Zap,
   type LucideIcon,
 } from 'lucide-react';
+import { useAuthAccountOptional } from '../../lib/auth/AuthAccountContext';
 
 type NavItem = {
   id: string;
@@ -22,25 +22,21 @@ type NavItem = {
   badge?: string;
 };
 
-/**
- * Two-section nav. Section labels are rendered as small mono captions to give
- * the sidebar an IDE-like, tools-first feel.
- */
 const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Workspace',
     items: [
-      { id: 'dashboard',   icon: BarChart3,      label: 'Overview',  path: '/dashboard' },
-      { id: 'agents',      icon: Users,          label: 'Agents',    path: '/dashboard/agents' },
-      { id: 'sandbox',     icon: TerminalSquare, label: 'Sandbox',   path: '/dashboard/sandbox' },
-      { id: 'analytics',   icon: Activity,       label: 'Analytics', path: '/dashboard/analytics', badge: 'Beta' },
+      { id: 'dashboard', icon: BarChart3, label: 'Overview', path: '/dashboard' },
+      { id: 'agents', icon: Users, label: 'Agents', path: '/dashboard/agents' },
+      { id: 'sandbox', icon: TerminalSquare, label: 'Sandbox', path: '/dashboard/sandbox' },
+      { id: 'analytics', icon: Activity, label: 'Analytics', path: '/dashboard/analytics' },
     ],
   },
   {
     title: 'Build',
     items: [
-      { id: 'integrations', icon: Webhook,  label: 'Integrations', path: '/dashboard/integrations' },
-      { id: 'settings',     icon: Settings, label: 'Settings',     path: '/dashboard/settings' },
+      { id: 'integrations', icon: Webhook, label: 'Integrations', path: '/dashboard/integrations' },
+      { id: 'settings', icon: Settings, label: 'Settings', path: '/dashboard/settings' },
     ],
   },
 ];
@@ -48,6 +44,17 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
 function isActive(pathname: string, itemPath: string) {
   if (itemPath === '/dashboard') return pathname === '/dashboard' || pathname === '/dashboard/';
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
+}
+
+function initialsOf(name: string) {
+  return (
+    name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((s) => s[0]?.toUpperCase() ?? '')
+      .join('') || 'U'
+  );
 }
 
 interface SidebarProps {
@@ -58,22 +65,20 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
   const pathname = location.pathname;
+  const account = useAuthAccountOptional();
+  const displayName = account?.user.name?.trim() || 'Account';
+  const displayEmail = account?.user.email || '';
+  const isAdmin = account?.user.platformRole === 'super_admin';
 
-  /* Close mobile drawer on route change */
   useEffect(() => {
     onClose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  /* ⌘K / Ctrl+K wires to a noop search-bar toast for now (purely visual) */
-  const onCmdK = () => {
-    /* placeholder for future command-palette */
-  };
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        onCmdK();
       }
     };
     window.addEventListener('keydown', handler);
@@ -88,28 +93,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         aria-hidden="true"
       />
       <aside className={`vfy-side${isOpen ? ' is-open' : ''}`} aria-label="Dashboard navigation">
-        {/* Brand */}
         <Link to="/dashboard" className="vfy-side-brand">
           <span className="vfy-side-brand-orb">
             <Bot size={16} strokeWidth={2.4} />
           </span>
           <span className="vfy-side-brand-text vfy-side-collapse-hide">Voiceify</span>
-          <span className="vfy-side-brand-version vfy-side-collapse-hide">v3.2</span>
         </Link>
 
-        {/* Cmd-K bar */}
-        <button type="button" className="vfy-side-cmd" onClick={onCmdK} aria-label="Search">
+        <button type="button" className="vfy-side-cmd" aria-label="Search">
           <Search size={16} strokeWidth={2.25} />
           <span className="vfy-side-cmd-text vfy-side-collapse-hide">Search…</span>
           <span className="vfy-side-cmd-kbd vfy-side-collapse-hide">⌘K</span>
         </button>
 
-        {/* Nav groups */}
-        {NAV_GROUPS.map(group => (
+        {NAV_GROUPS.map((group) => (
           <div key={group.title}>
             <p className="vfy-side-section-title">{group.title}</p>
             <nav className="vfy-side-nav">
-              {group.items.map(item => {
+              {group.items.map((item) => {
                 const active = isActive(pathname, item.path);
                 const Icon = item.icon;
                 return (
@@ -132,29 +133,35 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
         ))}
 
+        {isAdmin && (
+          <div>
+            <p className="vfy-side-section-title">Platform</p>
+            <nav className="vfy-side-nav">
+              <Link to="/admin" className="vfy-side-link" data-tooltip="Admin">
+                <Shield size={18} strokeWidth={2.25} />
+                <span className="vfy-side-collapse-hide">Super admin</span>
+              </Link>
+            </nav>
+          </div>
+        )}
+
         <div className="vfy-side-spacer" aria-hidden="true" />
 
-        {/* Pro upgrade card — only renders when sidebar is expanded */}
-        <div className="vfy-side-pro">
-          <p className="vfy-side-pro-eyebrow">Upgrade</p>
-          <p className="vfy-side-pro-title">Voiceify Scale</p>
+        <Link to="/dashboard/settings" className="vfy-side-pro" style={{ textDecoration: 'none' }}>
+          <p className="vfy-side-pro-eyebrow">Workspace</p>
+          <p className="vfy-side-pro-title">Credits &amp; billing</p>
           <p className="vfy-side-pro-sub">
-            Unlock concurrent calls, real-time analytics, and SSO.
+            View balance, usage, and request more credits from platform admin.
           </p>
-          <Link to="/pricing" className="vfy-side-pro-cta">
-            <Sparkles size={14} strokeWidth={2.25} />
-            See plans
-          </Link>
-        </div>
+          <span className="vfy-side-pro-cta">Open settings</span>
+        </Link>
 
-        {/* User chip */}
-        <div className="vfy-side-user" role="button" tabIndex={0}>
-          <span className="vfy-side-user-avatar">J</span>
+        <div className="vfy-side-user">
+          <span className="vfy-side-user-avatar">{initialsOf(displayName)}</span>
           <div className="vfy-side-user-meta vfy-side-collapse-hide">
-            <p className="vfy-side-user-name">Jane Carter</p>
-            <p className="vfy-side-user-mail">jane@voiceify.ai</p>
+            <p className="vfy-side-user-name">{displayName}</p>
+            <p className="vfy-side-user-mail">{displayEmail}</p>
           </div>
-          <Zap size={15} strokeWidth={2.25} className="vfy-side-collapse-hide ui-icon" />
         </div>
       </aside>
     </>

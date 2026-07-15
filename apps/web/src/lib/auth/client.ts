@@ -4,6 +4,8 @@ export type AuthUser = {
   id: string;
   email: string;
   name: string;
+  status?: "pending" | "approved" | "rejected" | "suspended";
+  platformRole?: "user" | "super_admin";
 };
 
 export type AuthSession = {
@@ -95,6 +97,65 @@ export async function signOut(): Promise<void> {
   await authFetch("/sign-out", { method: "POST", body: "{}" }).catch(
     () => undefined,
   );
+}
+
+export async function requestPasswordReset(input: {
+  email: string;
+  redirectTo: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const res = await authFetch("/request-password-reset", {
+    method: "POST",
+    body: JSON.stringify({
+      email: input.email.trim().toLowerCase(),
+      redirectTo: input.redirectTo,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return {
+      ok: false,
+      error: extractAuthError(body, `Password reset request failed (${res.status})`),
+    };
+  }
+  return { ok: true };
+}
+
+export async function resetPassword(input: {
+  token: string;
+  newPassword: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const res = await authFetch("/reset-password", {
+    method: "POST",
+    body: JSON.stringify({
+      token: input.token,
+      newPassword: input.newPassword,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return {
+      ok: false,
+      error: extractAuthError(body, `Password reset failed (${res.status})`),
+    };
+  }
+  return { ok: true };
+}
+
+export function postAuthHomePath(user: AuthUser): "/admin" | "/dashboard" {
+  return user.platformRole === "super_admin" ? "/admin" : "/dashboard";
+}
+
+/** Prefer /api/admin/me when additionalFields are missing from the session payload. */
+export async function resolvePostAuthHome(): Promise<"/admin" | "/dashboard"> {
+  try {
+    const me = await apiJson<{ user: { platformRole?: string } }>("/api/admin/me");
+    if (me.user.platformRole === "super_admin") return "/admin";
+  } catch {
+    /* not a platform admin */
+  }
+  const session = await getSession();
+  if (session?.user) return postAuthHomePath(session.user);
+  return "/dashboard";
 }
 
 export async function apiJson<T>(

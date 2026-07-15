@@ -9,8 +9,6 @@ import React, {
 } from "react";
 import {
   DASHBOARD_AGENTS_STORAGE_KEY,
-  DEFAULT_VOICE_AGENTS,
-  agentPersonaId,
   findAgentForPersona,
   loadDashboardAgents,
   saveDashboardAgents,
@@ -40,40 +38,15 @@ function uuidToNumericId(uuid: string): number {
   return Math.abs(h) || Date.now();
 }
 
-function mergeWithDefaults(stored: AppAgent[]): AppAgent[] {
-  if (!stored.length) return DEFAULT_VOICE_AGENTS;
-
-  const defaultsById = new Map(DEFAULT_VOICE_AGENTS.map((a) => [a.id, a]));
-  const merged: AppAgent[] = stored.map((agent) => {
-    const base = defaultsById.get(agent.id);
-    return {
-      ...base,
-      ...agent,
-      personaId: agent.personaId ?? base?.personaId,
-      isDemoDefault: agent.isDemoDefault ?? base?.isDemoDefault ?? false,
-    };
-  });
-
-  for (const fallback of DEFAULT_VOICE_AGENTS) {
-    if (!merged.some((a) => a.id === fallback.id && !a.serverId)) {
-      merged.push(fallback);
-    }
-  }
-
-  for (const demoDefault of DEFAULT_VOICE_AGENTS.filter((a) => a.isDemoDefault)) {
-    const hasDemo = merged.some(
-      (a) => a.isDemoDefault && agentPersonaId(a) === agentPersonaId(demoDefault),
-    );
-    if (!hasDemo) merged.push(demoDefault);
-  }
-
-  return merged;
+/** Workspace agents only — never inject marketing demo personas into a tenant UI. */
+function sanitizeWorkspaceAgents(stored: AppAgent[]): AppAgent[] {
+  return stored.filter((a) => !a.isDemoDefault);
 }
 
 export function AgentStoreProvider({ children }: { children: ReactNode }) {
   const [orgId, setOrgId] = useState<string | null>(() => getActiveOrgId());
   const [agents, setAgents] = useState<AppAgent[]>(() =>
-    mergeWithDefaults(loadDashboardAgents(DEFAULT_VOICE_AGENTS)),
+    sanitizeWorkspaceAgents(loadDashboardAgents([])),
   );
 
   const refreshFromApi = useCallback(async () => {
@@ -111,8 +84,8 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
       }));
 
       setAgents((prev) => {
-        const demos = prev.filter((p) => p.isDemoDefault && !p.serverId);
-        return mergeWithDefaults([...mapped, ...demos]);
+        const localDrafts = prev.filter((p) => !p.serverId && !p.isDemoDefault);
+        return sanitizeWorkspaceAgents([...mapped, ...localDrafts]);
       });
     } catch {
       /* keep local cache when API unavailable */
@@ -134,7 +107,7 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
         const parsed = event.newValue
           ? (JSON.parse(event.newValue) as AppAgent[])
           : [];
-        if (Array.isArray(parsed)) setAgents(mergeWithDefaults(parsed));
+        if (Array.isArray(parsed)) setAgents(sanitizeWorkspaceAgents(parsed));
       } catch {
         /* ignore */
       }

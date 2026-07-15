@@ -54,6 +54,20 @@ openssl rand -base64 32
 
 Put the result in `.env` as `BETTER_AUTH_SECRET=...`
 
+### 1d2. Resend (password reset email)
+
+Required for “Forgot password”. Without it, reset requests succeed for privacy but no email is delivered.
+
+1. Create an account at [Resend](https://resend.com/)
+2. **API Keys → Create** → copy into `.env` as `RESEND_API_KEY=re_...`
+3. Verify a sending domain (or use Resend’s onboarding sender for tests)
+4. Set `RESEND_FROM_EMAIL="Voiceify <noreply@your-domain.com>"`
+5. Recreate the `api` container after editing `.env`
+
+Reset flow: `/auth?mode=forgot` → email link → `/auth/reset-password?token=…`
+
+CI/CD secrets and EC2 auto-deploy: see [github-actions-ec2.md](./github-actions-ec2.md).
+
 ### 1e. Stripe (skip for now)
 
 Leave these unset / false:

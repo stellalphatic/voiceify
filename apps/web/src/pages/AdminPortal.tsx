@@ -14,7 +14,6 @@ import {
   Shield,
   Users,
   X,
-  Activity,
 } from "lucide-react";
 import { apiJson, getSession, signOut } from "../lib/auth/client";
 import { clearAuthToken } from "../components/RequireAuth";
@@ -258,8 +257,8 @@ export default function AdminPortal() {
           <h1>Admin access</h1>
           <p className="adm-muted">{error}</p>
           <div className="adm-actions">
-            <Link to="/dashboard" className="adm-btn adm-btn--ghost">
-              Dashboard
+            <Link to="/auth?mode=signin" className="adm-btn adm-btn--ghost">
+              Sign in
             </Link>
             <button type="button" className="adm-btn" onClick={() => void loadAll()}>
               Retry
@@ -283,10 +282,12 @@ export default function AdminPortal() {
         </button>
         <div className="adm-brand">
           <Shield size={18} aria-hidden />
-          <span>Voiceify Admin</span>
+          <span>Super Admin · Voiceify</span>
         </div>
         <div className="adm-top-right">
-          <span className="adm-top-email">{adminEmail}</span>
+          <span className="adm-top-email" title="Signed-in platform operator">
+            {adminEmail}
+          </span>
           <button type="button" className="adm-icon-btn" onClick={() => void handleSignOut()} aria-label="Sign out">
             <LogOut size={18} />
           </button>
@@ -312,10 +313,9 @@ export default function AdminPortal() {
               </button>
             );
           })}
-          <Link to="/dashboard" className="adm-nav-item adm-nav-item--link" onClick={() => setNavOpen(false)}>
-            <Activity size={18} aria-hidden />
-            Tenant dashboard
-          </Link>
+          <p className="adm-muted" style={{ padding: "12px 16px", fontSize: 12 }}>
+            Credits, approvals, and usage are managed here. Tenant workspaces are separate accounts.
+          </p>
         </aside>
 
         {navOpen && (

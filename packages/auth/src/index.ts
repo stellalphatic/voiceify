@@ -1,5 +1,10 @@
 export { auth, createAuth, type Auth, type Session } from "./auth.js";
 export {
+  isEmailConfigured,
+  passwordResetEmail,
+  sendTransactionalEmail,
+} from "./email.js";
+export {
   createOrgWithOwner,
   listUserOrgs,
   OrgAccessError,

@@ -66,13 +66,17 @@ export default function DashboardTopbar({ crumbs, actions, onMenuClick }: Dashbo
         <ThemeToggle size="sm" />
       </span>
 
-      <button type="button" className="vfy-top-iconbtn" aria-label="Notifications">
-        <Bell size={17} strokeWidth={2.25} />
-        <span className="vfy-top-iconbtn-dot" aria-hidden="true" />
-      </button>
-
-      <Link to="/dashboard/settings" className="vfy-top-iconbtn" aria-label="Settings">
+      <Link to="/dashboard/settings" className="vfy-top-iconbtn" aria-label="Settings" title="Settings">
         <Settings2 size={17} strokeWidth={2.25} />
+      </Link>
+
+      <Link
+        to="/dashboard/analytics"
+        className="vfy-top-iconbtn"
+        aria-label="Usage and activity"
+        title="Usage"
+      >
+        <Bell size={17} strokeWidth={2.25} />
       </Link>
 
       <div style={{ display: 'inline-flex', alignItems: 'center' }}>

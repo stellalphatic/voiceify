@@ -10,6 +10,7 @@ import { usePixelUi } from './hooks/usePixelUi';
 // ── Lazy-loaded routes ─────────────────────────────────────────────
 const LandingPage   = lazy(() => import('./pages/LandingPage'));
 const AuthPage      = lazy(() => import('./pages/AuthPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const AdminPortal   = lazy(() => import('./pages/AdminPortal'));
 const DashboardLayout = lazy(() => import('./pages/DashboardLayout'));
 const PricingPage   = lazy(() => import('./pages/PricingPage'));
@@ -55,6 +56,7 @@ function AppRoutes() {
           </Route>
 
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
           <Route
             path="/admin/*"

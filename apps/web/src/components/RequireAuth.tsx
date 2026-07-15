@@ -4,7 +4,8 @@
  */
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { getSession, type AuthUser } from "../lib/auth/client";
+import { AuthAccountProvider } from "../lib/auth/AuthAccountContext";
+import { apiJson, getSession, type AuthUser } from "../lib/auth/client";
 
 export const VOICEIFY_AUTH_TOKEN_KEY = "voiceify.auth.token";
 
@@ -41,7 +42,9 @@ interface RequireAuthProps {
 
 export default function RequireAuth({ children }: RequireAuthProps) {
   const location = useLocation();
-  const [state, setState] = useState<"loading" | "yes" | "no">("loading");
+  const [state, setState] = useState<"loading" | "yes" | "no" | "admin-redirect">(
+    "loading",
+  );
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
@@ -49,14 +52,43 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     void (async () => {
       const session = await getSession();
       if (cancelled) return;
-      if (session?.user) {
-        setAuthToken(session.session.id);
-        setUser(session.user);
-        setState("yes");
-      } else {
+      if (!session?.user) {
         clearAuthToken();
+        setUser(null);
         setState("no");
+        return;
       }
+
+      setAuthToken(session.session.id);
+      let nextUser = session.user;
+
+      try {
+        const me = await apiJson<{
+          user: { platformRole?: "user" | "super_admin"; email?: string; name?: string };
+        }>("/api/admin/me");
+        if (me.user.platformRole === "super_admin") {
+          nextUser = {
+            ...nextUser,
+            platformRole: "super_admin",
+            email: me.user.email ?? nextUser.email,
+            name: me.user.name ?? nextUser.name,
+          };
+        }
+      } catch {
+        /* tenant user — /api/admin/me returns 403 */
+      }
+
+      if (cancelled) return;
+      setUser(nextUser);
+
+      if (
+        nextUser.platformRole === "super_admin" &&
+        location.pathname.startsWith("/dashboard")
+      ) {
+        setState("admin-redirect");
+        return;
+      }
+      setState("yes");
     })();
     return () => {
       cancelled = true;
@@ -71,7 +103,11 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     );
   }
 
-  if (state === "no") {
+  if (state === "admin-redirect") {
+    return <Navigate to="/admin" replace />;
+  }
+
+  if (state === "no" || !user) {
     const redirect = encodeURIComponent(location.pathname + location.search);
     return (
       <Navigate to={`/auth?mode=signin&redirect=${redirect}`} replace />
@@ -79,6 +115,8 @@ export default function RequireAuth({ children }: RequireAuthProps) {
   }
 
   return (
-    <div data-user-email={user?.email ?? undefined}>{children}</div>
+    <AuthAccountProvider user={user}>
+      <div data-user-email={user.email}>{children}</div>
+    </AuthAccountProvider>
   );
 }

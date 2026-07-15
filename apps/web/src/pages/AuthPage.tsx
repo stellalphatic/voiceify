@@ -19,6 +19,8 @@ import { setAuthToken } from '../components/RequireAuth';
 import {
   apiJson,
   getSession,
+  requestPasswordReset,
+  resolvePostAuthHome,
   setActiveOrgId,
   signInEmail,
   signUpEmail,
@@ -59,6 +61,7 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const mode = searchParams.get('mode') || 'signin';
   const isSignUp = mode === 'signup';
+  const isForgot = mode === 'forgot';
   const redirect = searchParams.get('redirect');
 
   const [email, setEmail] = useState('');
@@ -69,12 +72,13 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pendingApproval, setPendingApproval] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
 
-  const tabHref = (nextMode: 'signin' | 'signup') => {
+  const tabHref = (nextMode: 'signin' | 'signup' | 'forgot') => {
     const params = new URLSearchParams();
     params.set('mode', nextMode);
     if (redirect) params.set('redirect', redirect);
@@ -85,7 +89,8 @@ export default function AuthPage() {
     window.scrollTo(0, 0);
     setErrors({});
     setTouched({});
-  }, [isSignUp]);
+    setResetSent(false);
+  }, [isSignUp, isForgot]);
 
   const validate = (): boolean => {
     const next: Record<string, string> = {};
@@ -101,10 +106,12 @@ export default function AuthPage() {
       next.email = 'Enter a valid email address';
     }
 
-    if (!password) {
-      next.password = 'Password is required';
-    } else if (isSignUp && password.length < 8) {
-      next.password = 'Use at least 8 characters';
+    if (!isForgot) {
+      if (!password) {
+        next.password = 'Password is required';
+      } else if (isSignUp && password.length < 8) {
+        next.password = 'Use at least 8 characters';
+      }
     }
 
     if (isSignUp && !agreed) {
@@ -122,8 +129,31 @@ export default function AuthPage() {
     return Object.keys(next).length === 0;
   };
 
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setLoading(true);
+    setErrors({});
+    const redirectTo = `${window.location.origin}/auth/reset-password`;
+    const result = await requestPasswordReset({
+      email: email.trim(),
+      redirectTo,
+    });
+    setLoading(false);
+    if (!result.ok) {
+      setErrors({ form: result.error });
+      return;
+    }
+    // Always show success to avoid email enumeration
+    setResetSent(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isForgot) {
+      await handleForgot(e);
+      return;
+    }
     if (!validate()) return;
 
     setLoading(true);
@@ -151,19 +181,28 @@ export default function AuthPage() {
         return;
       }
 
-      // Sign-up often creates the user in pending status; session may be blocked.
-      if (isSignUp) {
-        const session = await getSession().catch(() => null);
-        if (!session) {
+      const session = await getSession().catch(() => null);
+      if (!session) {
+        if (isSignUp) {
           setPendingApproval(true);
           setLoading(false);
           return;
         }
+        setErrors({ form: 'Signed in, but session could not be loaded. Try again.' });
+        setLoading(false);
+        return;
       }
 
-      setAuthToken('session');
+      setAuthToken(session.session.id);
 
-      // Ensure the user has an org (create default workspace on first login)
+      const home = await resolvePostAuthHome();
+      if (home === '/admin') {
+        navigate(redirect ? decodeURIComponent(redirect) : '/admin');
+        setLoading(false);
+        return;
+      }
+
+      // Ensure the tenant user has an org (create default workspace on first login)
       try {
         const orgs = await apiJson<{
           organizations: Array<{ id: string }>;
@@ -174,7 +213,7 @@ export default function AuthPage() {
             {
               method: 'POST',
               body: JSON.stringify({
-                name: `${firstName.trim() || 'My'} Workspace`,
+                name: `${firstName.trim() || session.user.name.split(' ')[0] || 'My'} Workspace`,
               }),
             },
           );
@@ -265,40 +304,50 @@ export default function AuthPage() {
           </div>
 
           <div className="ap-card">
-            <nav
-              className={`ap-tabs${isSignUp ? ' ap-tabs--signup' : ''}`}
-              aria-label="Authentication mode"
-            >
-              <Link
-                to={tabHref('signin')}
-                className={`ap-tab${!isSignUp ? ' is-active' : ''}`}
-                aria-current={!isSignUp ? 'page' : undefined}
+            {!isForgot && (
+              <nav
+                className={`ap-tabs${isSignUp ? ' ap-tabs--signup' : ''}`}
+                aria-label="Authentication mode"
               >
-                Sign in
-              </Link>
-              <Link
-                to={tabHref('signup')}
-                className={`ap-tab${isSignUp ? ' is-active' : ''}`}
-                aria-current={isSignUp ? 'page' : undefined}
-              >
-                Sign up
-              </Link>
-            </nav>
+                <Link
+                  to={tabHref('signin')}
+                  className={`ap-tab${!isSignUp ? ' is-active' : ''}`}
+                  aria-current={!isSignUp ? 'page' : undefined}
+                >
+                  Sign in
+                </Link>
+                <Link
+                  to={tabHref('signup')}
+                  className={`ap-tab${isSignUp ? ' is-active' : ''}`}
+                  aria-current={isSignUp ? 'page' : undefined}
+                >
+                  Sign up
+                </Link>
+              </nav>
+            )}
 
             <header className="ap-header">
               <h1 className="ap-title" id="auth-heading">
                 {pendingApproval
                   ? 'Account pending approval'
-                  : isSignUp
-                    ? 'Create your account'
-                    : 'Welcome back'}
+                  : resetSent
+                    ? 'Check your email'
+                    : isForgot
+                      ? 'Reset your password'
+                      : isSignUp
+                        ? 'Create your account'
+                        : 'Welcome back'}
               </h1>
               <p className="ap-sub">
                 {pendingApproval
                   ? 'A platform admin must approve your signup before you can sign in. You will be able to use the dashboard once approved.'
-                  : isSignUp
-                    ? 'Start free with included credits. No card required.'
-                    : 'Sign in to manage your voice agents and API keys.'}
+                  : resetSent
+                    ? `If an account exists for ${email.trim()}, we sent a reset link. Check your inbox and spam folder.`
+                    : isForgot
+                      ? 'Enter your work email and we will send a secure reset link.'
+                      : isSignUp
+                        ? 'Start free with included credits. No card required.'
+                        : 'Sign in to manage your voice agents and API keys.'}
               </p>
             </header>
 
@@ -314,7 +363,15 @@ export default function AuthPage() {
               </div>
             )}
 
-            {!pendingApproval && (
+            {!pendingApproval && resetSent && (
+              <div className="ap-form" role="status">
+                <Link to={tabHref('signin')} className="ap-submit" style={{ display: 'inline-flex', justifyContent: 'center' }}>
+                  Back to sign in
+                </Link>
+              </div>
+            )}
+
+            {!pendingApproval && !resetSent && (
             <form onSubmit={handleSubmit} className="ap-form" noValidate>
               {isSignUp && (
                 <div className="ap-row">
@@ -385,13 +442,14 @@ export default function AuthPage() {
                 )}
               </div>
 
+              {!isForgot && (
               <div className="ap-field">
                 <div className="ap-label-row">
                   <label htmlFor="auth-password" className="ap-label">
                     Password
                   </label>
                   {!isSignUp && (
-                    <Link to="#" className="ap-forgot">
+                    <Link to={tabHref('forgot')} className="ap-forgot">
                       Forgot password?
                     </Link>
                   )}
@@ -435,11 +493,12 @@ export default function AuthPage() {
                     </div>
                     <p className="ap-pw-hint">
                       {STRENGTH_LABELS[passwordStrength]}
-                      {passwordStrength < 3 && ' — use 12+ chars with numbers & uppercase'}
+                      {passwordStrength < 3 && '. Use 12+ chars with numbers and uppercase'}
                     </p>
                   </>
                 )}
               </div>
+              )}
 
               {isSignUp ? (
                 <div className="ap-field">
@@ -467,6 +526,12 @@ export default function AuthPage() {
                     <p className="ap-field-error" role="alert">{errors.agreed}</p>
                   )}
                 </div>
+              ) : isForgot ? (
+                <p className="ap-sub" style={{ marginTop: 0 }}>
+                  <Link to={tabHref('signin')} className="ap-link">
+                    Back to sign in
+                  </Link>
+                </p>
               ) : (
                 <label className="ap-check">
                   <input type="checkbox" defaultChecked />
@@ -485,11 +550,19 @@ export default function AuthPage() {
                 {loading ? (
                   <>
                     <span className="ap-spinner" aria-hidden />
-                    {isSignUp ? 'Creating account…' : 'Signing in…'}
+                    {isForgot
+                      ? 'Sending reset link…'
+                      : isSignUp
+                        ? 'Creating account…'
+                        : 'Signing in…'}
                   </>
                 ) : (
                   <>
-                    {isSignUp ? 'Create free account' : 'Sign in'}
+                    {isForgot
+                      ? 'Send reset link'
+                      : isSignUp
+                        ? 'Create free account'
+                        : 'Sign in'}
                     <ArrowRight size={16} aria-hidden />
                   </>
                 )}
@@ -497,7 +570,7 @@ export default function AuthPage() {
             </form>
             )}
 
-            {!pendingApproval && (
+            {!pendingApproval && !isForgot && !resetSent && (
               <>
                 <div className="ap-divider">or continue with</div>
 

@@ -54,6 +54,9 @@ services:
       AUTO_APPROVE_SIGNUPS: ${AUTO_APPROVE_SIGNUPS:-false}
       STRIPE_ENABLED: ${STRIPE_ENABLED:-false}
       ALLOW_DEMO_TOPUP: ${ALLOW_DEMO_TOPUP:-true}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+      PLATFORM_ADMIN_EMAIL: ${PLATFORM_ADMIN_EMAIL:-admin@metapresence.co}
       UPLOAD_DIR: /app/data/uploads
     volumes:
       - uploads:/app/data/uploads
