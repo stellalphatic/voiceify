@@ -19,6 +19,8 @@ describe('dashboard-agent', () => {
     expect(resolveLanguageMode('English')).toBe('en');
     expect(resolveLanguageMode('Urdu')).toBe('ur');
     expect(resolveLanguageMode('English/Urdu')).toBe('auto');
+    expect(resolveLanguageMode('Multilingual')).toBe('auto');
+    expect(resolveLanguageMode('Spanish')).toBe('auto');
   });
 
   it('builds custom system prompt from agent fields', () => {

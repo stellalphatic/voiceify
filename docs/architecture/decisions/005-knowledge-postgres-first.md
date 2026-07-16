@@ -13,4 +13,4 @@ Ship the Knowledge Base dashboard against the existing Postgres knowledge routes
 - Fake RAG in the UI only: rejected (no silent stubs).
 
 ## Consequences
-Retrieval quality is keyword-based until embeddings land. The UI and ingest path do not need to change when vectors are added.
+Retrieval uses hybrid keyword + local bag-of-hash embeddings stored on chunks. Qdrant / pgvector remain a follow-up for production-scale ANN search. PDF/DOCX uploads extract text, embed chunks, then discard the original file.

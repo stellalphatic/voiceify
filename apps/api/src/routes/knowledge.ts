@@ -6,7 +6,8 @@ import {
   knowledgeDocs,
   sql,
 } from "@voiceify/db";
-import { mkdir, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { unlink, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -19,6 +20,7 @@ export const knowledgeRoutes = new Hono<AppEnv>();
 knowledgeRoutes.use("*", requireSession);
 
 const UPLOAD_ROOT = process.env.UPLOAD_DIR ?? path.resolve("data/uploads");
+const EMBED_DIMS = 64;
 
 function chunkText(text: string, size = 800): string[] {
   const cleaned = text.replace(/\r\n/g, "\n").trim();
@@ -28,6 +30,101 @@ function chunkText(text: string, size = 800): string[] {
     chunks.push(cleaned.slice(i, i + size));
   }
   return chunks;
+}
+
+/** Lightweight local bag-of-hash embedding (no external vector API required). */
+function embedText(text: string): number[] {
+  const vec = new Array<number>(EMBED_DIMS).fill(0);
+  const tokens = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\u0600-\u06ff\s]/gi, " ")
+    .split(/\s+/)
+    .filter((t) => t.length > 1);
+  for (const token of tokens) {
+    const h = createHash("sha256").update(token).digest();
+    const idx = h.readUInt16BE(0) % EMBED_DIMS;
+    const sign = h[2]! & 1 ? 1 : -1;
+    vec[idx]! += sign;
+  }
+  const norm = Math.sqrt(vec.reduce((s, v) => s + v * v, 0)) || 1;
+  return vec.map((v) => v / norm);
+}
+
+function cosine(a: number[], b: number[]): number {
+  let s = 0;
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    s += (a[i] ?? 0) * (b[i] ?? 0);
+  }
+  return s;
+}
+
+function parseEmbedding(tsv: string | null): number[] | null {
+  if (!tsv?.startsWith("emb:")) return null;
+  try {
+    const parsed = JSON.parse(tsv.slice(4)) as number[];
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function ingestDocument(input: {
+  orgId: string;
+  title: string;
+  filename: string;
+  mimeType: string;
+  content: string;
+}) {
+  const pieces = chunkText(input.content);
+  if (!pieces.length) {
+    throw new Error("No extractable text found in document");
+  }
+
+  const [doc] = await db
+    .insert(knowledgeDocs)
+    .values({
+      orgId: input.orgId,
+      title: input.title,
+      filename: input.filename,
+      mimeType: input.mimeType,
+      status: "processing",
+    })
+    .returning();
+  if (!doc) throw new Error("Failed to create document");
+
+  await db.insert(knowledgeChunks).values(
+    pieces.map((content, chunkIndex) => ({
+      docId: doc.id,
+      orgId: input.orgId,
+      content,
+      chunkIndex,
+      tsv: `emb:${JSON.stringify(embedText(content))}`,
+    })),
+  );
+
+  await db
+    .update(knowledgeDocs)
+    .set({ status: "ready" })
+    .where(eq(knowledgeDocs.id, doc.id));
+
+  return { doc: { ...doc, status: "ready" as const }, chunks: pieces.length };
+}
+
+async function extractPdf(buffer: Buffer): Promise<string> {
+  const { PDFParse } = await import("pdf-parse");
+  const parser = new PDFParse({ data: buffer });
+  try {
+    const result = await parser.getText();
+    return result.text ?? "";
+  } finally {
+    await parser.destroy().catch(() => undefined);
+  }
+}
+
+async function extractDocx(buffer: Buffer): Promise<string> {
+  const mammoth = await import("mammoth");
+  const result = await mammoth.extractRawText({ buffer });
+  return result.value ?? "";
 }
 
 knowledgeRoutes.get(
@@ -57,41 +154,125 @@ knowledgeRoutes.post(
       .parse(await c.req.json());
 
     const filename = body.filename ?? `${body.title.replace(/\s+/g, "-")}.txt`;
-    const dir = path.join(UPLOAD_ROOT, orgId);
-    await mkdir(dir, { recursive: true });
-    await writeFile(path.join(dir, filename), body.content, "utf8");
+    const result = await ingestDocument({
+      orgId,
+      title: body.title,
+      filename,
+      mimeType: "text/plain",
+      content: body.content,
+    });
+    return c.json(result, 201);
+  },
+);
 
-    const [doc] = await db
-      .insert(knowledgeDocs)
-      .values({
-        orgId,
-        title: body.title,
-        filename,
-        mimeType: "text/plain",
-        status: "processing",
-      })
-      .returning();
-    if (!doc) return c.json({ error: "Failed to create document" }, 500);
+knowledgeRoutes.post(
+  "/:orgId/knowledge/upload",
+  requireOrg("agents:write"),
+  async (c) => {
+    const orgId = c.get("orgId");
+    const form = await c.req.parseBody();
+    const file = form.file;
+    const titleRaw = typeof form.title === "string" ? form.title.trim() : "";
 
-    const pieces = chunkText(body.content);
-    if (pieces.length) {
-      await db.insert(knowledgeChunks).values(
-        pieces.map((content, chunkIndex) => ({
-          docId: doc.id,
-          orgId,
-          content,
-          chunkIndex,
-          tsv: content,
-        })),
+    if (!(file instanceof File)) {
+      return c.json({ error: "file is required (PDF or DOCX)" }, 400);
+    }
+    if (file.size > 8_000_000) {
+      return c.json({ error: "File too large (max 8MB)" }, 400);
+    }
+
+    const filename = file.name || "upload.bin";
+    const lower = filename.toLowerCase();
+    const mime = file.type || "application/octet-stream";
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    let content = "";
+    let mimeType = mime;
+    try {
+      if (lower.endsWith(".pdf") || mime.includes("pdf")) {
+        content = await extractPdf(buffer);
+        mimeType = "application/pdf";
+      } else if (
+        lower.endsWith(".docx") ||
+        mime.includes("wordprocessingml") ||
+        mime.includes("officedocument")
+      ) {
+        content = await extractDocx(buffer);
+        mimeType =
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      } else if (lower.endsWith(".txt") || mime.startsWith("text/")) {
+        content = buffer.toString("utf8");
+        mimeType = "text/plain";
+      } else {
+        return c.json(
+          { error: "Unsupported type. Upload PDF, DOCX, or TXT." },
+          400,
+        );
+      }
+    } catch (err) {
+      return c.json(
+        {
+          error:
+            err instanceof Error
+              ? `Failed to extract text: ${err.message}`
+              : "Failed to extract text",
+        },
+        422,
       );
     }
 
-    await db
-      .update(knowledgeDocs)
-      .set({ status: "ready" })
-      .where(eq(knowledgeDocs.id, doc.id));
+    content = content.replace(/\u0000/g, "").trim();
+    if (content.length < 20) {
+      return c.json(
+        { error: "Extracted text was empty or too short to index." },
+        422,
+      );
+    }
+    if (content.length > 200_000) {
+      content = content.slice(0, 200_000);
+    }
 
-    return c.json({ doc: { ...doc, status: "ready" }, chunks: pieces.length }, 201);
+    // Optionally stage to disk then discard after ingest (no long-term file store).
+    const dir = path.join(UPLOAD_ROOT, orgId, "tmp");
+    await mkdir(dir, { recursive: true });
+    const tmpPath = path.join(dir, `${Date.now()}-${filename}`);
+    await writeFile(tmpPath, buffer);
+    try {
+      const title =
+        titleRaw ||
+        filename.replace(/\.(pdf|docx|txt)$/i, "").replace(/[-_]+/g, " ") ||
+        "Uploaded document";
+      const result = await ingestDocument({
+        orgId,
+        title,
+        filename,
+        mimeType,
+        content,
+      });
+      return c.json(
+        {
+          ...result,
+          discardedOriginal: true,
+          note: "Original file discarded after text extraction and embedding.",
+        },
+        201,
+      );
+    } finally {
+      await unlink(tmpPath).catch(() => undefined);
+    }
+  },
+);
+
+knowledgeRoutes.delete(
+  "/:orgId/knowledge/:docId",
+  requireOrg("agents:write"),
+  async (c) => {
+    const orgId = c.get("orgId");
+    const docId = c.req.param("docId");
+    await db
+      .delete(knowledgeDocs)
+      .where(and(eq(knowledgeDocs.id, docId), eq(knowledgeDocs.orgId, orgId)));
+    return c.json({ ok: true });
   },
 );
 
@@ -103,19 +284,42 @@ knowledgeRoutes.get(
     const q = String(c.req.query("q") ?? "").trim();
     if (!q) return c.json({ hits: [] });
 
-    // Simple ILIKE FTS fallback (works without pg tsv indexes)
     const pattern = `%${q.replace(/%/g, "")}%`;
-    const hits = await db
+    const rows = await db
       .select()
       .from(knowledgeChunks)
-      .where(
-        and(
-          eq(knowledgeChunks.orgId, orgId),
-          sql`${knowledgeChunks.content} ILIKE ${pattern}`,
-        ),
-      )
-      .limit(8);
+      .where(eq(knowledgeChunks.orgId, orgId))
+      .limit(80);
 
-    return c.json({ hits });
+    const queryEmb = embedText(q);
+    const ranked = rows
+      .map((row) => {
+        const emb = parseEmbedding(row.tsv);
+        const vectorScore = emb ? cosine(queryEmb, emb) : 0;
+        const keywordHit = row.content.toLowerCase().includes(q.toLowerCase())
+          ? 0.35
+          : 0;
+        return { ...row, score: vectorScore + keywordHit };
+      })
+      .filter((r) => r.score > 0.05 || r.content.toLowerCase().includes(q.toLowerCase()))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8);
+
+    // Fallback to ILIKE if ranking found nothing
+    if (ranked.length === 0) {
+      const hits = await db
+        .select()
+        .from(knowledgeChunks)
+        .where(
+          and(
+            eq(knowledgeChunks.orgId, orgId),
+            sql`${knowledgeChunks.content} ILIKE ${pattern}`,
+          ),
+        )
+        .limit(8);
+      return c.json({ hits, mode: "keyword" });
+    }
+
+    return c.json({ hits: ranked, mode: "hybrid" });
   },
 );

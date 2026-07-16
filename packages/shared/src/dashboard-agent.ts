@@ -46,9 +46,18 @@ export function resolveBasePersonaId(type: string): string {
 }
 
 export function resolveLanguageMode(language: string): 'auto' | 'en' | 'ur' {
-  const lang = language.toLowerCase();
-  if (lang.includes('urdu') && !lang.includes('english')) return 'ur';
-  if (lang.includes('english') && !lang.includes('urdu')) return 'en';
+  const lang = language.toLowerCase().trim();
+  if (
+    lang.includes('multilingual') ||
+    lang.includes('auto') ||
+    lang.includes('mixed') ||
+    lang.includes('/')
+  ) {
+    return 'auto';
+  }
+  if (lang.includes('urdu') || lang === 'ur') return 'ur';
+  if (lang.includes('english') || lang === 'en') return 'en';
+  // Non EN/UR locales still use auto STT so callers can switch languages.
   return 'auto';
 }
 

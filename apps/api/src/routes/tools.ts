@@ -68,6 +68,65 @@ toolsRoutes.post("/:orgId/tools", requireOrg("agents:write"), async (c) => {
   return c.json({ tool: row }, 201);
 });
 
+toolsRoutes.patch(
+  "/:orgId/tools/:toolId",
+  requireOrg("agents:write"),
+  async (c) => {
+    const orgId = c.get("orgId");
+    const toolId = c.req.param("toolId");
+    const body = z
+      .object({
+        name: z.string().min(1).max(80).optional(),
+        description: z.string().max(500).optional(),
+        config: z.record(z.unknown()).optional(),
+        inputSchema: z.record(z.unknown()).optional(),
+      })
+      .parse(await c.req.json());
+
+    const [tool] = await db
+      .select()
+      .from(tools)
+      .where(and(eq(tools.id, toolId), eq(tools.orgId, orgId)))
+      .limit(1);
+    if (!tool) return c.json({ error: "Tool not found" }, 404);
+
+    const nextConfig = body.config ?? tool.config;
+    if (tool.type === "http") {
+      parseHttpToolDefinition({
+        name: tool.slug,
+        description: body.description ?? tool.description ?? tool.name,
+        ...nextConfig,
+      });
+    }
+
+    const [row] = await db
+      .update(tools)
+      .set({
+        name: body.name ?? tool.name,
+        description: body.description ?? tool.description,
+        config: nextConfig,
+        inputSchema: body.inputSchema ?? tool.inputSchema,
+      })
+      .where(eq(tools.id, toolId))
+      .returning();
+
+    return c.json({ tool: row });
+  },
+);
+
+toolsRoutes.delete(
+  "/:orgId/tools/:toolId",
+  requireOrg("agents:write"),
+  async (c) => {
+    const orgId = c.get("orgId");
+    const toolId = c.req.param("toolId");
+    await db
+      .delete(tools)
+      .where(and(eq(tools.id, toolId), eq(tools.orgId, orgId)));
+    return c.json({ ok: true });
+  },
+);
+
 toolsRoutes.post(
   "/:orgId/tools/:toolId/test",
   requireOrg("agents:write"),

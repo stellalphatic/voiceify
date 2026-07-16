@@ -177,16 +177,44 @@ export async function resolvePostAuthHome(): Promise<"/admin" | "/dashboard"> {
   return "/dashboard";
 }
 
+export async function changePassword(input: {
+  currentPassword: string;
+  newPassword: string;
+  revokeOtherSessions?: boolean;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const res = await authFetch("/change-password", {
+    method: "POST",
+    body: JSON.stringify({
+      currentPassword: input.currentPassword,
+      newPassword: input.newPassword,
+      revokeOtherSessions: input.revokeOtherSessions ?? true,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return {
+      ok: false,
+      error: extractAuthError(body, `Password change failed (${res.status})`),
+    };
+  }
+  return { ok: true };
+}
+
 export async function apiJson<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
+  const headers: HeadersInit = {
+    ...(init?.headers ?? {}),
+  };
+  // Only set JSON content-type when body is a string (not FormData).
+  if (!(init?.body instanceof FormData)) {
+    (headers as Record<string, string>)["content-type"] =
+      (headers as Record<string, string>)["content-type"] ?? "application/json";
+  }
   const res = await fetch(path, {
     credentials: "include",
-    headers: {
-      "content-type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
     ...init,
   });
   if (!res.ok) {

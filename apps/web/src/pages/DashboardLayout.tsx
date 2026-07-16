@@ -832,7 +832,7 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
     startSession,
     endSession,
     resetConversation,
-  } = useVoiceAgentFromRecord(activeAgent);
+  } = useVoiceAgentFromRecord(activeAgent, undefined, { autoStart: false });
 
   const [logs, setLogs] = useState<{sender: 'user' | 'agent' | 'system', text: string, timestamp: string, isoTimestamp: string}[]>([]);
   const [filterSender, setFilterSender] = useState<'All' | 'user' | 'agent' | 'system'>('All');
@@ -1161,19 +1161,19 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
               </button>
               
               <button 
+                type="button"
                 onClick={toggleRecording}
                 disabled={status === 'connecting'}
                 className={cn(
-                  "w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50 disabled:pointer-events-none disabled:scale-100",
-                  isActive 
-                    ? "bg-voice-danger hover:bg-voice-danger-hover shadow-lg text-voice-on-accent" 
-                    : "bg-voice-accent hover:bg-voice-accent-hover shadow-voice-accent/30 text-voice-on-accent"
+                  'vfy-sandbox-mic',
+                  isActive && 'is-active',
                 )}
+                aria-label={isActive ? 'End call' : 'Start call'}
               >
                 {isActive ? (
-                  <Phone className="w-8 h-8 fill-current rotate-[135deg]" />
+                  <Phone className="vfy-sandbox-mic-icon is-hangup" strokeWidth={2.25} />
                 ) : (
-                  <Mic className="w-8 h-8 fill-current" />
+                  <Mic className="vfy-sandbox-mic-icon" strokeWidth={2.25} />
                 )}
               </button>
 

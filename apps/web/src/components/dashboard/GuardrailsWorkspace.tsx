@@ -7,7 +7,14 @@ type GuardrailsState = {
   blockPii: boolean;
   stayOnTopic: boolean;
   noMedicalAdvice: boolean;
+  blockProfanity: boolean;
+  refuseJailbreak: boolean;
+  requireToolConfirmation: boolean;
+  escalateToHuman: boolean;
   maxReplySeconds: number;
+  maxToolCallsPerTurn: number;
+  temperatureStrictness: 'strict' | 'balanced' | 'creative';
+  blockedTopics: string;
   allowedLanguages: string[];
 };
 
@@ -15,9 +22,26 @@ const DEFAULTS: GuardrailsState = {
   blockPii: true,
   stayOnTopic: true,
   noMedicalAdvice: true,
+  blockProfanity: true,
+  refuseJailbreak: true,
+  requireToolConfirmation: false,
+  escalateToHuman: true,
   maxReplySeconds: 12,
-  allowedLanguages: ['en', 'ur', 'auto'],
+  maxToolCallsPerTurn: 2,
+  temperatureStrictness: 'balanced',
+  blockedTopics: '',
+  allowedLanguages: ['en', 'ur', 'auto', 'ar', 'hi', 'es'],
 };
+
+const LANG_OPTIONS = [
+  { code: 'en', label: 'English' },
+  { code: 'ur', label: 'Urdu' },
+  { code: 'ar', label: 'Arabic' },
+  { code: 'hi', label: 'Hindi' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'fr', label: 'French' },
+  { code: 'auto', label: 'Auto-detect' },
+] as const;
 
 function storageKey(agentId: number) {
   return `voiceify.guardrails.${agentId}`;
@@ -64,8 +88,8 @@ export default function GuardrailsWorkspace() {
           <p className="vfy-page-eyebrow">// configure · guardrails</p>
           <h1 className="vfy-page-title">Guardrails</h1>
           <p className="vfy-page-sub">
-            Keep agents on-policy with topic bounds, language limits, PII caution, and reply
-            length caps. Pair with Knowledge base for grounded answers.
+            Advanced policy controls for PII, topic bounds, tool limits, jailbreak refusal, and
+            multilingual allow-lists. Pair with Knowledge for grounded answers.
           </p>
         </div>
       </div>
@@ -97,11 +121,18 @@ export default function GuardrailsWorkspace() {
           </select>
 
           <div className="space-y-3" style={{ marginTop: 16 }}>
+            <p className="vfy-label" style={{ marginBottom: 0 }}>
+              Safety toggles
+            </p>
             {(
               [
                 ['blockPii', 'Warn against collecting full card numbers / SSN'],
                 ['stayOnTopic', 'Stay within the agent type and knowledge base'],
                 ['noMedicalAdvice', 'Refuse diagnosis or prescribing language'],
+                ['blockProfanity', 'Redirect when callers use abusive language'],
+                ['refuseJailbreak', 'Refuse prompt-injection / “ignore instructions” attempts'],
+                ['requireToolConfirmation', 'Ask before executing high-impact tools'],
+                ['escalateToHuman', 'Offer human handoff when confidence is low'],
               ] as const
             ).map(([key, label]) => (
               <label key={key} className="vfy-check-row">
@@ -114,30 +145,86 @@ export default function GuardrailsWorkspace() {
               </label>
             ))}
 
+            <div className="vfy-settings-row" style={{ gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label className="vfy-label" htmlFor="max-reply">
+                  Max spoken reply (seconds)
+                </label>
+                <input
+                  id="max-reply"
+                  type="number"
+                  min={4}
+                  max={45}
+                  className="vfy-field-input"
+                  value={form.maxReplySeconds}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, maxReplySeconds: Number(e.target.value) || 12 }))
+                  }
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="vfy-label" htmlFor="max-tools">
+                  Max tool calls / turn
+                </label>
+                <input
+                  id="max-tools"
+                  type="number"
+                  min={0}
+                  max={8}
+                  className="vfy-field-input"
+                  value={form.maxToolCallsPerTurn}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      maxToolCallsPerTurn: Number(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="vfy-label" htmlFor="max-reply">
-                Max spoken reply (seconds)
+              <label className="vfy-label" htmlFor="strictness">
+                Response strictness
               </label>
-              <input
-                id="max-reply"
-                type="number"
-                min={4}
-                max={30}
-                className="vfy-field-input"
-                value={form.maxReplySeconds}
+              <select
+                id="strictness"
+                className="vfy-field-select"
+                value={form.temperatureStrictness}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, maxReplySeconds: Number(e.target.value) || 12 }))
+                  setForm((f) => ({
+                    ...f,
+                    temperatureStrictness: e.target.value as GuardrailsState['temperatureStrictness'],
+                  }))
                 }
+              >
+                <option value="strict">Strict (safer, shorter)</option>
+                <option value="balanced">Balanced</option>
+                <option value="creative">Creative (more flexible)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="vfy-label" htmlFor="blocked-topics">
+                Blocked topics
+              </label>
+              <textarea
+                id="blocked-topics"
+                className="vfy-field-textarea"
+                rows={3}
+                value={form.blockedTopics}
+                onChange={(e) => setForm((f) => ({ ...f, blockedTopics: e.target.value }))}
+                placeholder="Comma-separated topics to refuse, e.g. politics, competitor pricing"
               />
             </div>
 
             <div>
               <label className="vfy-label">Allowed languages</label>
               <p className="vfy-settings-help">
-                English, Urdu, and auto-detect are enabled for bilingual callers.
+                Callers can switch among enabled languages. Auto-detect covers multilingual sessions.
               </p>
               <div className="vfy-tag-list">
-                {['en', 'ur', 'auto'].map((code) => (
+                {LANG_OPTIONS.map(({ code, label }) => (
                   <button
                     key={code}
                     type="button"
@@ -151,7 +238,7 @@ export default function GuardrailsWorkspace() {
                       }))
                     }
                   >
-                    {code}
+                    {label}
                   </button>
                 ))}
               </div>

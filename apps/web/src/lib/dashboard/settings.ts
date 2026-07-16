@@ -19,7 +19,7 @@ export function getSettingsPageMeta(focus: SettingsFocus): SettingsPageMeta {
     eyebrow: showDevelopers ? '// developers · keys' : '// settings · workspace',
     subtitle: showDevelopers
       ? 'Server-to-server API keys and embed widgets for your sites.'
-      : 'Credits and workspace billing. Manage API keys from the API keys page.',
+      : 'Account, password, live credit balance and ledger, and workspace preferences.',
   };
 }
 

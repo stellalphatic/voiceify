@@ -1,11 +1,15 @@
 /**
- * Workspace settings — credits (read-only for tenants), API keys, embed widgets.
- * Provider keys (Groq/ElevenLabs/Gemini) stay on the server and are never shown here.
+ * Workspace settings — account, password, credits ledger, API keys, embed widgets.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Copy, KeyRound, Link2, Trash2, Zap } from 'lucide-react';
-import { apiJson, getActiveOrgId } from '../../lib/auth/client';
+import { Check, Copy, KeyRound, Link2, Lock, Trash2, User, Zap } from 'lucide-react';
+import {
+  apiJson,
+  changePassword,
+  getActiveOrgId,
+  getSession,
+} from '../../lib/auth/client';
 import { useAgentStore } from '../../lib/agents/AgentStoreContext';
 import { getSettingsPageMeta, type SettingsFocus } from '../../lib/dashboard/settings';
 
@@ -29,12 +33,21 @@ type EmbedConfig = {
   createdAt: string;
 };
 
+type LedgerRow = {
+  id: string;
+  deltaCents: number;
+  balanceAfter: number;
+  reason: string;
+  createdAt: string;
+};
+
 export default function SettingsWorkspace({ focus = 'settings' }: { focus?: SettingsFocus }) {
   const orgId = getActiveOrgId();
   const { agents } = useAgentStore();
   const serverAgents = agents.filter((a) => a.serverId);
 
   const [creditBalanceCents, setCreditBalanceCents] = useState<number | null>(null);
+  const [ledger, setLedger] = useState<LedgerRow[]>([]);
   const [billingMessage, setBillingMessage] = useState('');
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
   const [embeds, setEmbeds] = useState<EmbedConfig[]>([]);
@@ -45,6 +58,12 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
   const [embedAgentId, setEmbedAgentId] = useState('');
   const [embedSnippet, setEmbedSnippet] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
 
   const { showBilling, showDevelopers, title: pageTitle, eyebrow: pageEyebrow, subtitle: pageSub } =
     getSettingsPageMeta(focus);
@@ -53,9 +72,16 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
     if (!orgId) return;
     setError(null);
     try {
+      const session = await getSession();
+      if (session?.user) {
+        setAccountEmail(session.user.email);
+        setAccountName(session.user.name ?? '');
+      }
+
       const [billing, keyData, embedData] = await Promise.all([
         apiJson<{
           creditBalanceCents: number;
+          ledger?: LedgerRow[];
           billing?: { message?: string };
         }>(`/api/orgs/${orgId}/billing`),
         apiJson<{ keys: ApiKeyRow[] }>(`/api/orgs/${orgId}/api-keys`),
@@ -64,6 +90,7 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
         })),
       ]);
       setCreditBalanceCents(billing.creditBalanceCents);
+      setLedger(billing.ledger ?? []);
       setBillingMessage(
         billing.billing?.message ??
           'Credits are granted by a platform admin. Contact support if you need more.',
@@ -81,6 +108,34 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
   useEffect(() => {
     void load();
   }, [load]);
+
+  const submitPassword = async () => {
+    setPasswordMessage(null);
+    setError(null);
+    if (newPassword.length < 8) {
+      setError('New password must be at least 8 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('New password and confirmation do not match.');
+      return;
+    }
+    setBusy(true);
+    const result = await changePassword({
+      currentPassword,
+      newPassword,
+      revokeOtherSessions: true,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordMessage('Password updated. Other sessions were signed out.');
+  };
 
   const createKey = async () => {
     if (!orgId || !newKeyName.trim()) return;
@@ -185,6 +240,79 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
       {showBilling && (
         <section className="vfy-settings-card">
           <h3 className="vfy-settings-card-title">
+            <User size={18} />
+            Account
+          </h3>
+          <div className="space-y-3">
+            <div>
+              <label className="vfy-label">Name</label>
+              <input className="vfy-field-input" value={accountName} readOnly aria-label="Account name" />
+            </div>
+            <div>
+              <label className="vfy-label">Email</label>
+              <input className="vfy-field-input" value={accountEmail} readOnly aria-label="Account email" />
+            </div>
+            <p className="vfy-settings-help">
+              Workspace ID: <code>{orgId ?? '—'}</code>
+            </p>
+          </div>
+        </section>
+      )}
+
+      {showBilling && (
+        <section className="vfy-settings-card">
+          <h3 className="vfy-settings-card-title">
+            <Lock size={18} />
+            Password
+          </h3>
+          <div className="space-y-3">
+            <input
+              className="vfy-field-input"
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Current password"
+              aria-label="Current password"
+            />
+            <input
+              className="vfy-field-input"
+              type="password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="New password (min 8 characters)"
+              aria-label="New password"
+            />
+            <input
+              className="vfy-field-input"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm new password"
+              aria-label="Confirm new password"
+            />
+            <button
+              type="button"
+              className="vfy-btn vfy-btn-primary"
+              disabled={busy || !currentPassword || !newPassword}
+              onClick={() => void submitPassword()}
+            >
+              Update password
+            </button>
+            {passwordMessage && (
+              <p className="text-sm" style={{ color: 'var(--d-accent)' }} role="status">
+                {passwordMessage}
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+
+      {showBilling && (
+        <section className="vfy-settings-card">
+          <h3 className="vfy-settings-card-title">
             <Zap size={18} />
             Credits
           </h3>
@@ -195,8 +323,8 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
           </p>
           <p className="vfy-settings-help">{billingMessage}</p>
           <p className="vfy-settings-help">
-            Self-serve card top-ups are not enabled. A platform admin assigns credits from the
-            super-admin portal.
+            Balance updates when voice turns debit usage (STT, LLM, TTS) and when an admin grants
+            credits. This is the live org balance from Postgres, not a demo counter.
           </p>
           <p className="vfy-settings-help">
             Need keys for your backend or website? Open{' '}
@@ -205,6 +333,29 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
             </Link>
             .
           </p>
+
+          <h4 className="vfy-label" style={{ marginTop: 16 }}>
+            Recent ledger
+          </h4>
+          <ul className="vfy-settings-list">
+            {ledger.length === 0 && (
+              <li className="vfy-settings-empty">No credit movements yet.</li>
+            )}
+            {ledger.slice(0, 12).map((row) => (
+                <li key={row.id} className="vfy-settings-list-item">
+                  <div>
+                    <p className="vfy-settings-item-title">
+                      {row.deltaCents >= 0 ? '+' : ''}
+                      {(row.deltaCents / 100).toFixed(2)} USD
+                    </p>
+                    <p className="vfy-settings-item-meta">
+                      {row.reason} · {new Date(row.createdAt).toLocaleString()} · bal $
+                      {(row.balanceAfter / 100).toFixed(2)}
+                    </p>
+                  </div>
+                </li>
+              ))}
+          </ul>
         </section>
       )}
 

@@ -9,7 +9,6 @@ import {
   KeyRound,
   MessageSquare,
   Mic2,
-  Search,
   Settings,
   Shield,
   ShieldAlert,
@@ -149,12 +148,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="vfy-side-account vfy-side-collapse-hide">
           <p className="vfy-side-account-email">{displayEmail || displayName}</p>
         </div>
-
-        <button type="button" className="vfy-side-cmd" aria-label="Search">
-          <Search size={16} strokeWidth={2.25} />
-          <span className="vfy-side-cmd-text vfy-side-collapse-hide">Search…</span>
-          <span className="vfy-side-cmd-kbd vfy-side-collapse-hide">⌘K</span>
-        </button>
 
         {NAV_GROUPS.map((group) => (
           <div key={group.title}>

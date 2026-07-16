@@ -30,7 +30,8 @@ export function useVoiceAgentFromRecord(
     ],
   );
 
-  const autoStart = opts?.autoStart ?? true;
+  /* Never auto-start voice unless a surface explicitly opts in (sandbox/demo wait for mic). */
+  const autoStart = opts?.autoStart ?? false;
 
   const options: UseVoiceAgentOptions = runtime
     ? {

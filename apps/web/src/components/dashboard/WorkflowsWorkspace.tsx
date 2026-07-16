@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { GitBranch, Play, Sparkles } from 'lucide-react';
 import { apiJson, getActiveOrgId } from '../../lib/auth/client';
+import WorkflowCanvas from './WorkflowCanvas';
 
 type Pack = {
   id: string;
@@ -13,14 +14,6 @@ type AutomationsPayload = {
   installs: Array<{ id: string; packId: string; createdAt: string }>;
   available: Pack[];
 };
-
-const FLOW_STEPS = [
-  { id: 'start', label: 'Start', tone: 'neutral' as const },
-  { id: 'collect', label: 'Collect information', tone: 'info' as const },
-  { id: 'tool', label: 'Dispatch tool', tone: 'warn' as const },
-  { id: 'success', label: 'Success path', tone: 'success' as const },
-  { id: 'end', label: 'End conversation', tone: 'neutral' as const },
-];
 
 export default function WorkflowsWorkspace() {
   const orgId = getActiveOrgId();
@@ -70,8 +63,8 @@ export default function WorkflowsWorkspace() {
           <p className="vfy-page-eyebrow">// configure · workflows</p>
           <h1 className="vfy-page-title">Workflows</h1>
           <p className="vfy-page-sub">
-            Install vertical automation packs that wire collect → tool → branch → end. Each pack
-            seeds tools and an agent you can preview in Sandbox.
+            Design conversation graphs with drag-and-drop nodes and connecting lines, then install
+            vertical packs that seed tools and agents for Sandbox.
           </p>
         </div>
       </div>
@@ -92,20 +85,7 @@ export default function WorkflowsWorkspace() {
           <GitBranch size={18} />
           Conversation flow canvas
         </h3>
-        <div className="vfy-flow">
-          {FLOW_STEPS.map((step, i) => (
-            <div key={step.id} className="vfy-flow-row">
-              <div className={`vfy-flow-node vfy-flow-node--${step.tone}`}>
-                <span>{step.label}</span>
-              </div>
-              {i < FLOW_STEPS.length - 1 && <div className="vfy-flow-edge" aria-hidden />}
-            </div>
-          ))}
-        </div>
-        <p className="vfy-settings-help">
-          Success and failure branches are handled by installed pack tools at runtime. Preview an
-          installed pack in Sandbox to hear the full path.
-        </p>
+        <WorkflowCanvas />
       </section>
 
       <section className="vfy-settings-card">

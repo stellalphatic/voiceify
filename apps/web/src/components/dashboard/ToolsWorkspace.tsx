@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Database, Link2, Plus, Plug, Search, Wrench } from 'lucide-react';
+import { Database, Link2, Plus, Plug, Search, Settings2, Trash2, Wrench } from 'lucide-react';
 import { apiJson, getActiveOrgId } from '../../lib/auth/client';
 
 type ToolRow = {
@@ -165,6 +165,14 @@ const CATEGORIES = [
   'Customer Support & CX',
 ] as const;
 
+function slugify(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 48) || 'custom_http';
+}
+
 export default function ToolsWorkspace() {
   const orgId = getActiveOrgId();
   const [tools, setTools] = useState<ToolRow[]>([]);
@@ -173,6 +181,16 @@ export default function ToolsWorkspace() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
+  const [editing, setEditing] = useState<ToolRow | null>(null);
+  const [editUrl, setEditUrl] = useState('');
+  const [editMethod, setEditMethod] = useState('POST');
+  const [editHeaders, setEditHeaders] = useState('{}');
+  const [editBody, setEditBody] = useState('');
+  const [customName, setCustomName] = useState('My API tool');
+  const [customUrl, setCustomUrl] = useState('https://');
+  const [customMethod, setCustomMethod] = useState('POST');
+  const [customHeaders, setCustomHeaders] = useState('{"Content-Type":"application/json"}');
+  const [customBody, setCustomBody] = useState('{"query":"{{message}}"}');
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -217,6 +235,96 @@ export default function ToolsWorkspace() {
     }
   };
 
+  const createCustom = async () => {
+    if (!orgId) return;
+    let headers: Record<string, unknown> = {};
+    try {
+      headers = JSON.parse(customHeaders || '{}') as Record<string, unknown>;
+    } catch {
+      setError('Custom headers must be valid JSON');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await apiJson(`/api/orgs/${orgId}/tools`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: customName.trim() || 'Custom HTTP',
+          slug: slugify(customName),
+          description: 'User-configured HTTP tool',
+          type: 'http',
+          config: {
+            method: customMethod,
+            url: customUrl.trim(),
+            headers,
+            bodyTemplate: customBody,
+          },
+        }),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create tool');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openEdit = (tool: ToolRow) => {
+    setEditing(tool);
+    setEditUrl(String(tool.config.url ?? ''));
+    setEditMethod(String(tool.config.method ?? 'POST'));
+    setEditHeaders(JSON.stringify(tool.config.headers ?? {}, null, 2));
+    setEditBody(String(tool.config.bodyTemplate ?? ''));
+  };
+
+  const saveEdit = async () => {
+    if (!orgId || !editing) return;
+    let headers: Record<string, unknown> = {};
+    try {
+      headers = JSON.parse(editHeaders || '{}') as Record<string, unknown>;
+    } catch {
+      setError('Headers must be valid JSON');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await apiJson(`/api/orgs/${orgId}/tools/${editing.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          config: {
+            ...editing.config,
+            method: editMethod,
+            url: editUrl.trim(),
+            headers,
+            bodyTemplate: editBody,
+          },
+        }),
+      });
+      setEditing(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update tool');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeTool = async (toolId: string) => {
+    if (!orgId) return;
+    if (!window.confirm('Remove this tool? Agents will no longer be able to call it.')) return;
+    setBusy(true);
+    try {
+      await apiJson(`/api/orgs/${orgId}/tools/${toolId}`, { method: 'DELETE' });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete tool');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const testTool = async (toolId: string) => {
     if (!orgId) return;
     setBusy(true);
@@ -242,8 +350,8 @@ export default function ToolsWorkspace() {
           <p className="vfy-page-eyebrow">// configure · tools</p>
           <h1 className="vfy-page-title">Tools & integrations</h1>
           <p className="vfy-page-sub">
-            Connect CRMs, databases, POS systems, Slack, and MCP gateways. Agents call these tools
-            during conversations with validated HTTP requests.
+            Connect CRMs, databases, POS systems, Slack, and custom APIs. Configure URLs, headers,
+            and body templates so agents can call tools during conversations.
           </p>
         </div>
       </div>
@@ -256,13 +364,80 @@ export default function ToolsWorkspace() {
 
       <section className="vfy-settings-card">
         <h3 className="vfy-settings-card-title">
+          <Link2 size={18} />
+          Connect custom API
+        </h3>
+        <p className="vfy-settings-help">
+          Point the agent at any HTTPS endpoint. Use {'{{message}}'}, {'{{name}}'}, {'{{phone}}'}{' '}
+          placeholders in the body template.
+        </p>
+        <div className="space-y-3">
+          <input
+            className="vfy-field-input"
+            value={customName}
+            onChange={(e) => setCustomName(e.target.value)}
+            placeholder="Tool name"
+            aria-label="Custom tool name"
+          />
+          <div className="vfy-settings-row">
+            <select
+              className="vfy-field-select"
+              style={{ maxWidth: 120 }}
+              value={customMethod}
+              onChange={(e) => setCustomMethod(e.target.value)}
+              aria-label="HTTP method"
+            >
+              {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <input
+              className="vfy-field-input"
+              value={customUrl}
+              onChange={(e) => setCustomUrl(e.target.value)}
+              placeholder="https://api.example.com/v1/action"
+              aria-label="API URL"
+            />
+          </div>
+          <textarea
+            className="vfy-field-textarea"
+            rows={3}
+            value={customHeaders}
+            onChange={(e) => setCustomHeaders(e.target.value)}
+            placeholder='{"Authorization":"Bearer …"}'
+            aria-label="Headers JSON"
+          />
+          <textarea
+            className="vfy-field-textarea"
+            rows={3}
+            value={customBody}
+            onChange={(e) => setCustomBody(e.target.value)}
+            placeholder="Body template"
+            aria-label="Body template"
+          />
+          <button
+            type="button"
+            className="vfy-btn vfy-btn-primary"
+            disabled={busy || !orgId || !customUrl.trim()}
+            onClick={() => void createCustom()}
+          >
+            <Plus size={14} />
+            Add API tool
+          </button>
+        </div>
+      </section>
+
+      <section className="vfy-settings-card">
+        <h3 className="vfy-settings-card-title">
           <Wrench size={18} />
           Installed tools
         </h3>
         <ul className="vfy-settings-list">
           {tools.length === 0 && (
             <li className="vfy-settings-empty">
-              No tools yet. Browse the library below to add HTTP, database, POS, or MCP bridges.
+              No tools yet. Add a custom API above or browse the library.
             </li>
           )}
           {tools.map((t) => (
@@ -271,17 +446,37 @@ export default function ToolsWorkspace() {
                 <p className="vfy-settings-item-title">{t.name}</p>
                 <p className="vfy-settings-item-meta">
                   {t.slug} · {t.type}
-                  {t.description ? ` · ${t.description}` : ''}
+                  {typeof t.config.url === 'string' ? ` · ${t.config.url}` : ''}
                 </p>
               </div>
-              <button
-                type="button"
-                className="vfy-btn vfy-btn-ghost"
-                disabled={busy}
-                onClick={() => void testTool(t.id)}
-              >
-                Test
-              </button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  className="vfy-btn vfy-btn-ghost"
+                  disabled={busy}
+                  onClick={() => openEdit(t)}
+                >
+                  <Settings2 size={14} />
+                  Configure
+                </button>
+                <button
+                  type="button"
+                  className="vfy-btn vfy-btn-ghost"
+                  disabled={busy}
+                  onClick={() => void testTool(t.id)}
+                >
+                  Test
+                </button>
+                <button
+                  type="button"
+                  className="vfy-btn vfy-btn-ghost"
+                  disabled={busy}
+                  onClick={() => void removeTool(t.id)}
+                  aria-label={`Remove ${t.name}`}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </li>
           ))}
         </ul>
@@ -291,6 +486,61 @@ export default function ToolsWorkspace() {
           </pre>
         )}
       </section>
+
+      {editing && (
+        <section className="vfy-settings-card" aria-label="Configure tool">
+          <h3 className="vfy-settings-card-title">Configure · {editing.name}</h3>
+          <div className="space-y-3">
+            <div className="vfy-settings-row">
+              <select
+                className="vfy-field-select"
+                style={{ maxWidth: 120 }}
+                value={editMethod}
+                onChange={(e) => setEditMethod(e.target.value)}
+              >
+                {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="vfy-field-input"
+                value={editUrl}
+                onChange={(e) => setEditUrl(e.target.value)}
+                aria-label="Tool URL"
+              />
+            </div>
+            <textarea
+              className="vfy-field-textarea"
+              rows={4}
+              value={editHeaders}
+              onChange={(e) => setEditHeaders(e.target.value)}
+              aria-label="Headers JSON"
+            />
+            <textarea
+              className="vfy-field-textarea"
+              rows={3}
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              aria-label="Body template"
+            />
+            <div className="vfy-settings-row">
+              <button type="button" className="vfy-btn vfy-btn-ghost" onClick={() => setEditing(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="vfy-btn vfy-btn-primary"
+                disabled={busy}
+                onClick={() => void saveEdit()}
+              >
+                Save access config
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="vfy-tools-layout">
         <aside className="vfy-tools-cats" aria-label="Integration categories">
