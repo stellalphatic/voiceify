@@ -4,7 +4,7 @@
  * - Replaced hardcoded hex/rgba in charts and motion styles with CSS variables.
  * - Replaced raw Tailwind palette utilities (black/white/gray/emerald/red/blue/amber/indigo/yellow) with voice-* tokens.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { 
   Mic, 
   Activity, 
@@ -1717,21 +1717,13 @@ function DashboardChrome({
     <div className="vfy-dash">
       <div className="vfy-dash-shell">
         <Sidebar isOpen={sideOpen} onClose={onSideClose} />
-        <div className="vfy-dash-main" tabIndex={-1}>
+        <div className="vfy-dash-main">
           <DashboardTopbar
             crumbs={crumbs}
             onMenuClick={onSideOpen}
             actions={
               showCreate ? (
-                <button
-                  type="button"
-                  className="vfy-top-cta"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onCreateAgent();
-                  }}
-                >
+                <button type="button" className="vfy-top-cta" onClick={onCreateAgent}>
                   <Plus size={14} strokeWidth={2.4} />
                   <span className="vfy-top-cta-label">New Agent</span>
                 </button>
@@ -1757,6 +1749,8 @@ export default function DashboardLayout() {
   const [deletingAgent, setDeletingAgent] = useState<Agent | null>(null);
   const [taskAgent, setTaskAgent] = useState<Agent | null>(null);
   const [sideOpen, setSideOpen] = useState(false);
+  const handleSideClose = useCallback(() => setSideOpen(false), []);
+  const handleSideOpen = useCallback(() => setSideOpen(true), []);
 
   const handleSaveAgent = (agentData: AppAgent) => {
     void (async () => {
@@ -1821,8 +1815,8 @@ export default function DashboardLayout() {
   return (
     <DashboardChrome
       sideOpen={sideOpen}
-      onSideClose={() => setSideOpen(false)}
-      onSideOpen={() => setSideOpen(true)}
+      onSideClose={handleSideClose}
+      onSideOpen={handleSideOpen}
       onCreateAgent={handleCreateAgent}
     >
       <AgentModal

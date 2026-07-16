@@ -104,7 +104,6 @@
   min-width: 0;
   padding-left: var(--d-side-w-collapsed);
   transition: padding-left 0.2s ease;
-  outline: none;
 }
 
 .vfy-dash-content {
@@ -1507,6 +1506,53 @@
 .vfy-input::placeholder { color: var(--d-dim); }
 .vfy-input:hover  { border-color: var(--d-border-2); }
 .vfy-input:focus  { border-color: var(--d-accent); box-shadow: 0 0 0 3px var(--d-accent-soft); }
+
+/* Shared field controls — used by Settings, Agent modal, sandbox, etc. */
+.vfy-field-input,
+.vfy-field-select,
+.vfy-field-textarea {
+  width: 100%;
+  background: var(--d-input);
+  border: 1px solid var(--d-border);
+  border-radius: var(--d-radius-md);
+  padding: 10px 12px;
+  font-family: var(--d-sans);
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--d-text);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+  appearance: none;
+}
+.vfy-field-input::placeholder,
+.vfy-field-textarea::placeholder {
+  color: var(--d-dim);
+}
+.vfy-field-input:hover,
+.vfy-field-select:hover,
+.vfy-field-textarea:hover {
+  border-color: var(--d-border-2);
+}
+.vfy-field-input:focus,
+.vfy-field-select:focus,
+.vfy-field-textarea:focus {
+  border-color: var(--d-accent);
+  box-shadow: 0 0 0 3px var(--d-accent-soft);
+}
+.vfy-field-select {
+  background-image: linear-gradient(45deg, transparent 50%, var(--d-muted) 50%),
+    linear-gradient(135deg, var(--d-muted) 50%, transparent 50%);
+  background-position: calc(100% - 16px) calc(50% - 2px), calc(100% - 11px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 32px;
+  cursor: pointer;
+}
+.vfy-field-textarea {
+  resize: vertical;
+  min-height: 72px;
+}
 
 .vfy-label {
   display: block;

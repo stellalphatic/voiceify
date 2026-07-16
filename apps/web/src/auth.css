@@ -942,12 +942,13 @@
 }
 
 .ap-layout--vapi {
-  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 440px);
+  /* Full-bleed Vapi split: fixed form column + showcase fills the rest */
+  grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
-  max-width: 1080px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 
 .ap-form-side--vapi {
@@ -1195,21 +1196,14 @@
 }
 
 @media (min-width: 901px) {
-  .ap--vapi {
-    display: flex;
-    justify-content: center;
-    background: var(--ap-bg);
-  }
-
   .ap-showcase {
-    padding: 40px 32px;
+    padding: 48px 40px;
   }
 }
 
 @media (max-width: 900px) {
   .ap-layout--vapi {
     grid-template-columns: 1fr;
-    max-width: none;
   }
 
   .ap-showcase {
@@ -1232,6 +1226,13 @@
   --ap-dim: #71717a;
   --ap-accent: #00a870;
   --ap-accent-hover: #009660;
+}
+
+[data-theme="light"] .ap--vapi::before {
+  opacity: 0.4;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
 }
 
 [data-theme="light"] .ap-form-side--vapi {

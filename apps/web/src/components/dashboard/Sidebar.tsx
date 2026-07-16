@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import {
   Activity,
@@ -16,7 +16,6 @@ import {
 import { useAuthAccountOptional } from '../../lib/auth/AuthAccountContext';
 import { setConsoleMode } from '../../lib/auth/console-mode';
 import { apiJson, getActiveOrgId } from '../../lib/auth/client';
-
 import { isDashboardNavActive, DASHBOARD_NAV_PATHS } from '../../lib/dashboard/nav';
 
 type NavItem = {
@@ -80,20 +79,23 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const displayEmail = account?.user.email || '';
   const isAdmin = account?.user.platformRole === 'super_admin';
   const [credits, setCredits] = useState<number | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
-  const collapseSidebar = useCallback(() => {
-    onClose();
-    // Drop focus so :focus-within does not keep the desktop rail expanded after navigation.
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
+  /** Close mobile drawer + release focus trapped in the rail (without stealing focus from page inputs). */
+  const releaseNavFocus = useCallback(() => {
+    onCloseRef.current();
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active.closest('.vfy-side')) {
+      active.blur();
     }
-    const main = document.querySelector('.vfy-dash-main') as HTMLElement | null;
-    main?.focus({ preventScroll: true });
-  }, [onClose]);
+  }, []);
 
+  // Close drawer only when the route changes — do NOT depend on onClose identity
+  // (parent re-renders were re-running this and blurring form fields mid-type).
   useEffect(() => {
-    collapseSidebar();
-  }, [pathname, collapseSidebar]);
+    releaseNavFocus();
+  }, [pathname, releaseNavFocus]);
 
   useEffect(() => {
     const orgId = getActiveOrgId();
@@ -114,23 +116,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     };
   }, [pathname]);
 
-  const navClick = () => {
-    collapseSidebar();
-  };
-
   return (
     <>
       <div
         className={`vfy-side-backdrop${isOpen ? ' is-open' : ''}`}
-        onClick={collapseSidebar}
+        onClick={releaseNavFocus}
         aria-hidden="true"
       />
       <aside
         className={`vfy-side${isOpen ? ' is-open' : ''}`}
         aria-label="Dashboard navigation"
-        tabIndex={-1}
       >
-        <Link to="/dashboard" className="vfy-side-brand" onClick={navClick}>
+        <Link to="/dashboard" className="vfy-side-brand" onClick={releaseNavFocus}>
           <span className="vfy-side-brand-orb">
             <Bot size={16} strokeWidth={2.4} />
           </span>
@@ -161,7 +158,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     className={`vfy-side-link${active ? ' is-active' : ''}`}
                     aria-current={active ? 'page' : undefined}
                     data-tooltip={item.label}
-                    onClick={navClick}
+                    onClick={releaseNavFocus}
                   >
                     <Icon size={18} strokeWidth={2.25} />
                     <span className="vfy-side-collapse-hide">{item.label}</span>
@@ -182,7 +179,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 data-tooltip="Admin"
                 onClick={() => {
                   setConsoleMode('admin');
-                  navClick();
+                  releaseNavFocus();
                 }}
               >
                 <Shield size={18} strokeWidth={2.25} />
@@ -199,7 +196,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <p className="vfy-side-credits-value">
             {credits == null ? '—' : `$${(credits / 100).toFixed(2)}`}
           </p>
-          <Link to="/dashboard/settings" className="vfy-side-credits-cta" onClick={navClick}>
+          <Link
+            to={DASHBOARD_NAV_PATHS.settings}
+            className="vfy-side-credits-cta"
+            onClick={releaseNavFocus}
+          >
             Manage
           </Link>
         </div>
