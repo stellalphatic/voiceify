@@ -16,6 +16,7 @@ import {
   signUpEmail,
 } from '../lib/auth/client';
 import ThemeToggle from '../components/ThemeToggle';
+import '../auth.css';
 
 const PROOF_CARDS = [
   {

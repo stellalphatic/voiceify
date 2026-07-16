@@ -5,6 +5,7 @@
  * - Replaced raw Tailwind palette utilities (black/white/gray/emerald/red/blue/amber/indigo/yellow) with voice-* tokens.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import '../dashboard.css';
 import { 
   Mic, 
   Activity, 
