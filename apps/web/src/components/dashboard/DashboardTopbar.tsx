@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Menu, Settings2 } from 'lucide-react';
+import { Bell, BookOpen, ChevronRight, Menu, Settings2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ThemeToggle from '../ThemeToggle';
 import UserMenu from './UserMenu';
@@ -11,20 +11,10 @@ interface Crumb {
 
 interface DashboardTopbarProps {
   crumbs: Crumb[];
-  /** Slot for view-specific actions (e.g. "Create Agent" CTA). */
   actions?: ReactNode;
   onMenuClick: () => void;
 }
 
-/**
- * Sticky topbar above every dashboard page. Contains:
- *  - Mobile hamburger
- *  - Breadcrumbs (clickable up to current page)
- *  - LIVE status pill
- *  - Notifications + settings icon buttons
- *  - User avatar (existing UserMenu)
- *  - Optional action slot rendered to the right of the user
- */
 export default function DashboardTopbar({ crumbs, actions, onMenuClick }: DashboardTopbarProps) {
   return (
     <header className="vfy-top">
@@ -62,6 +52,11 @@ export default function DashboardTopbar({ crumbs, actions, onMenuClick }: Dashbo
         <span>Live</span>
       </span>
 
+      <Link to="/docs" className="vfy-top-docs" title="API documentation">
+        <BookOpen size={15} strokeWidth={2.25} />
+        <span>Docs</span>
+      </Link>
+
       <span className="vfy-top-theme">
         <ThemeToggle size="sm" />
       </span>
@@ -71,10 +66,10 @@ export default function DashboardTopbar({ crumbs, actions, onMenuClick }: Dashbo
       </Link>
 
       <Link
-        to="/dashboard/analytics"
+        to="/dashboard/conversations"
         className="vfy-top-iconbtn"
-        aria-label="Usage and activity"
-        title="Usage"
+        aria-label="Conversations"
+        title="Conversations"
       >
         <Bell size={17} strokeWidth={2.25} />
       </Link>

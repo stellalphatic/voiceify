@@ -1,16 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import {
   Activity,
   BarChart3,
+  BookOpen,
   Bot,
+  GitBranch,
   KeyRound,
+  MessageSquare,
+  Mic2,
   Search,
   Settings,
   Shield,
+  ShieldAlert,
   TerminalSquare,
   Users,
   Webhook,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuthAccountOptional } from '../../lib/auth/AuthAccountContext';
@@ -35,22 +41,33 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     ],
   },
   {
-    title: 'Observe',
+    title: 'Configure',
     items: [
+      { id: 'knowledge', icon: BookOpen, label: 'Knowledge base', path: DASHBOARD_NAV_PATHS.knowledge },
+      { id: 'tools', icon: Wrench, label: 'Tools', path: DASHBOARD_NAV_PATHS.tools },
+      { id: 'voices', icon: Mic2, label: 'Voices', path: DASHBOARD_NAV_PATHS.voices },
+      { id: 'workflows', icon: GitBranch, label: 'Workflows', path: DASHBOARD_NAV_PATHS.workflows },
+      { id: 'guardrails', icon: ShieldAlert, label: 'Guardrails', path: DASHBOARD_NAV_PATHS.guardrails },
+      { id: 'integrations', icon: Webhook, label: 'Integrations', path: DASHBOARD_NAV_PATHS.integrations },
+    ],
+  },
+  {
+    title: 'Monitor',
+    items: [
+      {
+        id: 'conversations',
+        icon: MessageSquare,
+        label: 'Conversations',
+        path: DASHBOARD_NAV_PATHS.conversations,
+      },
       { id: 'analytics', icon: Activity, label: 'Analytics', path: DASHBOARD_NAV_PATHS.analytics },
     ],
   },
   {
-    title: 'Manage',
+    title: 'Deploy',
     items: [
-      {
-        id: 'integrations',
-        icon: Webhook,
-        label: 'Integrations',
-        path: DASHBOARD_NAV_PATHS.integrations,
-      },
-      { id: 'settings', icon: Settings, label: 'Settings', path: DASHBOARD_NAV_PATHS.settings },
       { id: 'api-keys', icon: KeyRound, label: 'API keys', path: DASHBOARD_NAV_PATHS.apiKeys },
+      { id: 'settings', icon: Settings, label: 'Settings', path: DASHBOARD_NAV_PATHS.settings },
     ],
   },
 ];
@@ -79,20 +96,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const displayEmail = account?.user.email || '';
   const isAdmin = account?.user.platformRole === 'super_admin';
   const [credits, setCredits] = useState<number | null>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
 
-  /** Close mobile drawer + release focus trapped in the rail (without stealing focus from page inputs). */
   const releaseNavFocus = useCallback(() => {
-    onCloseRef.current();
+    onClose();
     const active = document.activeElement;
     if (active instanceof HTMLElement && active.closest('.vfy-side')) {
       active.blur();
     }
-  }, []);
+  }, [onClose]);
 
-  // Close drawer only when the route changes — do NOT depend on onClose identity
-  // (parent re-renders were re-running this and blurring form fields mid-type).
   useEffect(() => {
     releaseNavFocus();
   }, [pathname, releaseNavFocus]);

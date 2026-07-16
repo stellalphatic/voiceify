@@ -18,6 +18,13 @@ describe('isDashboardNavActive', () => {
     expect(isDashboardNavActive('/dashboard/settings', DASHBOARD_NAV_PATHS.apiKeys)).toBe(false);
   });
 
+  it('matches configure routes independently', () => {
+    expect(isDashboardNavActive('/dashboard/knowledge', DASHBOARD_NAV_PATHS.knowledge)).toBe(true);
+    expect(isDashboardNavActive('/dashboard/tools', DASHBOARD_NAV_PATHS.tools)).toBe(true);
+    expect(isDashboardNavActive('/dashboard/voices', DASHBOARD_NAV_PATHS.voices)).toBe(true);
+    expect(isDashboardNavActive('/dashboard/knowledge', DASHBOARD_NAV_PATHS.tools)).toBe(false);
+  });
+
   it('matches nested agent detail under agents', () => {
     expect(isDashboardNavActive('/dashboard/agents/42', DASHBOARD_NAV_PATHS.agents)).toBe(true);
     expect(isDashboardNavActive('/dashboard/agents', DASHBOARD_NAV_PATHS.agents)).toBe(true);

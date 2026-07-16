@@ -55,6 +55,12 @@ import AnalyticsDashboard from '@/components/dashboard/AnalyticsDashboard';
 import SettingsWorkspace from '@/components/dashboard/SettingsWorkspace';
 import AgentModal from '@/components/dashboard/AgentModal';
 import IntegrationsWorkspace from '@/components/dashboard/IntegrationsWorkspace';
+import KnowledgeWorkspace from '@/components/dashboard/KnowledgeWorkspace';
+import ToolsWorkspace from '@/components/dashboard/ToolsWorkspace';
+import VoicesWorkspace from '@/components/dashboard/VoicesWorkspace';
+import WorkflowsWorkspace from '@/components/dashboard/WorkflowsWorkspace';
+import ConversationsWorkspace from '@/components/dashboard/ConversationsWorkspace';
+import GuardrailsWorkspace from '@/components/dashboard/GuardrailsWorkspace';
 import { buildDashboardCrumbs } from '../lib/dashboard/crumbs';
 import {
   PhoneCall,
@@ -1875,6 +1881,12 @@ export default function DashboardLayout() {
           }
         />
         <Route path="sandbox" element={<SandboxView agents={dashboardAgents} onUpdateAgent={handleAgentUpdate} />} />
+        <Route path="knowledge" element={<KnowledgeWorkspace />} />
+        <Route path="tools" element={<ToolsWorkspace />} />
+        <Route path="voices" element={<VoicesWorkspace />} />
+        <Route path="workflows" element={<WorkflowsWorkspace />} />
+        <Route path="conversations" element={<ConversationsWorkspace />} />
+        <Route path="guardrails" element={<GuardrailsWorkspace />} />
         <Route path="settings" element={<SettingsView />} />
         <Route path="api-keys" element={<ApiKeysView />} />
         <Route path="analytics" element={<AnalyticsView />} />

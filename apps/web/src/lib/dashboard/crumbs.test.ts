@@ -23,6 +23,12 @@ describe('buildDashboardCrumbs', () => {
     ]);
   });
 
+  it('returns knowledge / tools / workflows crumbs', () => {
+    expect(buildDashboardCrumbs('/dashboard/knowledge')[1]?.label).toBe('Knowledge base');
+    expect(buildDashboardCrumbs('/dashboard/tools')[1]?.label).toBe('Tools');
+    expect(buildDashboardCrumbs('/dashboard/workflows')[1]?.label).toBe('Workflows');
+  });
+
   it('returns agent detail trail', () => {
     expect(buildDashboardCrumbs('/dashboard/agents/abc')).toEqual([
       { label: 'Dashboard', to: '/dashboard' },
