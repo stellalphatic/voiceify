@@ -2,10 +2,14 @@
  * Workspace settings — credits (read-only for tenants), API keys, embed widgets.
  * Provider keys (Groq/ElevenLabs/Gemini) stay on the server and are never shown here.
  */
-import { useCallback, useEffect, useState } from "react";
-import { Check, Copy, KeyRound, Link2, Trash2, Zap } from "lucide-react";
-import { apiJson, getActiveOrgId } from "../../lib/auth/client";
-import { useAgentStore } from "../../lib/agents/AgentStoreContext";
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Check, Copy, KeyRound, Link2, Trash2, Zap } from 'lucide-react';
+import { apiJson, getActiveOrgId } from '../../lib/auth/client';
+import { useAgentStore } from '../../lib/agents/AgentStoreContext';
+import { getSettingsPageMeta, type SettingsFocus } from '../../lib/dashboard/settings';
+
+export type { SettingsFocus };
 
 type ApiKeyRow = {
   id: string;
@@ -25,22 +29,25 @@ type EmbedConfig = {
   createdAt: string;
 };
 
-export default function SettingsWorkspace() {
+export default function SettingsWorkspace({ focus = 'settings' }: { focus?: SettingsFocus }) {
   const orgId = getActiveOrgId();
   const { agents } = useAgentStore();
   const serverAgents = agents.filter((a) => a.serverId);
 
   const [creditBalanceCents, setCreditBalanceCents] = useState<number | null>(null);
-  const [billingMessage, setBillingMessage] = useState<string>("");
+  const [billingMessage, setBillingMessage] = useState('');
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
   const [embeds, setEmbeds] = useState<EmbedConfig[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [newKeyName, setNewKeyName] = useState("Production");
+  const [newKeyName, setNewKeyName] = useState('Production');
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
-  const [embedAgentId, setEmbedAgentId] = useState("");
+  const [embedAgentId, setEmbedAgentId] = useState('');
   const [embedSnippet, setEmbedSnippet] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const { showBilling, showDevelopers, title: pageTitle, eyebrow: pageEyebrow, subtitle: pageSub } =
+    getSettingsPageMeta(focus);
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -59,7 +66,7 @@ export default function SettingsWorkspace() {
       setCreditBalanceCents(billing.creditBalanceCents);
       setBillingMessage(
         billing.billing?.message ??
-          "Credits are granted by a platform admin. Contact support if you need more.",
+          'Credits are granted by a platform admin. Contact support if you need more.',
       );
       setKeys(keyData.keys.filter((k) => !k.revokedAt));
       setEmbeds(embedData.configs);
@@ -67,7 +74,7 @@ export default function SettingsWorkspace() {
         setEmbedAgentId(serverAgents[0].serverId);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load settings");
+      setError(err instanceof Error ? err.message : 'Failed to load settings');
     }
   }, [orgId, embedAgentId, serverAgents]);
 
@@ -85,17 +92,17 @@ export default function SettingsWorkspace() {
         secret: string;
         key: ApiKeyRow;
       }>(`/api/orgs/${orgId}/api-keys`, {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify({
           name: newKeyName.trim(),
-          scopes: ["voice:respond", "agents:read"],
+          scopes: ['voice:respond', 'agents:read'],
         }),
       });
       setRevealedSecret(result.secret);
-      setNewKeyName("Production");
+      setNewKeyName('Production');
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create API key");
+      setError(err instanceof Error ? err.message : 'Could not create API key');
     } finally {
       setBusy(false);
     }
@@ -103,13 +110,13 @@ export default function SettingsWorkspace() {
 
   const revokeKey = async (keyId: string) => {
     if (!orgId) return;
-    if (!window.confirm("Revoke this API key? Apps using it will stop working.")) return;
+    if (!window.confirm('Revoke this API key? Apps using it will stop working.')) return;
     setBusy(true);
     try {
-      await apiJson(`/api/orgs/${orgId}/api-keys/${keyId}`, { method: "DELETE" });
+      await apiJson(`/api/orgs/${orgId}/api-keys/${keyId}`, { method: 'DELETE' });
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not revoke key");
+      setError(err instanceof Error ? err.message : 'Could not revoke key');
     } finally {
       setBusy(false);
     }
@@ -117,7 +124,7 @@ export default function SettingsWorkspace() {
 
   const createEmbed = async () => {
     if (!orgId || !embedAgentId) {
-      setError("Create an agent first, then generate an embed key.");
+      setError('Create an agent first, then generate an embed key.');
       return;
     }
     setBusy(true);
@@ -127,17 +134,17 @@ export default function SettingsWorkspace() {
       const result = await apiJson<{ snippet: string; config: EmbedConfig }>(
         `/api/orgs/${orgId}/embed`,
         {
-          method: "POST",
+          method: 'POST',
           body: JSON.stringify({
             agentId: embedAgentId,
-            allowedOrigins: ["*"],
+            allowedOrigins: ['*'],
           }),
         },
       );
       setEmbedSnippet(result.snippet);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create embed");
+      setError(err instanceof Error ? err.message : 'Could not create embed');
     } finally {
       setBusy(false);
     }
@@ -149,7 +156,7 @@ export default function SettingsWorkspace() {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
-      setError("Clipboard unavailable");
+      setError('Clipboard unavailable');
     }
   };
 
@@ -157,179 +164,190 @@ export default function SettingsWorkspace() {
     <div className="max-w-3xl space-y-6">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// settings · workspace</p>
-          <h1 className="vfy-page-title">Settings</h1>
-          <p className="vfy-page-sub">
-            Credits, API keys for server-to-server calls, and embed widgets for any website.
-          </p>
+          <p className="vfy-page-eyebrow">{pageEyebrow}</p>
+          <h1 className="vfy-page-title">{pageTitle}</h1>
+          <p className="vfy-page-sub">{pageSub}</p>
         </div>
       </div>
 
       {error && (
-        <p className="text-sm" role="alert" style={{ color: "var(--d-danger)" }}>
+        <p className="text-sm" role="alert" style={{ color: 'var(--d-danger)' }}>
           {error}
         </p>
       )}
 
       {!orgId && (
-        <p className="text-sm" style={{ color: "var(--d-muted)" }}>
+        <p className="text-sm" style={{ color: 'var(--d-muted)' }}>
           No workspace selected. Sign out and sign in again to create one.
         </p>
       )}
 
-      <section className="vfy-settings-card">
-        <h3 className="vfy-settings-card-title">
-          <Zap size={18} />
-          Credits
-        </h3>
-        <p className="vfy-settings-balance">
-          {creditBalanceCents == null
-            ? "…"
-            : `$${(creditBalanceCents / 100).toFixed(2)}`}
-        </p>
-        <p className="vfy-settings-help">{billingMessage}</p>
-        <p className="vfy-settings-help">
-          Self-serve card top-ups are not enabled. A platform admin assigns credits from the
-          super-admin portal.
-        </p>
-      </section>
+      {showBilling && (
+        <section className="vfy-settings-card">
+          <h3 className="vfy-settings-card-title">
+            <Zap size={18} />
+            Credits
+          </h3>
+          <p className="vfy-settings-balance">
+            {creditBalanceCents == null
+              ? '…'
+              : `$${(creditBalanceCents / 100).toFixed(2)}`}
+          </p>
+          <p className="vfy-settings-help">{billingMessage}</p>
+          <p className="vfy-settings-help">
+            Self-serve card top-ups are not enabled. A platform admin assigns credits from the
+            super-admin portal.
+          </p>
+          <p className="vfy-settings-help">
+            Need keys for your backend or website? Open{' '}
+            <Link to="/dashboard/api-keys" style={{ color: 'var(--d-accent)' }}>
+              API keys
+            </Link>
+            .
+          </p>
+        </section>
+      )}
 
-      <section className="vfy-settings-card">
-        <h3 className="vfy-settings-card-title">
-          <KeyRound size={18} />
-          API keys
-        </h3>
-        <p className="vfy-settings-help">
-          Use a <code>vfk_…</code> secret in the <code>Authorization: Bearer</code> or{" "}
-          <code>x-voiceify-key</code> header to call Voiceify from your backend. The full secret
-          is shown once at creation.
-        </p>
+      {showDevelopers && (
+        <section className="vfy-settings-card">
+          <h3 className="vfy-settings-card-title">
+            <KeyRound size={18} />
+            API keys
+          </h3>
+          <p className="vfy-settings-help">
+            Use a <code>vfk_…</code> secret in the <code>Authorization: Bearer</code> or{' '}
+            <code>x-voiceify-key</code> header to call Voiceify from your backend. The full secret
+            is shown once at creation.
+          </p>
 
-        <div className="vfy-settings-row">
-          <input
-            className="vfy-field-input"
-            value={newKeyName}
-            onChange={(e) => setNewKeyName(e.target.value)}
-            placeholder="Key name"
-            aria-label="API key name"
-          />
-          <button
-            type="button"
-            className="vfy-btn vfy-btn-primary"
-            disabled={busy || !orgId}
-            onClick={() => void createKey()}
-          >
-            Create key
-          </button>
-        </div>
-
-        {revealedSecret && (
-          <div className="vfy-settings-secret" role="status">
-            <p>Copy this secret now. You will not see it again.</p>
-            <code>{revealedSecret}</code>
+          <div className="vfy-settings-row">
+            <input
+              className="vfy-field-input"
+              value={newKeyName}
+              onChange={(e) => setNewKeyName(e.target.value)}
+              placeholder="Key name"
+              aria-label="API key name"
+            />
             <button
               type="button"
-              className="vfy-btn vfy-btn-ghost"
-              onClick={() => void copyText(revealedSecret)}
+              className="vfy-btn vfy-btn-primary"
+              disabled={busy || !orgId}
+              onClick={() => void createKey()}
             >
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-              Copy
+              Create key
             </button>
           </div>
-        )}
 
-        <ul className="vfy-settings-list">
-          {keys.length === 0 && (
-            <li className="vfy-settings-empty">No active API keys yet.</li>
-          )}
-          {keys.map((k) => (
-            <li key={k.id} className="vfy-settings-list-item">
-              <div>
-                <p className="vfy-settings-item-title">{k.name}</p>
-                <p className="vfy-settings-item-meta">
-                  {k.keyPrefix}… · created {new Date(k.createdAt).toLocaleDateString()}
-                </p>
-              </div>
+          {revealedSecret && (
+            <div className="vfy-settings-secret" role="status">
+              <p>Copy this secret now. You will not see it again.</p>
+              <code>{revealedSecret}</code>
               <button
                 type="button"
                 className="vfy-btn vfy-btn-ghost"
-                disabled={busy}
-                onClick={() => void revokeKey(k.id)}
-                aria-label={`Revoke ${k.name}`}
+                onClick={() => void copyText(revealedSecret)}
               >
-                <Trash2 size={14} />
-                Revoke
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+                Copy
               </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+            </div>
+          )}
 
-      <section className="vfy-settings-card">
-        <h3 className="vfy-settings-card-title">
-          <Link2 size={18} />
-          Embed widget
-        </h3>
-        <p className="vfy-settings-help">
-          Generate a public <code>vw_…</code> token and drop the snippet on any site to run an
-          agent. Voice provider credentials stay on Voiceify servers.
-        </p>
-
-        <div className="vfy-settings-row">
-          <select
-            className="vfy-field-select"
-            value={embedAgentId}
-            onChange={(e) => setEmbedAgentId(e.target.value)}
-            aria-label="Agent for embed"
-          >
-            <option value="">Select agent</option>
-            {serverAgents.map((a) => (
-              <option key={a.serverId} value={a.serverId}>
-                {a.name}
-              </option>
+          <ul className="vfy-settings-list">
+            {keys.length === 0 && (
+              <li className="vfy-settings-empty">No active API keys yet.</li>
+            )}
+            {keys.map((k) => (
+              <li key={k.id} className="vfy-settings-list-item">
+                <div>
+                  <p className="vfy-settings-item-title">{k.name}</p>
+                  <p className="vfy-settings-item-meta">
+                    {k.keyPrefix}… · created {new Date(k.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="vfy-btn vfy-btn-ghost"
+                  disabled={busy}
+                  onClick={() => void revokeKey(k.id)}
+                  aria-label={`Revoke ${k.name}`}
+                >
+                  <Trash2 size={14} />
+                  Revoke
+                </button>
+              </li>
             ))}
-          </select>
-          <button
-            type="button"
-            className="vfy-btn vfy-btn-primary"
-            disabled={busy || !orgId || !embedAgentId}
-            onClick={() => void createEmbed()}
-          >
-            Create embed
-          </button>
-        </div>
+          </ul>
+        </section>
+      )}
 
-        {embedSnippet && (
-          <div className="vfy-settings-secret" role="status">
-            <p>Embed snippet</p>
-            <code>{embedSnippet}</code>
+      {showDevelopers && (
+        <section className="vfy-settings-card">
+          <h3 className="vfy-settings-card-title">
+            <Link2 size={18} />
+            Embed widget
+          </h3>
+          <p className="vfy-settings-help">
+            Generate a public <code>vw_…</code> token and drop the snippet on any site to run an
+            agent. Voice provider credentials stay on Voiceify servers.
+          </p>
+
+          <div className="vfy-settings-row">
+            <select
+              className="vfy-field-select"
+              value={embedAgentId}
+              onChange={(e) => setEmbedAgentId(e.target.value)}
+              aria-label="Agent for embed"
+            >
+              <option value="">Select agent</option>
+              {serverAgents.map((a) => (
+                <option key={a.serverId} value={a.serverId}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
-              className="vfy-btn vfy-btn-ghost"
-              onClick={() => void copyText(embedSnippet)}
+              className="vfy-btn vfy-btn-primary"
+              disabled={busy || !orgId || !embedAgentId}
+              onClick={() => void createEmbed()}
             >
-              <Copy size={14} />
-              Copy
+              Create embed
             </button>
           </div>
-        )}
 
-        <ul className="vfy-settings-list">
-          {embeds.length === 0 && (
-            <li className="vfy-settings-empty">No embed configs yet.</li>
+          {embedSnippet && (
+            <div className="vfy-settings-secret" role="status">
+              <p>Embed snippet</p>
+              <code>{embedSnippet}</code>
+              <button
+                type="button"
+                className="vfy-btn vfy-btn-ghost"
+                onClick={() => void copyText(embedSnippet)}
+              >
+                <Copy size={14} />
+                Copy
+              </button>
+            </div>
           )}
-          {embeds.map((c) => (
-            <li key={c.id} className="vfy-settings-list-item">
-              <div>
-                <p className="vfy-settings-item-title">{c.publicKey}</p>
-                <p className="vfy-settings-item-meta">
-                  Agent {c.agentId.slice(0, 8)}… · {new Date(c.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+
+          <ul className="vfy-settings-list">
+            {embeds.length === 0 && (
+              <li className="vfy-settings-empty">No embed configs yet.</li>
+            )}
+            {embeds.map((c) => (
+              <li key={c.id} className="vfy-settings-list-item">
+                <div>
+                  <p className="vfy-settings-item-title">{c.publicKey}</p>
+                  <p className="vfy-settings-item-meta">
+                    Agent {c.agentId.slice(0, 8)}… · {new Date(c.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

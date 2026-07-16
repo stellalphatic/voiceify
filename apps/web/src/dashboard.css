@@ -104,6 +104,7 @@
   min-width: 0;
   padding-left: var(--d-side-w-collapsed);
   transition: padding-left 0.2s ease;
+  outline: none;
 }
 
 .vfy-dash-content {
@@ -145,7 +146,7 @@
               border-color 0.22s ease;
 }
 
-/* Expand on hover (or when keyboard focus enters the sidebar) */
+/* Expand on hover / keyboard focus. Nav clicks blur activeElement so the rail retracts. */
 .vfy-side:hover,
 .vfy-side:focus-within {
   width: var(--d-side-w);
@@ -1534,12 +1535,17 @@
 }
 .vfy-modal {
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
+  max-height: min(90vh, 720px);
   background: var(--d-card);
   border: 1px solid var(--d-border-2);
   border-radius: var(--d-radius-lg);
   box-shadow: 0 24px 64px -8px rgba(0,0,0,0.7);
-  overflow: hidden;
+  overflow: auto;
+}
+
+[data-theme="light"] .vfy-modal-backdrop {
+  background: rgba(15, 23, 42, 0.35);
 }
 .vfy-modal-head {
   padding: 16px 20px;

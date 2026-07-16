@@ -52,7 +52,9 @@ import StatCard from '@/components/dashboard/StatCard';
 import OverviewDashboard from '@/components/dashboard/OverviewDashboard';
 import AnalyticsDashboard from '@/components/dashboard/AnalyticsDashboard';
 import SettingsWorkspace from '@/components/dashboard/SettingsWorkspace';
+import AgentModal from '@/components/dashboard/AgentModal';
 import IntegrationsWorkspace from '@/components/dashboard/IntegrationsWorkspace';
+import { buildDashboardCrumbs } from '../lib/dashboard/crumbs';
 import {
   PhoneCall,
   Timer,
@@ -69,7 +71,6 @@ import {
   Hourglass,
   TrendingDown,
 } from 'lucide-react';
-import '../dashboard.css';
 import { useVoiceAgentFromRecord } from '../lib/voice-agent/useVoiceAgentFromRecord';
 import { useAgentStore, type AppAgent } from '../lib/agents/AgentStoreContext';
 import { apiJson, getActiveOrgId } from '../lib/auth/client';
@@ -737,474 +738,6 @@ const AgentTasksModal = ({
             )}
           </div>
         </div>
-      </div>
-    </div>
-  );
-};
-
-const AgentModal = ({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  initialData,
-  clonedVoices = [],
-  onVoiceCloned
-}: { 
-  isOpen: boolean, 
-  onClose: () => void, 
-  onSave: (agent: Agent) => void, 
-  initialData?: Agent | null,
-  clonedVoices?: string[],
-  onVoiceCloned?: (voiceName: string) => void
-}) => {
-  const [formData, setFormData] = useState<{
-    name: string;
-    type: string;
-    language: string;
-    status: string;
-    capabilities: string[];
-    voice: string;
-    triggers: string[];
-    greeting: string;
-  }>({
-    name: '',
-    type: 'Healthcare',
-    language: 'English',
-    status: 'Active',
-    capabilities: [],
-    voice: 'Puck',
-    triggers: [],
-    greeting: ''
-  });
-  const [newCapability, setNewCapability] = useState('');
-  const [newTrigger, setNewTrigger] = useState('');
-  const [errors, setErrors] = useState<{name?: string}>({});
-  const [isCloning, setIsCloning] = useState(false);
-  const [cloningStatus, setCloningStatus] = useState<'idle' | 'uploading' | 'processing'>('idle');
-
-  useEffect(() => {
-    if (initialData) {
-      setFormData({
-        name: initialData.name,
-        type: initialData.type,
-        language: initialData.language,
-        status: initialData.status,
-        capabilities: initialData.capabilities || [],
-        voice: initialData.voice || 'Puck',
-        triggers: initialData.triggers || [],
-        greeting: initialData.greeting || ''
-      });
-    } else {
-      setFormData({
-        name: '',
-        type: 'Healthcare',
-        language: 'English',
-        status: 'Active',
-        capabilities: [],
-        voice: 'Puck',
-        triggers: [],
-        greeting: ''
-      });
-    }
-  }, [initialData, isOpen]);
-
-  // Close on Escape key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleEscape);
-    }
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  const validate = () => {
-    const newErrors: {name?: string} = {};
-    if (!formData.name.trim()) {
-      newErrors.name = 'Agent name is required';
-    } else if (formData.name.length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    onSave({ 
-      ...formData, 
-      id: initialData?.id || Date.now(),
-      createdAt: initialData?.createdAt || new Date().toISOString().split('T')[0],
-      updatedAt: new Date().toISOString().split('T')[0],
-      capabilities: formData.capabilities,
-      triggers: formData.triggers,
-      greeting: formData.greeting,
-      tasks: initialData?.tasks || []
-    });
-    setFormData({
-      name: '',
-      type: 'Healthcare',
-      language: 'English',
-      status: 'Active',
-      capabilities: [],
-      voice: 'Puck',
-      triggers: [],
-      greeting: ''
-    });
-    setErrors({});
-    onClose();
-  };
-
-  const handleAddCapability = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newCapability.trim()) {
-      e.preventDefault();
-      if (!formData.capabilities.includes(newCapability.trim())) {
-        setFormData({
-          ...formData,
-          capabilities: [...formData.capabilities, newCapability.trim()]
-        });
-      }
-      setNewCapability('');
-    }
-  };
-
-  const removeCapability = (capToRemove: string) => {
-    setFormData({
-      ...formData,
-      capabilities: formData.capabilities.filter(cap => cap !== capToRemove)
-    });
-  };
-
-  const handleAddTrigger = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newTrigger.trim()) {
-      e.preventDefault();
-      if (!formData.triggers.includes(newTrigger.trim())) {
-        setFormData({
-          ...formData,
-          triggers: [...formData.triggers, newTrigger.trim()]
-        });
-      }
-      setNewTrigger('');
-    }
-  };
-
-  const removeTrigger = (triggerToRemove: string) => {
-    setFormData({
-      ...formData,
-      triggers: formData.triggers.filter(t => t !== triggerToRemove)
-    });
-  };
-
-  return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-voice-backdrop backdrop-blur-sm" 
-      role="dialog" 
-      aria-modal="true"
-      onClick={onClose}
-    >
-      <div 
-        className="bg-voice-surface border border-voice-border rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-xl font-bold text-voice-text mb-4">{initialData ? 'Edit Agent' : 'Create New Agent'}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-voice-muted mb-1">Agent Name</label>
-            <input
-              type="text"
-              autoFocus
-              className={cn(
-                "w-full bg-voice-bg border rounded-xl px-4 py-2 text-voice-text focus:outline-none focus:border-voice-accent transition-colors shadow-sm",
-                errors.name ? "border-voice-danger focus:border-voice-danger" : "border-voice-border"
-              )}
-              value={formData.name}
-              onChange={e => {
-                setFormData({...formData, name: e.target.value});
-                if (errors.name) setErrors({...errors, name: undefined});
-              }}
-              placeholder="e.g. Dr. Sarah"
-            />
-            {errors.name && (
-              <p className="text-voice-danger text-xs mt-1">{errors.name}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-voice-muted mb-1">Type</label>
-            <input
-              list="agent-types"
-              className="w-full bg-voice-bg border border-voice-border rounded-xl px-4 py-2 text-voice-text focus:outline-none focus:border-voice-accent shadow-sm"
-              value={formData.type}
-              onChange={e => setFormData({...formData, type: e.target.value})}
-              placeholder="Select or type custom..."
-            />
-            <datalist id="agent-types">
-              <option value="Healthcare" />
-              <option value="Real Estate" />
-              <option value="Customer Service" />
-              <option value="Education" />
-            </datalist>
-          </div>
-          <div className="vfy-field">
-            <label className="vfy-field-label">Language</label>
-            <select
-              className="vfy-field-select"
-              value={formData.language}
-              onChange={e => setFormData({...formData, language: e.target.value})}
-            >
-              <option value="English">English</option>
-              <option value="Urdu">Urdu</option>
-              <option value="English/Urdu">English/Urdu (Mixed)</option>
-            </select>
-          </div>
-          <div className="vfy-field">
-            <label className="vfy-field-label">Status</label>
-            <select
-              className="vfy-field-select"
-              value={formData.status}
-              onChange={e => setFormData({...formData, status: e.target.value})}
-            >
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </div>
-          <div className="vfy-field">
-            <label className="vfy-field-label">Voice persona</label>
-            <div className="vfy-field-row">
-              <select
-                className="vfy-field-select"
-                value={formData.voice}
-                onChange={e => setFormData({...formData, voice: e.target.value})}
-              >
-                <optgroup label="Standard Voices">
-                  <option value="Puck">Puck (Male, Energetic)</option>
-                  <option value="Charon">Charon (Male, Deep)</option>
-                  <option value="Kore">Kore (Female, Soft)</option>
-                  <option value="Fenrir">Fenrir (Male, Rough)</option>
-                  <option value="Zephyr">Zephyr (Female, Calm)</option>
-                </optgroup>
-                {clonedVoices.length > 0 && (
-                  <optgroup label="Cloned Voices">
-                    {clonedVoices.map(v => (
-                      <option key={v} value={v}>{v}</option>
-                    ))}
-                  </optgroup>
-                )}
-                {formData.voice.startsWith('Custom:') && !clonedVoices.includes(formData.voice) && (
-                  <optgroup label="Current Custom Voice">
-                    <option value={formData.voice}>{formData.voice}</option>
-                  </optgroup>
-                )}
-              </select>
-              <button
-                type="button"
-                onClick={() => setIsCloning(!isCloning)}
-                className={cn('vfy-btn vfy-btn-ghost', isCloning && 'vfy-btn-primary')}
-                title="Clone Voice"
-              >
-                <Mic className="w-4 h-4" />
-                <span className="hidden sm:inline">Clone voice</span>
-              </button>
-            </div>
-            
-            {isCloning && (
-              <div className="vfy-clone-panel">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h4 className="text-sm font-medium text-voice-text flex items-center gap-2">
-                      <Zap className="w-3 h-3 text-voice-accent" />
-                      Instant Voice Cloning
-                    </h4>
-                    <p className="text-xs text-voice-muted mt-1">Upload a clear audio sample (1-2 mins) to create a custom voice profile.</p>
-                  </div>
-                </div>
-                
-                <div className="relative border-2 border-dashed border-voice-border rounded-xl p-6 text-center hover:border-voice-accent/50 hover:bg-voice-accent/5 transition-all cursor-pointer group">
-                  <input 
-                    type="file" 
-                    accept="audio/*"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setCloningStatus('uploading');
-                        // Simulate upload delay
-                        setTimeout(() => {
-                          setCloningStatus('processing');
-                          // Simulate processing delay
-                          setTimeout(() => {
-                            const customVoiceName = `Custom: ${file.name.replace(/\.[^/.]+$/, "")}`;
-                            setFormData(prev => ({...prev, voice: customVoiceName}));
-                            onVoiceCloned?.(customVoiceName);
-                            setCloningStatus('idle');
-                            setIsCloning(false);
-                          }, 2000);
-                        }, 1500);
-                      }
-                    }}
-                    disabled={cloningStatus !== 'idle'}
-                  />
-                  
-                  <div className="flex flex-col items-center justify-center gap-3 min-h-[80px]">
-                    {cloningStatus === 'idle' ? (
-                      <>
-                        <div className="w-10 h-10 rounded-full bg-voice-surface border border-voice-border flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                          <Upload className="w-5 h-5 text-voice-muted group-hover:text-voice-accent transition-colors" />
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium text-voice-text">Click to upload or drag and drop</p>
-                          <p className="text-xs text-voice-muted">MP3, WAV, or M4A (max 10MB)</p>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center gap-3 animate-in fade-in zoom-in duration-300">
-                        <div className="relative">
-                          <div className="w-12 h-12 rounded-full border-2 border-voice-border border-t-voice-accent animate-spin"></div>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Activity className="w-5 h-5 text-voice-accent animate-pulse" />
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm font-medium text-voice-text">
-                            {cloningStatus === 'uploading' ? 'Uploading sample...' : 'Training voice model...'}
-                          </p>
-                          <p className="text-xs text-voice-muted mt-1">This usually takes about 10-20 seconds</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="vfy-field">
-            <label className="vfy-field-label">Capabilities</label>
-            <div className="vfy-tag-list">
-              {formData.capabilities.map((cap) => (
-                <span key={cap} className="vfy-tag">
-                  {cap}
-                  <button 
-                    type="button"
-                    onClick={() => removeCapability(cap)}
-                    className="vfy-tag-remove"
-                    title="Remove capability"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-            <input
-              type="text"
-              list="capabilities-suggestions"
-              className="vfy-field-input"
-              value={newCapability}
-              onChange={e => setNewCapability(e.target.value)}
-              onKeyDown={handleAddCapability}
-              placeholder="Type capability and press Enter..."
-            />
-            <datalist id="capabilities-suggestions">
-              <option value="Appointment Booking" />
-              <option value="Lead Qualification" />
-              <option value="Customer Support" />
-              <option value="Order Tracking" />
-              <option value="Technical Support" />
-              <option value="Symptom Check" />
-              <option value="Patient History" />
-              <option value="Property Listing" />
-              <option value="Virtual Tour" />
-              <option value="Price Negotiation" />
-              <option value="Refund Processing" />
-              <option value="FAQ" />
-            </datalist>
-            <div className="mt-3">
-              <p className="text-xs text-voice-muted mb-2 font-medium">Suggested Capabilities:</p>
-              <div className="flex flex-wrap gap-2">
-                {['Appointment Booking', 'Lead Qualification', 'Customer Support', 'Order Tracking', 'Technical Support'].map((cap) => (
-                  <button
-                    key={cap}
-                    type="button"
-                    onClick={() => {
-                      if (!formData.capabilities.includes(cap)) {
-                        setFormData({
-                          ...formData,
-                          capabilities: [...formData.capabilities, cap]
-                        });
-                      }
-                    }}
-                    disabled={formData.capabilities.includes(cap)}
-                    className={cn(
-                      "text-xs px-2 py-1.5 rounded-lg border transition-all flex items-center gap-1.5",
-                      formData.capabilities.includes(cap)
-                        ? "bg-voice-accent/10 border-voice-accent/20 text-voice-accent opacity-50 cursor-not-allowed"
-                        : "bg-voice-bg border-voice-border text-voice-muted hover:text-voice-text hover:border-voice-accent/50 hover:bg-voice-surface"
-                    )}
-                  >
-                    <Plus className="w-3 h-3" />
-                    {cap}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-voice-muted mb-1">Triggers</label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {formData.triggers.map((trigger) => (
-                <span key={trigger} className="bg-voice-surface border border-voice-border px-2 py-1 rounded-md text-xs text-voice-text flex items-center gap-1.5 group hover:border-voice-accent/50 transition-colors">
-                  {trigger}
-                  <button 
-                    type="button"
-                    onClick={() => removeTrigger(trigger)}
-                    className="text-voice-muted hover:text-voice-accent transition-colors opacity-60 group-hover:opacity-100"
-                    title="Remove trigger"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-            <input
-              type="text"
-              className="w-full bg-voice-bg border border-voice-border rounded-xl px-4 py-2 text-voice-text focus:outline-none focus:border-voice-accent shadow-sm"
-              value={newTrigger}
-              onChange={e => setNewTrigger(e.target.value)}
-              onKeyDown={handleAddTrigger}
-              placeholder="Type trigger and press Enter (e.g., 'When user asks for pricing')..."
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-voice-muted mb-1">Custom Greeting</label>
-            <textarea
-              className="w-full bg-voice-bg border border-voice-border rounded-xl px-4 py-2 text-voice-text focus:outline-none focus:border-voice-accent shadow-sm min-h-[80px]"
-              value={formData.greeting}
-              onChange={e => setFormData({...formData, greeting: e.target.value})}
-              placeholder="Enter a custom greeting for this agent..."
-            />
-          </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button
-              type="button"
-              onClick={() => {
-                setErrors({});
-                onClose();
-              }}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-voice-muted hover:text-voice-text hover:bg-voice-border/50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="bg-voice-accent hover:bg-voice-accent-hover text-voice-on-accent px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-voice-accent/20"
-            >
-              {initialData ? 'Save Changes' : 'Create Agent'}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );
@@ -1881,7 +1414,8 @@ const AgentsView = ({
 };
 
 
-const SettingsView = () => <SettingsWorkspace />;
+const SettingsView = () => <SettingsWorkspace focus="settings" />;
+const ApiKeysView = () => <SettingsWorkspace focus="api-keys" />;
 
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, agentName }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, agentName: string }) => {
   if (!isOpen) return null;
@@ -2157,16 +1691,7 @@ const AgentDetailView = ({
  */
 function useDashCrumbs(): { label: string; to?: string }[] {
   const { pathname } = useLocation();
-  const tail = pathname.replace(/^\/dashboard\/?/, '');
-
-  if (!tail) return [{ label: 'Dashboard' }, { label: 'Overview' }];
-  if (tail.startsWith('agents/')) return [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Agents', to: '/dashboard/agents' }, { label: 'Detail' }];
-  if (tail === 'agents')          return [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Agents' }];
-  if (tail === 'sandbox')         return [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Sandbox' }];
-  if (tail === 'analytics')       return [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Analytics' }];
-  if (tail === 'settings')        return [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Settings' }];
-  if (tail === 'integrations')    return [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Integrations' }];
-  return [{ label: 'Dashboard', to: '/dashboard' }, { label: tail.charAt(0).toUpperCase() + tail.slice(1) }];
+  return buildDashboardCrumbs(pathname);
 }
 
 function DashboardChrome({
@@ -2192,13 +1717,21 @@ function DashboardChrome({
     <div className="vfy-dash">
       <div className="vfy-dash-shell">
         <Sidebar isOpen={sideOpen} onClose={onSideClose} />
-        <div className="vfy-dash-main">
+        <div className="vfy-dash-main" tabIndex={-1}>
           <DashboardTopbar
             crumbs={crumbs}
             onMenuClick={onSideOpen}
             actions={
               showCreate ? (
-                <button type="button" className="vfy-top-cta" onClick={onCreateAgent}>
+                <button
+                  type="button"
+                  className="vfy-top-cta"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onCreateAgent();
+                  }}
+                >
                   <Plus size={14} strokeWidth={2.4} />
                   <span className="vfy-top-cta-label">New Agent</span>
                 </button>
@@ -2223,16 +1756,15 @@ export default function DashboardLayout() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [deletingAgent, setDeletingAgent] = useState<Agent | null>(null);
   const [taskAgent, setTaskAgent] = useState<Agent | null>(null);
-  const [clonedVoices, setClonedVoices] = useState<string[]>([]);
   const [sideOpen, setSideOpen] = useState(false);
 
-  const handleSaveAgent = (agentData: Agent) => {
+  const handleSaveAgent = (agentData: AppAgent) => {
     void (async () => {
       if (editingAgent) {
-        updateAgent(agentData as AppAgent);
+        updateAgent(agentData);
       } else {
         try {
-          await createAgent({ ...agentData, tasks: agentData.tasks ?? [], isDemoDefault: false } as AppAgent);
+          await createAgent({ ...agentData, tasks: agentData.tasks ?? [], isDemoDefault: false });
         } catch {
           setAgents([...agents, { ...agentData, tasks: agentData.tasks ?? [] }]);
         }
@@ -2301,8 +1833,6 @@ export default function DashboardLayout() {
         }}
         onSave={handleSaveAgent}
         initialData={editingAgent}
-        clonedVoices={clonedVoices}
-        onVoiceCloned={voiceName => setClonedVoices(prev => [...prev, voiceName])}
       />
 
       <AgentTasksModal
@@ -2351,6 +1881,7 @@ export default function DashboardLayout() {
         />
         <Route path="sandbox" element={<SandboxView agents={dashboardAgents} onUpdateAgent={handleAgentUpdate} />} />
         <Route path="settings" element={<SettingsView />} />
+        <Route path="api-keys" element={<ApiKeysView />} />
         <Route path="analytics" element={<AnalyticsView />} />
         <Route path="integrations" element={<IntegrationsWorkspace />} />
       </Routes>

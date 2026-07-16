@@ -942,9 +942,12 @@
 }
 
 .ap-layout--vapi {
-  grid-template-columns: minmax(320px, 480px) 1fr;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 440px);
   min-height: 100vh;
   min-height: 100dvh;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
 }
 
 .ap-form-side--vapi {
@@ -1191,9 +1194,22 @@
   background: var(--ap-accent);
 }
 
+@media (min-width: 901px) {
+  .ap--vapi {
+    display: flex;
+    justify-content: center;
+    background: var(--ap-bg);
+  }
+
+  .ap-showcase {
+    padding: 40px 32px;
+  }
+}
+
 @media (max-width: 900px) {
   .ap-layout--vapi {
     grid-template-columns: 1fr;
+    max-width: none;
   }
 
   .ap-showcase {
@@ -1203,6 +1219,66 @@
   .ap-form-side--vapi {
     border-right: none;
   }
+}
+
+/* Light theme — showcase and form follow theme tokens */
+[data-theme="light"] .ap--vapi {
+  --ap-bg: #fafafa;
+  --ap-surface: #ffffff;
+  --ap-input: #f4f4f5;
+  --ap-border: rgba(0, 0, 0, 0.1);
+  --ap-text: #18181b;
+  --ap-muted: #52525b;
+  --ap-dim: #71717a;
+  --ap-accent: #00a870;
+  --ap-accent-hover: #009660;
+}
+
+[data-theme="light"] .ap-form-side--vapi {
+  border-right-color: var(--ap-border);
+  background: var(--ap-bg);
+}
+
+[data-theme="light"] .ap-showcase {
+  background: linear-gradient(155deg, #f0fdf6 0%, #ecfeff 42%, #f8fafc 100%);
+}
+
+[data-theme="light"] .ap-showcase-grid {
+  background-image:
+    radial-gradient(circle at center, rgba(0, 168, 112, 0.28) 0.8px, transparent 1.2px);
+  opacity: 0.35;
+}
+
+[data-theme="light"] .ap-showcase-glow {
+  background: radial-gradient(ellipse, rgba(0, 168, 112, 0.14), transparent 65%);
+}
+
+[data-theme="light"] .ap-proof-card {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 24px 48px -20px rgba(15, 23, 42, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+}
+
+[data-theme="light"] .ap-proof-quote {
+  color: var(--ap-text);
+}
+
+[data-theme="light"] .ap-proof-meta strong {
+  color: var(--ap-text);
+}
+
+[data-theme="light"] .ap-proof-meta span {
+  color: var(--ap-muted);
+}
+
+[data-theme="light"] .ap-proof-dot {
+  background: rgba(0, 0, 0, 0.14);
+}
+
+[data-theme="light"] .ap-proof-dot.is-active {
+  background: var(--ap-accent);
 }
 
 @media (prefers-reduced-motion: reduce) {

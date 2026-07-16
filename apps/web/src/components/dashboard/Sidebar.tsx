@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import {
   Activity,
@@ -17,6 +17,8 @@ import { useAuthAccountOptional } from '../../lib/auth/AuthAccountContext';
 import { setConsoleMode } from '../../lib/auth/console-mode';
 import { apiJson, getActiveOrgId } from '../../lib/auth/client';
 
+import { isDashboardNavActive, DASHBOARD_NAV_PATHS } from '../../lib/dashboard/nav';
+
 type NavItem = {
   id: string;
   icon: LucideIcon;
@@ -28,31 +30,31 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Build',
     items: [
-      { id: 'dashboard', icon: BarChart3, label: 'Overview', path: '/dashboard' },
-      { id: 'agents', icon: Users, label: 'Agents', path: '/dashboard/agents' },
-      { id: 'sandbox', icon: TerminalSquare, label: 'Sandbox', path: '/dashboard/sandbox' },
+      { id: 'dashboard', icon: BarChart3, label: 'Overview', path: DASHBOARD_NAV_PATHS.overview },
+      { id: 'agents', icon: Users, label: 'Agents', path: DASHBOARD_NAV_PATHS.agents },
+      { id: 'sandbox', icon: TerminalSquare, label: 'Sandbox', path: DASHBOARD_NAV_PATHS.sandbox },
     ],
   },
   {
     title: 'Observe',
     items: [
-      { id: 'analytics', icon: Activity, label: 'Analytics', path: '/dashboard/analytics' },
+      { id: 'analytics', icon: Activity, label: 'Analytics', path: DASHBOARD_NAV_PATHS.analytics },
     ],
   },
   {
     title: 'Manage',
     items: [
-      { id: 'integrations', icon: Webhook, label: 'Integrations', path: '/dashboard/integrations' },
-      { id: 'settings', icon: Settings, label: 'Settings', path: '/dashboard/settings' },
-      { id: 'api-keys', icon: KeyRound, label: 'API keys', path: '/dashboard/settings' },
+      {
+        id: 'integrations',
+        icon: Webhook,
+        label: 'Integrations',
+        path: DASHBOARD_NAV_PATHS.integrations,
+      },
+      { id: 'settings', icon: Settings, label: 'Settings', path: DASHBOARD_NAV_PATHS.settings },
+      { id: 'api-keys', icon: KeyRound, label: 'API keys', path: DASHBOARD_NAV_PATHS.apiKeys },
     ],
   },
 ];
-
-function isActive(pathname: string, itemPath: string) {
-  if (itemPath === '/dashboard') return pathname === '/dashboard' || pathname === '/dashboard/';
-  return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
-}
 
 function initialsOf(name: string) {
   return (
@@ -79,10 +81,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const isAdmin = account?.user.platformRole === 'super_admin';
   const [credits, setCredits] = useState<number | null>(null);
 
-  useEffect(() => {
+  const collapseSidebar = useCallback(() => {
     onClose();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+    // Drop focus so :focus-within does not keep the desktop rail expanded after navigation.
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    const main = document.querySelector('.vfy-dash-main') as HTMLElement | null;
+    main?.focus({ preventScroll: true });
+  }, [onClose]);
+
+  useEffect(() => {
+    collapseSidebar();
+  }, [pathname, collapseSidebar]);
 
   useEffect(() => {
     const orgId = getActiveOrgId();
@@ -103,15 +114,23 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     };
   }, [pathname]);
 
+  const navClick = () => {
+    collapseSidebar();
+  };
+
   return (
     <>
       <div
         className={`vfy-side-backdrop${isOpen ? ' is-open' : ''}`}
-        onClick={onClose}
+        onClick={collapseSidebar}
         aria-hidden="true"
       />
-      <aside className={`vfy-side${isOpen ? ' is-open' : ''}`} aria-label="Dashboard navigation">
-        <Link to="/dashboard" className="vfy-side-brand">
+      <aside
+        className={`vfy-side${isOpen ? ' is-open' : ''}`}
+        aria-label="Dashboard navigation"
+        tabIndex={-1}
+      >
+        <Link to="/dashboard" className="vfy-side-brand" onClick={navClick}>
           <span className="vfy-side-brand-orb">
             <Bot size={16} strokeWidth={2.4} />
           </span>
@@ -133,10 +152,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <p className="vfy-side-section-title">{group.title}</p>
             <nav className="vfy-side-nav">
               {group.items.map((item) => {
-                const active =
-                  item.id === 'api-keys'
-                    ? pathname.startsWith('/dashboard/settings')
-                    : isActive(pathname, item.path);
+                const active = isDashboardNavActive(pathname, item.path);
                 const Icon = item.icon;
                 return (
                   <Link
@@ -145,6 +161,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     className={`vfy-side-link${active ? ' is-active' : ''}`}
                     aria-current={active ? 'page' : undefined}
                     data-tooltip={item.label}
+                    onClick={navClick}
                   >
                     <Icon size={18} strokeWidth={2.25} />
                     <span className="vfy-side-collapse-hide">{item.label}</span>
@@ -163,7 +180,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 to="/admin"
                 className="vfy-side-link"
                 data-tooltip="Admin"
-                onClick={() => setConsoleMode('admin')}
+                onClick={() => {
+                  setConsoleMode('admin');
+                  navClick();
+                }}
               >
                 <Shield size={18} strokeWidth={2.25} />
                 <span className="vfy-side-collapse-hide">Super admin</span>
@@ -179,7 +199,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <p className="vfy-side-credits-value">
             {credits == null ? '—' : `$${(credits / 100).toFixed(2)}`}
           </p>
-          <Link to="/dashboard/settings" className="vfy-side-credits-cta">
+          <Link to="/dashboard/settings" className="vfy-side-credits-cta" onClick={navClick}>
             Manage
           </Link>
         </div>
