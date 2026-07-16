@@ -34,20 +34,20 @@ export default function IntegrationsWorkspace() {
 
   const providers = [
     {
-      name: "ElevenLabs",
-      role: "Speech-to-text (Scribe) and text-to-speech",
+      name: "Speech engine",
+      role: "Realtime speech-to-text and natural text-to-speech",
       ok: health?.elevenlabs,
       icon: Mic,
     },
     {
-      name: "Groq",
-      role: "Primary LLM for live agent replies",
+      name: "Primary LLM",
+      role: "Low-latency reasoning for live agent replies",
       ok: health?.groq,
       icon: Sparkles,
     },
     {
-      name: "Gemini",
-      role: "Optional LLM fallback",
+      name: "Fallback LLM",
+      role: "Optional backup model for resilience",
       ok: health?.gemini,
       icon: Waves,
     },
@@ -108,9 +108,17 @@ export default function IntegrationsWorkspace() {
           Create a <code>vfk_</code> API key for server-to-server calls, or a <code>vw_</code> embed
           token for the browser widget.
         </p>
-        <Link to="/dashboard/settings" className="vfy-btn vfy-btn-primary" style={{ display: "inline-flex" }}>
-          Open API keys &amp; embed
-        </Link>
+        <div className="vfy-settings-row">
+          <Link to="/dashboard/api-keys" className="vfy-btn vfy-btn-primary" style={{ display: "inline-flex" }}>
+            API keys &amp; embed
+          </Link>
+          <Link to="/dashboard/tools" className="vfy-btn vfy-btn-ghost" style={{ display: "inline-flex" }}>
+            Browse tools
+          </Link>
+          <Link to="/docs" className="vfy-btn vfy-btn-ghost" style={{ display: "inline-flex" }}>
+            API docs
+          </Link>
+        </div>
       </section>
     </div>
   );

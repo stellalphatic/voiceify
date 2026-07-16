@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AppAgent } from '../../lib/agents/AgentStoreContext';
 import { validateAgentName } from '../../lib/dashboard/settings';
+import { apiJson } from '../../lib/auth/client';
 
 const AGENT_TYPES = [
   'Healthcare',
@@ -11,13 +12,13 @@ const AGENT_TYPES = [
   'General',
 ] as const;
 
-const VOICES = [
-  { id: 'Puck', label: 'Puck — energetic' },
-  { id: 'Charon', label: 'Charon — deep' },
-  { id: 'Kore', label: 'Kore — soft' },
-  { id: 'Fenrir', label: 'Fenrir — rough' },
-  { id: 'Zephyr', label: 'Zephyr — calm' },
+const FALLBACK_VOICES = [
+  { id: 'EXAVITQu4vr4xnSDxMaL', label: 'Sarah — clear, warm' },
+  { id: '21m00Tcm4TlvDq8ikWAM', label: 'Rachel — professional' },
+  { id: 'pNInz6obpgDQGcFmaJgB', label: 'Adam — steady' },
 ] as const;
+
+type VoiceOption = { id: string; label: string };
 
 type AgentModalProps = {
   isOpen: boolean;
@@ -33,11 +34,12 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
 
   const [name, setName] = useState('');
   const [type, setType] = useState<string>(AGENT_TYPES[0]);
-  const [language, setLanguage] = useState('English');
+  const [language, setLanguage] = useState('English/Urdu');
   const [status, setStatus] = useState('Active');
-  const [voice, setVoice] = useState('Puck');
+  const [voice, setVoice] = useState<string>(FALLBACK_VOICES[0].id);
   const [greeting, setGreeting] = useState('');
   const [nameError, setNameError] = useState<string | undefined>();
+  const [voices, setVoices] = useState<VoiceOption[]>([...FALLBACK_VOICES]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -45,20 +47,48 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
     if (initialData) {
       setName(initialData.name);
       setType(initialData.type || AGENT_TYPES[0]);
-      setLanguage(initialData.language || 'English');
+      setLanguage(initialData.language || 'English/Urdu');
       setStatus(initialData.status || 'Active');
-      setVoice(initialData.voice || 'Puck');
+      setVoice(initialData.voice || FALLBACK_VOICES[0].id);
       setGreeting(initialData.greeting || '');
     } else {
       setName('');
       setType(AGENT_TYPES[0]);
-      setLanguage('English');
+      setLanguage('English/Urdu');
       setStatus('Active');
-      setVoice('Puck');
+      setVoice(FALLBACK_VOICES[0].id);
       setGreeting('');
     }
     setNameError(undefined);
   }, [initialData, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiJson<{
+          voices: Array<{ id?: string; voice_id?: string; name: string; labels?: Record<string, string> }>;
+        }>('/api/voice/voices');
+        if (cancelled) return;
+        const mapped = (data.voices ?? [])
+          .map((v) => {
+            const id = v.id ?? v.voice_id ?? '';
+            if (!id) return null;
+            const accent = v.labels?.accent ? ` · ${v.labels.accent}` : '';
+            const lang = v.labels?.language ? ` · ${v.labels.language}` : '';
+            return { id, label: `${v.name}${accent}${lang}` };
+          })
+          .filter((v): v is VoiceOption => Boolean(v));
+        if (mapped.length) setVoices(mapped);
+      } catch {
+        /* keep fallback voices */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -106,6 +136,10 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
     });
     onClose();
   };
+
+  const voiceOptions = voices.some((v) => v.id === voice)
+    ? voices
+    : [{ id: voice, label: `Current · ${voice}` }, ...voices];
 
   return (
     <div
@@ -180,7 +214,7 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
                 >
                   <option value="English">English</option>
                   <option value="Urdu">Urdu</option>
-                  <option value="English/Urdu">English / Urdu</option>
+                  <option value="English/Urdu">English / Urdu (mixed)</option>
                 </select>
               </div>
               <div style={{ flex: 1 }}>
@@ -193,7 +227,7 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
                   value={voice}
                   onChange={(e) => setVoice(e.target.value)}
                 >
-                  {VOICES.map((v) => (
+                  {voiceOptions.map((v) => (
                     <option key={v.id} value={v.id}>
                       {v.label}
                     </option>
@@ -225,18 +259,17 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
               </label>
               <textarea
                 id="agent-greeting"
-                className="vfy-field-input"
+                className="vfy-field-textarea"
                 rows={3}
                 value={greeting}
                 onChange={(e) => setGreeting(e.target.value)}
                 placeholder="What should the agent say when a session starts?"
-                style={{ resize: 'vertical', minHeight: 72 }}
               />
             </div>
 
             {!isEdit && (
               <p className="text-xs" style={{ color: 'var(--d-muted)', margin: 0, lineHeight: 1.5 }}>
-                You can add capabilities, triggers, and tasks from the agent detail page after creation.
+                After create, open Knowledge, Tools, Workflows, and Guardrails to deepen the agent.
               </p>
             )}
           </div>
