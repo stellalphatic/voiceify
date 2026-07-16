@@ -1,4 +1,5 @@
 import {
+  and,
   apiKeys,
   creditLedger,
   db,
@@ -87,7 +88,7 @@ usageRoutes.get("/:orgId/billing", requireOrg("billing:read"), async (c) => {
         mode === "disabled"
           ? "Card payments are not enabled. Ask a platform admin to grant credits."
           : mode === "manual"
-            ? "Stripe is not connected. Credits can be granted by an admin or via demo top-up."
+            ? "Stripe is not connected. Ask a platform admin to grant credits."
             : "Stripe checkout is available for credit top-ups.",
     },
   });
@@ -216,8 +217,7 @@ usageRoutes.delete(
     await db
       .update(apiKeys)
       .set({ revokedAt: new Date() })
-      .where(eq(apiKeys.id, keyId));
-    void orgId;
+      .where(and(eq(apiKeys.id, keyId), eq(apiKeys.orgId, orgId)));
     return c.json({ ok: true });
   },
 );

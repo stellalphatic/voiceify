@@ -1,20 +1,10 @@
 /**
- * AuthPage — sign in / sign up (minimal professional)
- * Demo auth: issues a local token via RequireAuth helpers.
+ * Auth — Vapi-inspired split: lean form (left) + animated social proof (right).
+ * Email/password only (Better Auth). No fake OAuth.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import {
-  Activity,
-  ArrowLeft,
-  ArrowRight,
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  Mic,
-  Play,
-} from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { setAuthToken } from '../components/RequireAuth';
 import {
   apiJson,
@@ -26,6 +16,30 @@ import {
   signUpEmail,
 } from '../lib/auth/client';
 import ThemeToggle from '../components/ThemeToggle';
+
+const PROOF_CARDS = [
+  {
+    org: 'Front-desk teams',
+    quote:
+      'Peak-hour calls stop falling through. Bookings finish in one conversation while staff stays on the floor.',
+    name: 'Clinic ops',
+    role: 'Healthcare SMB',
+  },
+  {
+    org: 'Restaurant groups',
+    quote:
+      'Dinner rush no longer means voicemail. Reservations land without pulling hosts off the pass.',
+    name: 'Hospitality lead',
+    role: 'Multi-location F&B',
+  },
+  {
+    org: 'Support orgs',
+    quote:
+      'Tier-one tickets close on the first call. The team skips the callback queue and credits stay controlled.',
+    name: 'CX director',
+    role: 'B2B SaaS',
+  },
+] as const;
 
 function getPasswordStrength(password: string): 0 | 1 | 2 | 3 {
   if (!password) return 0;
@@ -47,8 +61,7 @@ export default function AuthPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [fullName, setFullName] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -56,6 +69,7 @@ export default function AuthPage() {
   const [resetSent, setResetSent] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [proofIndex, setProofIndex] = useState(0);
 
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
 
@@ -73,40 +87,26 @@ export default function AuthPage() {
     setResetSent(false);
   }, [isSignUp, isForgot]);
 
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const id = window.setInterval(() => {
+      setProofIndex((i) => (i + 1) % PROOF_CARDS.length);
+    }, 5200);
+    return () => window.clearInterval(id);
+  }, []);
+
   const validate = (): boolean => {
     const next: Record<string, string> = {};
-
-    if (isSignUp) {
-      if (!firstName.trim()) next.firstName = 'First name is required';
-      if (!lastName.trim()) next.lastName = 'Last name is required';
-    }
-
-    if (!email.trim()) {
-      next.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      next.email = 'Enter a valid email address';
-    }
-
+    if (isSignUp && !fullName.trim()) next.fullName = 'Name is required';
+    if (!email.trim()) next.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = 'Enter a valid email';
     if (!isForgot) {
-      if (!password) {
-        next.password = 'Password is required';
-      } else if (isSignUp && password.length < 8) {
-        next.password = 'Use at least 8 characters';
-      }
+      if (!password) next.password = 'Password is required';
+      else if (isSignUp && password.length < 8) next.password = 'Use at least 8 characters';
     }
-
-    if (isSignUp && !agreed) {
-      next.agreed = 'Please accept the terms to continue';
-    }
-
+    if (isSignUp && !agreed) next.agreed = 'Accept the terms to continue';
     setErrors(next);
-    setTouched({
-      firstName: true,
-      lastName: true,
-      email: true,
-      password: true,
-      agreed: true,
-    });
+    setTouched({ fullName: true, email: true, password: true, agreed: true });
     return Object.keys(next).length === 0;
   };
 
@@ -115,17 +115,15 @@ export default function AuthPage() {
     if (!validate()) return;
     setLoading(true);
     setErrors({});
-    const redirectTo = `${window.location.origin}/auth/reset-password`;
     const result = await requestPasswordReset({
       email: email.trim(),
-      redirectTo,
+      redirectTo: `${window.location.origin}/auth/reset-password`,
     });
     setLoading(false);
     if (!result.ok) {
       setErrors({ form: result.error });
       return;
     }
-    // Always show success to avoid email enumeration
     setResetSent(true);
   };
 
@@ -144,7 +142,7 @@ export default function AuthPage() {
         ? await signUpEmail({
             email: email.trim(),
             password,
-            name: `${firstName.trim()} ${lastName.trim()}`.trim() || email.trim(),
+            name: fullName.trim() || email.trim(),
           })
         : await signInEmail({ email: email.trim(), password });
 
@@ -152,13 +150,14 @@ export default function AuthPage() {
         const msg = authResult.error;
         const isPending =
           /pending/i.test(msg) || /approval/i.test(msg) || /suspended/i.test(msg);
-        const alreadyExists = /already exists|already registered|USER_ALREADY_EXISTS/i.test(msg);
+        const alreadyExists =
+          /already exists|already registered|USER_ALREADY_EXISTS/i.test(msg);
         if (isPending) {
           setPendingApproval(true);
           setErrors({});
         } else if (isSignUp && alreadyExists) {
           setErrors({
-            form: 'An account with this email already exists. Sign in, or use Forgot password if you need access.',
+            form: 'An account with this email already exists. Sign in, or use Forgot password.',
           });
         } else {
           setErrors({ form: msg });
@@ -167,7 +166,6 @@ export default function AuthPage() {
         return;
       }
 
-      // Signup succeeds without a session when admin approval is required.
       const session = await getSession().catch(() => null);
       if (!session) {
         if (isSignUp) {
@@ -176,14 +174,13 @@ export default function AuthPage() {
           return;
         }
         setErrors({
-          form: 'Sign-in blocked. If you just registered, wait for admin approval. Otherwise try Forgot password.',
+          form: 'Sign-in blocked. If you just registered, wait for admin approval.',
         });
         setLoading(false);
         return;
       }
 
       setAuthToken(session.session.id);
-
       const home = await resolvePostAuthHome();
       if (home === '/admin') {
         navigate(redirect ? decodeURIComponent(redirect) : '/admin');
@@ -191,28 +188,21 @@ export default function AuthPage() {
         return;
       }
 
-      // Ensure the tenant user has an org (create default workspace on first login)
       try {
-        const orgs = await apiJson<{
-          organizations: Array<{ id: string }>;
-        }>('/api/orgs');
+        const orgs = await apiJson<{ organizations: Array<{ id: string }> }>('/api/orgs');
         if (!orgs.organizations.length) {
-          const created = await apiJson<{ organization: { id: string } }>(
-            '/api/orgs',
-            {
-              method: 'POST',
-              body: JSON.stringify({
-                name: `${firstName.trim() || session.user.name.split(' ')[0] || 'My'} Workspace`,
-              }),
-            },
-          );
+          const created = await apiJson<{ organization: { id: string } }>('/api/orgs', {
+            method: 'POST',
+            body: JSON.stringify({
+              name: `${fullName.trim().split(' ')[0] || 'My'} Workspace`,
+            }),
+          });
           setActiveOrgId(created.organization.id);
         } else {
           setActiveOrgId(orgs.organizations[0].id);
         }
       } catch (orgErr) {
-        const msg =
-          orgErr instanceof Error ? orgErr.message : 'Unable to load workspace';
+        const msg = orgErr instanceof Error ? orgErr.message : 'Unable to load workspace';
         if (/pending|approval|suspended|rejected/i.test(msg)) {
           setPendingApproval(true);
           setLoading(false);
@@ -223,11 +213,8 @@ export default function AuthPage() {
       navigate(redirect ? decodeURIComponent(redirect) : '/dashboard');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Authentication failed';
-      if (/pending|approval|suspended|rejected/i.test(msg)) {
-        setPendingApproval(true);
-      } else {
-        setErrors({ form: msg });
-      }
+      if (/pending|approval|suspended|rejected/i.test(msg)) setPendingApproval(true);
+      else setErrors({ form: msg });
     } finally {
       setLoading(false);
     }
@@ -237,371 +224,258 @@ export default function AuthPage() {
     setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
+  const proof = PROOF_CARDS[proofIndex];
+
   return (
-    <main id="main-content" className="ap">
-      <div className="ap-bg" aria-hidden>
-        <div className="ap-bg-glow" />
-        <div className="ap-bg-glow ap-bg-glow--r" />
-      </div>
-
-      <div className="ap-layout">
-        <aside className="ap-brand" aria-label="Voiceify overview">
-          <div className="ap-brand-top">
-            <Link to="/" className="ap-logo">
-              <span className="ap-logo-icon">
-                <Activity size={16} aria-hidden />
-              </span>
-              Voiceify
-            </Link>
-            <div className="ap-brand-actions">
-              <ThemeToggle />
-              <Link to="/" className="ap-back">
-                <ArrowLeft size={14} aria-hidden />
-                Back to site
+    <main id="main-content" className="ap ap--vapi">
+      <div className="ap-layout ap-layout--vapi">
+        {/* LEFT — form */}
+        <section className="ap-form-side ap-form-side--vapi" aria-labelledby="auth-heading">
+          <div className="ap-form-inner">
+            <div className="ap-form-topbar">
+              <Link to="/" className="ap-logo ap-logo--plain">
+                voiceify
               </Link>
+              <ThemeToggle size="sm" />
             </div>
-          </div>
 
-          <div className="ap-brand-main">
-            <p className="ap-brand-kicker">Production voice platform</p>
-            <h2 className="ap-brand-title">Ship agents that actually answer the phone</h2>
-            <p className="ap-brand-lead">
-              Enterprise STT, LLM, and TTS in one pipeline. Approve teams, fund credits, and go live
-              without bolting on a second auth vendor.
-            </p>
-            <ul className="ap-brand-points">
-              <li>Custom voice pipeline (not a black-box agent wrapper)</li>
-              <li>Org workspaces with credit controls</li>
-              <li>Admin approval before production access</li>
-            </ul>
-            <Link to="/demo" className="ap-brand-link">
-              Try the live demo
-              <ArrowRight size={14} aria-hidden />
-            </Link>
-          </div>
-        </aside>
-
-        <section className="ap-form-side" aria-labelledby="auth-heading">
-          <div className="ap-mobile-top">
-            <Link to="/" className="ap-logo">
-              <span className="ap-logo-icon">
-                <Activity size={16} aria-hidden />
-              </span>
-              Voiceify
-            </Link>
-            <div className="ap-brand-actions">
-              <ThemeToggle />
-              <Link to="/" className="ap-back">
-                <ArrowLeft size={14} aria-hidden />
-                Back
-              </Link>
-            </div>
-          </div>
-
-          <div className="ap-card">
-            {!isForgot && (
-              <nav
-                className={`ap-tabs${isSignUp ? ' ap-tabs--signup' : ''}`}
-                aria-label="Authentication mode"
-              >
-                <Link
-                  to={tabHref('signin')}
-                  className={`ap-tab${!isSignUp ? ' is-active' : ''}`}
-                  aria-current={!isSignUp ? 'page' : undefined}
-                >
-                  Sign in
-                </Link>
-                <Link
-                  to={tabHref('signup')}
-                  className={`ap-tab${isSignUp ? ' is-active' : ''}`}
-                  aria-current={isSignUp ? 'page' : undefined}
-                >
-                  Sign up
-                </Link>
-              </nav>
-            )}
-
-            <header className="ap-header">
+            <header className="ap-header ap-header--vapi">
               <h1 className="ap-title" id="auth-heading">
                 {pendingApproval
-                  ? 'Account pending approval'
+                  ? 'Pending approval'
                   : resetSent
                     ? 'Check your email'
                     : isForgot
-                      ? 'Reset your password'
+                      ? 'Reset password'
                       : isSignUp
                         ? 'Create your account'
-                        : 'Welcome back'}
+                        : 'Sign into your account'}
               </h1>
               <p className="ap-sub">
                 {pendingApproval
-                  ? 'A platform admin must approve your signup before you can sign in. You will be able to use the dashboard once approved.'
+                  ? 'A platform admin must approve your signup before you can sign in.'
                   : resetSent
-                    ? `If an account exists for ${email.trim()}, we sent a reset link. Check your inbox and spam folder.`
+                    ? `If an account exists for ${email.trim()}, we sent a reset link.`
                     : isForgot
-                      ? 'Enter your work email and we will send a secure reset link.'
+                      ? 'Enter your email and we will send a secure reset link.'
                       : isSignUp
-                        ? 'Start free with included credits. No card required.'
-                        : 'Sign in to manage your voice agents and API keys.'}
+                        ? 'Manage voice agents, credits, and API keys in one workspace.'
+                        : 'Easily manage your voice agents all in one dashboard.'}
               </p>
             </header>
 
             {pendingApproval && (
               <div className="ap-form" role="status">
-                <p className="ap-field-error" style={{ color: 'inherit', opacity: 0.85 }}>
+                <p className="ap-banner">
                   We saved your request for <strong>{email.trim() || 'your email'}</strong>.
-                  Contact your Voiceify admin if you need faster access.
                 </p>
-                <Link to={tabHref('signin')} className="ap-submit" style={{ display: 'inline-flex', justifyContent: 'center', marginTop: 16 }}>
+                <Link to={tabHref('signin')} className="ap-submit">
                   Back to sign in
                 </Link>
               </div>
             )}
 
-            {!pendingApproval && resetSent && (
+            {resetSent && !pendingApproval && (
               <div className="ap-form" role="status">
-                <Link to={tabHref('signin')} className="ap-submit" style={{ display: 'inline-flex', justifyContent: 'center' }}>
+                <Link to={tabHref('signin')} className="ap-submit">
                   Back to sign in
                 </Link>
               </div>
             )}
 
             {!pendingApproval && !resetSent && (
-            <form onSubmit={handleSubmit} className="ap-form" noValidate>
-              {isSignUp && (
-                <div className="ap-row">
+              <form onSubmit={(e) => void handleSubmit(e)} className="ap-form" noValidate>
+                {isSignUp && (
                   <div className="ap-field">
-                    <label htmlFor="auth-fname" className="ap-label">
-                      First name
+                    <label htmlFor="auth-name" className="ap-label">
+                      Full name
                     </label>
                     <input
-                      id="auth-fname"
-                      className={`ap-input ap-input--plain${touched.firstName && errors.firstName ? ' ap-input--error' : ''}`}
+                      id="auth-name"
+                      className={`ap-input ap-input--plain${touched.fullName && errors.fullName ? ' ap-input--error' : ''}`}
                       type="text"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      onBlur={() => markTouched('firstName')}
-                      placeholder="Jane"
-                      required
-                      autoComplete="given-name"
-                      aria-invalid={Boolean(touched.firstName && errors.firstName)}
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      onBlur={() => markTouched('fullName')}
+                      placeholder="Alex Morgan"
+                      autoComplete="name"
                     />
-                    {touched.firstName && errors.firstName && (
-                      <p className="ap-field-error" role="alert">{errors.firstName}</p>
+                    {touched.fullName && errors.fullName && (
+                      <p className="ap-field-error" role="alert">
+                        {errors.fullName}
+                      </p>
                     )}
                   </div>
-                  <div className="ap-field">
-                    <label htmlFor="auth-lname" className="ap-label">
-                      Last name
-                    </label>
-                    <input
-                      id="auth-lname"
-                      className={`ap-input ap-input--plain${touched.lastName && errors.lastName ? ' ap-input--error' : ''}`}
-                      type="text"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      onBlur={() => markTouched('lastName')}
-                      placeholder="Khan"
-                      required
-                      autoComplete="family-name"
-                      aria-invalid={Boolean(touched.lastName && errors.lastName)}
-                    />
-                    {touched.lastName && errors.lastName && (
-                      <p className="ap-field-error" role="alert">{errors.lastName}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="ap-field">
-                <label htmlFor="auth-email" className="ap-label">
-                  Work email
-                </label>
-                <div className="ap-input-wrap">
-                  <Mail size={16} className="ap-input-icon" aria-hidden />
-                  <input
-                    id="auth-email"
-                    className={`ap-input${touched.email && errors.email ? ' ap-input--error' : ''}`}
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onBlur={() => markTouched('email')}
-                    placeholder="you@company.com"
-                    required
-                    autoComplete="email"
-                    aria-invalid={Boolean(touched.email && errors.email)}
-                  />
-                </div>
-                {touched.email && errors.email && (
-                  <p className="ap-field-error" role="alert">{errors.email}</p>
                 )}
-              </div>
 
-              {!isForgot && (
-              <div className="ap-field">
-                <div className="ap-label-row">
-                  <label htmlFor="auth-password" className="ap-label">
-                    Password
+                <div className="ap-field">
+                  <label htmlFor="auth-email" className="ap-label">
+                    Email
                   </label>
-                  {!isSignUp && (
-                    <Link to={tabHref('forgot')} className="ap-forgot">
-                      Forgot password?
-                    </Link>
+                  <div className="ap-input-wrap">
+                    <Mail size={16} className="ap-input-icon" aria-hidden />
+                    <input
+                      id="auth-email"
+                      className={`ap-input${touched.email && errors.email ? ' ap-input--error' : ''}`}
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onBlur={() => markTouched('email')}
+                      placeholder="Your email address"
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
+                  {touched.email && errors.email && (
+                    <p className="ap-field-error" role="alert">
+                      {errors.email}
+                    </p>
                   )}
                 </div>
-                <div className="ap-input-wrap">
-                  <Lock size={16} className="ap-input-icon" aria-hidden />
-                  <input
-                    id="auth-password"
-                    className={`ap-input${touched.password && errors.password ? ' ap-input--error' : ''}`}
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onBlur={() => markTouched('password')}
-                    placeholder={isSignUp ? 'Min. 8 characters' : 'Enter your password'}
-                    required
-                    minLength={isSignUp ? 8 : undefined}
-                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                    aria-invalid={Boolean(touched.password && errors.password)}
-                  />
-                  <button
-                    type="button"
-                    className="ap-input-toggle"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-                {touched.password && errors.password && (
-                  <p className="ap-field-error" role="alert">{errors.password}</p>
-                )}
-                {isSignUp && password.length > 0 && (
-                  <>
-                    <div className="ap-pw-strength" aria-hidden>
-                      {[1, 2, 3].map((level) => (
-                        <span
-                          key={level}
-                          className={`ap-pw-strength-bar${passwordStrength >= level ? ` is-${passwordStrength}` : ''}`}
-                        />
-                      ))}
-                    </div>
-                    <p className="ap-pw-hint">
-                      {STRENGTH_LABELS[passwordStrength]}
-                      {passwordStrength < 3 && '. Use 12+ chars with numbers and uppercase'}
-                    </p>
-                  </>
-                )}
-              </div>
-              )}
 
-              {isSignUp ? (
-                <div className="ap-field">
+                {!isForgot && (
+                  <div className="ap-field">
+                    <div className="ap-label-row">
+                      <label htmlFor="auth-password" className="ap-label">
+                        Password
+                      </label>
+                      {!isSignUp && (
+                        <Link to={tabHref('forgot')} className="ap-forgot">
+                          Forgot your password?
+                        </Link>
+                      )}
+                    </div>
+                    <div className="ap-input-wrap">
+                      <Lock size={16} className="ap-input-icon" aria-hidden />
+                      <input
+                        id="auth-password"
+                        className={`ap-input${touched.password && errors.password ? ' ap-input--error' : ''}`}
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onBlur={() => markTouched('password')}
+                        placeholder="Your password"
+                        autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="ap-input-toggle"
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    {touched.password && errors.password && (
+                      <p className="ap-field-error" role="alert">
+                        {errors.password}
+                      </p>
+                    )}
+                    {isSignUp && password.length > 0 && (
+                      <p className="ap-pw-hint">
+                        {STRENGTH_LABELS[passwordStrength]}
+                        {passwordStrength < 3 && '. Use 12+ chars with numbers and uppercase'}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {isSignUp && (
                   <label className="ap-check">
                     <input
                       type="checkbox"
                       checked={agreed}
                       onChange={(e) => setAgreed(e.target.checked)}
                       onBlur={() => markTouched('agreed')}
-                      required
                     />
                     <span className="ap-check-box" aria-hidden />
                     <span>
-                      I agree to the{' '}
-                      <Link to="/terms" className="ap-link">
-                        Terms
-                      </Link>{' '}
-                      and{' '}
-                      <Link to="/privacy" className="ap-link">
-                        Privacy Policy
-                      </Link>
+                      I agree to the <Link to="/terms" className="ap-link">Terms</Link> and{' '}
+                      <Link to="/privacy" className="ap-link">Privacy Policy</Link>
                     </span>
                   </label>
-                  {touched.agreed && errors.agreed && (
-                    <p className="ap-field-error" role="alert">{errors.agreed}</p>
-                  )}
-                </div>
-              ) : isForgot ? (
-                <p className="ap-sub" style={{ marginTop: 0 }}>
-                  <Link to={tabHref('signin')} className="ap-link">
-                    Back to sign in
-                  </Link>
-                </p>
-              ) : (
-                <label className="ap-check">
-                  <input type="checkbox" defaultChecked />
-                  <span className="ap-check-box" aria-hidden />
-                  <span>Keep me signed in on this device</span>
-                </label>
-              )}
+                )}
 
-              {errors.form && (
-                <p className="ap-field-error" role="alert" style={{ marginBottom: 12 }}>
-                  {errors.form}
-                </p>
-              )}
+                {errors.agreed && touched.agreed && (
+                  <p className="ap-field-error" role="alert">
+                    {errors.agreed}
+                  </p>
+                )}
+                {errors.form && (
+                  <p className="ap-field-error" role="alert">
+                    {errors.form}
+                  </p>
+                )}
 
-              <button type="submit" disabled={loading} className="ap-submit" id="auth-submit-btn">
-                {loading ? (
-                  <>
-                    <span className="ap-spinner" aria-hidden />
-                    {isForgot
-                      ? 'Sending reset link…'
+                <button type="submit" disabled={loading} className="ap-submit" id="auth-submit-btn">
+                  {loading
+                    ? isForgot
+                      ? 'Sending…'
                       : isSignUp
-                        ? 'Creating account…'
-                        : 'Signing in…'}
-                  </>
-                ) : (
-                  <>
-                    {isForgot
+                        ? 'Creating…'
+                        : 'Signing in…'
+                    : isForgot
                       ? 'Send reset link'
                       : isSignUp
-                        ? 'Create free account'
+                        ? 'Create account'
                         : 'Sign in'}
-                    <ArrowRight size={16} aria-hidden />
-                  </>
-                )}
-              </button>
-            </form>
+                </button>
+
+                <div className="ap-footer-links">
+                  {isForgot ? (
+                    <Link to={tabHref('signin')}>Back to sign in</Link>
+                  ) : isSignUp ? (
+                    <>
+                      Already have an account? <Link to={tabHref('signin')}>Sign in</Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link to={tabHref('signup')}>Sign up</Link>
+                      <span className="ap-dot" aria-hidden>
+                        ·
+                      </span>
+                      <Link to={tabHref('forgot')}>Forgot your password?</Link>
+                    </>
+                  )}
+                </div>
+              </form>
             )}
 
-            {!pendingApproval && !isForgot && !resetSent && (
-              <p className="ap-switch">
-                {isSignUp ? (
-                  <>
-                    Already have an account?{' '}
-                    <Link to={tabHref('signin')}>Sign in</Link>
-                  </>
-                ) : (
-                  <>
-                    New to Voiceify?{' '}
-                    <Link to={tabHref('signup')}>Create a free account</Link>
-                  </>
-                )}
-              </p>
-            )}
-
-            <Link to="/demo" className="ap-demo-link">
-              <Mic size={15} aria-hidden />
-              Try live voice demo - no account needed
-              <Play size={13} aria-hidden />
-            </Link>
-
-            {!isSignUp && !pendingApproval && (
-              <p className="ap-fine">
-                By continuing you agree to our{' '}
-                <Link to="/terms" className="ap-link">
-                  Terms
-                </Link>{' '}
-                and{' '}
-                <Link to="/privacy" className="ap-link">
-                  Privacy Policy
-                </Link>
-                .
-              </p>
-            )}
+            <p className="ap-legal">
+              <Link to="/terms">Terms of Service</Link>
+              <span aria-hidden>·</span>
+              <Link to="/privacy">Privacy</Link>
+              <span aria-hidden>·</span>
+              <Link to="/security">Security</Link>
+            </p>
           </div>
         </section>
+
+        {/* RIGHT — animated proof */}
+        <aside className="ap-showcase" aria-label="Customer outcomes">
+          <div className="ap-showcase-grid" aria-hidden />
+          <div className="ap-showcase-glow" aria-hidden />
+          <article className="ap-proof-card" key={proofIndex}>
+            <p className="ap-proof-org">{proof.org}</p>
+            <blockquote className="ap-proof-quote">{proof.quote}</blockquote>
+            <footer className="ap-proof-meta">
+              <strong>{proof.name}</strong>
+              <span>{proof.role}</span>
+            </footer>
+          </article>
+          <div className="ap-proof-dots" aria-hidden>
+            {PROOF_CARDS.map((_, i) => (
+              <button
+                key={PROOF_CARDS[i].org}
+                type="button"
+                className={`ap-proof-dot${i === proofIndex ? ' is-active' : ''}`}
+                onClick={() => setProofIndex(i)}
+                aria-label={`Show story ${i + 1}`}
+              />
+            ))}
+          </div>
+        </aside>
       </div>
     </main>
   );

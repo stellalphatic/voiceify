@@ -51,6 +51,8 @@ import DashboardTopbar from '@/components/dashboard/DashboardTopbar';
 import StatCard from '@/components/dashboard/StatCard';
 import OverviewDashboard from '@/components/dashboard/OverviewDashboard';
 import AnalyticsDashboard from '@/components/dashboard/AnalyticsDashboard';
+import SettingsWorkspace from '@/components/dashboard/SettingsWorkspace';
+import IntegrationsWorkspace from '@/components/dashboard/IntegrationsWorkspace';
 import {
   PhoneCall,
   Timer,
@@ -69,7 +71,7 @@ import {
 } from 'lucide-react';
 import '../dashboard.css';
 import { useVoiceAgentFromRecord } from '../lib/voice-agent/useVoiceAgentFromRecord';
-import { useAgentStore } from '../lib/agents/AgentStoreContext';
+import { useAgentStore, type AppAgent } from '../lib/agents/AgentStoreContext';
 import { apiJson, getActiveOrgId } from '../lib/auth/client';
 import {
   resolveLanguageMode,
@@ -1244,8 +1246,34 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent: (agent: Agent) => void }) => {
   const location = useLocation();
-  const [activeAgentId, setActiveAgentId] = useState<number>(location.state?.agentId || agents[0]?.id || 1);
+  const navigate = useNavigate();
+  const [activeAgentId, setActiveAgentId] = useState<number | null>(
+    location.state?.agentId || agents[0]?.id || null,
+  );
   const activeAgent = agents.find(a => a.id === activeAgentId) || agents[0];
+
+  if (!agents.length || !activeAgent) {
+    return (
+      <div className="vfy-overview">
+        <div className="vfy-page-head">
+          <div className="vfy-page-head-titles">
+            <p className="vfy-page-eyebrow">// sandbox</p>
+            <h1 className="vfy-page-title">Sandbox</h1>
+            <p className="vfy-page-sub">
+              Create an agent first, then talk to it here with your microphone.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="vfy-btn vfy-btn-primary"
+            onClick={() => navigate('/dashboard/agents')}
+          >
+            Go to agents
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const {
     status,
@@ -1400,7 +1428,7 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
 
         <div className="vfy-sandbox-controls">
           <div className="vfy-select-wrap" style={{ minWidth: 200 }}>
-            <select value={activeAgentId} onChange={(e) => handleAgentSwitch(Number(e.target.value))}>
+            <select value={activeAgent.id} onChange={(e) => handleAgentSwitch(Number(e.target.value))}>
               {agents.map(agent => (
                 <option key={agent.id} value={agent.id}>{agent.name} ({agent.type})</option>
               ))}
@@ -1853,165 +1881,7 @@ const AgentsView = ({
 };
 
 
-const SettingsView = () => {
-  const [billing, setBilling] = useState<{
-    creditBalanceCents: number;
-    billing?: {
-      mode: string;
-      stripeEnabled: boolean;
-      topupAvailable: boolean;
-      message: string;
-    };
-  } | null>(null);
-  const [billingBusy, setBillingBusy] = useState(false);
-  const [billingError, setBillingError] = useState<string | null>(null);
-  const orgId = getActiveOrgId();
-
-  useEffect(() => {
-    if (!orgId) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const data = await apiJson<NonNullable<typeof billing>>(
-          `/api/orgs/${orgId}/billing`,
-        );
-        if (!cancelled) setBilling(data);
-      } catch (err) {
-        if (!cancelled) {
-          setBillingError(
-            err instanceof Error ? err.message : 'Unable to load billing',
-          );
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [orgId]);
-
-  const topUp = async () => {
-    if (!orgId || !billing?.billing?.topupAvailable) return;
-    setBillingBusy(true);
-    setBillingError(null);
-    try {
-      const result = await apiJson<{
-        creditBalanceCents: number;
-        mode: string;
-      }>(`/api/orgs/${orgId}/billing/topup`, {
-        method: 'POST',
-        body: JSON.stringify({ amountCents: 2500 }),
-      });
-      setBilling((prev) =>
-        prev
-          ? {
-              ...prev,
-              creditBalanceCents: result.creditBalanceCents,
-            }
-          : prev,
-      );
-    } catch (err) {
-      setBillingError(
-        err instanceof Error ? err.message : 'Top-up failed',
-      );
-    } finally {
-      setBillingBusy(false);
-    }
-  };
-
-  return (
-    <div className="max-w-3xl">
-      <div className="vfy-page-head">
-        <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// settings · workspace</p>
-          <h1 className="vfy-page-title">Settings</h1>
-          <p className="vfy-page-sub">
-            Voice pipeline keys stay on the server. Manage credits without Stripe when it is not configured.
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        <div className="bg-voice-surface border border-voice-border rounded-2xl p-6 shadow-sm">
-          <h3 className="text-lg font-bold text-voice-text mb-4 flex items-center gap-2">
-            <Zap className="w-5 h-5 text-voice-accent" />
-            Credits &amp; billing
-          </h3>
-          {!orgId && (
-            <p className="text-sm text-voice-muted">Select or create a workspace first.</p>
-          )}
-          {billingError && (
-            <p className="text-sm text-red-500 mb-3" role="alert">{billingError}</p>
-          )}
-          {billing && (
-            <>
-              <p className="text-3xl font-bold text-voice-text mb-1">
-                ${(billing.creditBalanceCents / 100).toFixed(2)}
-              </p>
-              <p className="text-sm text-voice-muted mb-4">
-                {billing.billing?.message ?? 'Credit wallet'}
-                {billing.billing?.mode
-                  ? ` · mode: ${billing.billing.mode}`
-                  : ''}
-              </p>
-              <button
-                type="button"
-                className="vfy-btn vfy-btn-primary"
-                disabled={billingBusy || !billing.billing?.topupAvailable}
-                onClick={() => void topUp()}
-              >
-                {billingBusy ? 'Adding…' : 'Add $25 demo credits'}
-              </button>
-              {!billing.billing?.stripeEnabled && (
-                <p className="text-xs text-voice-muted mt-3">
-                  Stripe is optional and currently off. Platform admins can also grant credits from /admin.
-                </p>
-              )}
-            </>
-          )}
-        </div>
-
-        <div className="bg-voice-surface border border-voice-border rounded-2xl p-6 shadow-sm">
-          <h3 className="text-lg font-bold text-voice-text mb-4 flex items-center gap-2">
-            <Zap className="w-5 h-5 text-voice-accent" />
-            Voice Pipeline (Server-managed)
-          </h3>
-          <p className="text-sm text-voice-muted mb-4">
-            Gemini (LLM), Groq, and ElevenLabs (TTS + Scribe STT) run on the API server.
-            You never paste provider keys into the browser.
-          </p>
-          <div className="flex items-center gap-4 p-4 bg-voice-bg border border-voice-border rounded-xl">
-            <CheckCircle2 className="w-5 h-5 text-voice-success-bright shrink-0" />
-            <div className="flex-1">
-              <h4 className="text-sm font-medium text-voice-text">Keys configured on server</h4>
-              <p className="text-xs text-voice-muted">
-                Set <code>GEMINI_API_KEY</code>, <code>GROQ_API_KEY</code>, and <code>ELEVENLABS_API_KEY</code> in <code>.env</code>.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-voice-surface border border-voice-border rounded-2xl p-6 shadow-sm">
-          <h3 className="text-lg font-bold text-voice-text mb-4 flex items-center gap-2">
-            <Code className="w-5 h-5 text-voice-text" />
-            Tools &amp; webhooks
-          </h3>
-          <p className="text-sm text-voice-muted mb-4">
-            HTTP tools and Automation Packs are managed via the API. Configure outbound webhooks from your org tools endpoints.
-          </p>
-          <div className="flex items-center gap-4 p-4 bg-voice-bg border border-voice-border rounded-xl">
-            <AlertCircle className="w-5 h-5 text-voice-accent" />
-            <div className="flex-1">
-              <h4 className="text-sm font-medium text-voice-text">API-first integrations</h4>
-              <p className="text-xs text-voice-muted">
-                Use OpenAPI at <code>/api/openapi.json</code> for tools, packs, and usage.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+const SettingsView = () => <SettingsWorkspace />;
 
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, agentName }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, agentName: string }) => {
   if (!isOpen) return null;
@@ -2345,7 +2215,7 @@ function DashboardChrome({
 }
 
 export default function DashboardLayout() {
-  const { agents, setAgents, updateAgent } = useAgentStore();
+  const { agents, setAgents, updateAgent, createAgent, deleteAgent } = useAgentStore();
   const dashboardAgents = asDashboardAgents(agents);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -2357,28 +2227,39 @@ export default function DashboardLayout() {
   const [sideOpen, setSideOpen] = useState(false);
 
   const handleSaveAgent = (agentData: Agent) => {
-    if (editingAgent) {
-      setAgents(agents.map(a => a.id === agentData.id ? agentData : a));
-    } else {
-      setAgents([...agents, { ...agentData, tasks: agentData.tasks ?? [] }]);
-    }
-    setEditingAgent(null);
+    void (async () => {
+      if (editingAgent) {
+        updateAgent(agentData as AppAgent);
+      } else {
+        try {
+          await createAgent({ ...agentData, tasks: agentData.tasks ?? [], isDemoDefault: false } as AppAgent);
+        } catch {
+          setAgents([...agents, { ...agentData, tasks: agentData.tasks ?? [] }]);
+        }
+      }
+      setEditingAgent(null);
+    })();
   };
 
   const handleUpdateTasks = (agentId: number, tasks: Task[]) => {
-    setAgents(agents.map(a => a.id === agentId ? { ...a, tasks } : a));
-    // Also update the local taskAgent state to reflect changes immediately in the modal
+    const current = agents.find((a) => a.id === agentId);
+    if (current) updateAgent({ ...current, tasks });
     if (taskAgent && taskAgent.id === agentId) {
       setTaskAgent({ ...taskAgent, tasks });
     }
   };
 
   const handleConfirmDelete = () => {
-    if (deletingAgent) {
-      setAgents(agents.filter(a => a.id !== deletingAgent.id));
+    if (!deletingAgent) return;
+    void (async () => {
+      try {
+        await deleteAgent(deletingAgent as AppAgent);
+      } catch {
+        setAgents(agents.filter((a) => a.id !== deletingAgent.id));
+      }
       setDeletingAgent(null);
       setIsDeleteModalOpen(false);
-    }
+    })();
   };
 
   const handleDeleteClick = (agent: Agent) => {
@@ -2471,31 +2352,7 @@ export default function DashboardLayout() {
         <Route path="sandbox" element={<SandboxView agents={dashboardAgents} onUpdateAgent={handleAgentUpdate} />} />
         <Route path="settings" element={<SettingsView />} />
         <Route path="analytics" element={<AnalyticsView />} />
-        <Route
-          path="integrations"
-          element={
-            <div>
-              <div className="vfy-page-head">
-                <div className="vfy-page-head-titles">
-                  <p className="vfy-page-eyebrow">// integrations</p>
-                  <h1 className="vfy-page-title">Connect your stack</h1>
-                  <p className="vfy-page-sub">Link Voiceify to Google Sheets, n8n, Slack, and your CRM.</p>
-                </div>
-              </div>
-              <div className="vfy-panel">
-                <div className="vfy-panel-body--padded" style={{ padding: 64, textAlign: 'center' }}>
-                  <WebhookIcon size={36} color="var(--d-dim)" style={{ marginBottom: 12 }} />
-                  <h3 style={{ fontFamily: 'var(--d-sans)', color: 'var(--d-text)', fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>
-                    Integrations are coming
-                  </h3>
-                  <p style={{ color: 'var(--d-muted)', fontSize: 13, margin: 0 }}>
-                    We're rolling out webhook templates and OAuth-based connectors. Stay tuned.
-                  </p>
-                </div>
-              </div>
-            </div>
-          }
-        />
+        <Route path="integrations" element={<IntegrationsWorkspace />} />
       </Routes>
     </DashboardChrome>
   );

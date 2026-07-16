@@ -79,6 +79,8 @@ Reset flow: `/auth?mode=forgot` → email link → `/auth/reset-password?token=�
 
 CI/CD secrets and EC2 auto-deploy: see [github-actions-ec2.md](./github-actions-ec2.md).
 
+Docker Compose profiles, TLS, and why `--force-recreate` matters: see [first-principles-docker.md](./first-principles-docker.md).
+
 ### 1e. Stripe (skip for now)
 
 Leave these unset / false:

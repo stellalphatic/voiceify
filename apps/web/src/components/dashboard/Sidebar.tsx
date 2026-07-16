@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import {
   Activity,
   BarChart3,
   Bot,
+  KeyRound,
   Search,
   Settings,
   Shield,
@@ -14,30 +15,36 @@ import {
 } from 'lucide-react';
 import { useAuthAccountOptional } from '../../lib/auth/AuthAccountContext';
 import { setConsoleMode } from '../../lib/auth/console-mode';
+import { apiJson, getActiveOrgId } from '../../lib/auth/client';
 
 type NavItem = {
   id: string;
   icon: LucideIcon;
   label: string;
   path: string;
-  badge?: string;
 };
 
 const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
-    title: 'Workspace',
+    title: 'Build',
     items: [
       { id: 'dashboard', icon: BarChart3, label: 'Overview', path: '/dashboard' },
       { id: 'agents', icon: Users, label: 'Agents', path: '/dashboard/agents' },
       { id: 'sandbox', icon: TerminalSquare, label: 'Sandbox', path: '/dashboard/sandbox' },
+    ],
+  },
+  {
+    title: 'Observe',
+    items: [
       { id: 'analytics', icon: Activity, label: 'Analytics', path: '/dashboard/analytics' },
     ],
   },
   {
-    title: 'Build',
+    title: 'Manage',
     items: [
       { id: 'integrations', icon: Webhook, label: 'Integrations', path: '/dashboard/integrations' },
       { id: 'settings', icon: Settings, label: 'Settings', path: '/dashboard/settings' },
+      { id: 'api-keys', icon: KeyRound, label: 'API keys', path: '/dashboard/settings' },
     ],
   },
 ];
@@ -70,6 +77,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const displayName = account?.user.name?.trim() || 'Account';
   const displayEmail = account?.user.email || '';
   const isAdmin = account?.user.platformRole === 'super_admin';
+  const [credits, setCredits] = useState<number | null>(null);
 
   useEffect(() => {
     onClose();
@@ -77,14 +85,23 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, [pathname]);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
+    const orgId = getActiveOrgId();
+    if (!orgId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiJson<{ creditBalanceCents: number }>(
+          `/api/orgs/${orgId}/billing`,
+        );
+        if (!cancelled) setCredits(data.creditBalanceCents);
+      } catch {
+        if (!cancelled) setCredits(null);
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [pathname]);
 
   return (
     <>
@@ -98,8 +115,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <span className="vfy-side-brand-orb">
             <Bot size={16} strokeWidth={2.4} />
           </span>
-          <span className="vfy-side-brand-text vfy-side-collapse-hide">Voiceify</span>
+          <span className="vfy-side-brand-text vfy-side-collapse-hide">voiceify</span>
         </Link>
+
+        <div className="vfy-side-account vfy-side-collapse-hide">
+          <p className="vfy-side-account-email">{displayEmail || displayName}</p>
+        </div>
 
         <button type="button" className="vfy-side-cmd" aria-label="Search">
           <Search size={16} strokeWidth={2.25} />
@@ -112,7 +133,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <p className="vfy-side-section-title">{group.title}</p>
             <nav className="vfy-side-nav">
               {group.items.map((item) => {
-                const active = isActive(pathname, item.path);
+                const active =
+                  item.id === 'api-keys'
+                    ? pathname.startsWith('/dashboard/settings')
+                    : isActive(pathname, item.path);
                 const Icon = item.icon;
                 return (
                   <Link
@@ -124,9 +148,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   >
                     <Icon size={18} strokeWidth={2.25} />
                     <span className="vfy-side-collapse-hide">{item.label}</span>
-                    {item.badge && (
-                      <span className="vfy-side-link-badge vfy-side-collapse-hide">{item.badge}</span>
-                    )}
                   </Link>
                 );
               })}
@@ -153,14 +174,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <div className="vfy-side-spacer" aria-hidden="true" />
 
-        <Link to="/dashboard/settings" className="vfy-side-pro" style={{ textDecoration: 'none' }}>
-          <p className="vfy-side-pro-eyebrow">Workspace</p>
-          <p className="vfy-side-pro-title">Credits &amp; billing</p>
-          <p className="vfy-side-pro-sub">
-            View balance, usage, and request more credits from platform admin.
+        <div className="vfy-side-credits vfy-side-collapse-hide">
+          <p className="vfy-side-credits-label">Credits</p>
+          <p className="vfy-side-credits-value">
+            {credits == null ? '—' : `$${(credits / 100).toFixed(2)}`}
           </p>
-          <span className="vfy-side-pro-cta">Open settings</span>
-        </Link>
+          <Link to="/dashboard/settings" className="vfy-side-credits-cta">
+            Manage
+          </Link>
+        </div>
 
         <div className="vfy-side-user">
           <span className="vfy-side-user-avatar">{initialsOf(displayName)}</span>

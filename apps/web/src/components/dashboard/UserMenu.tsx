@@ -1,5 +1,5 @@
 /**
- * UserMenu — avatar + dropdown backed by the authenticated session.
+ * UserMenu — avatar + dropdown with high-contrast dashboard tokens.
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -67,31 +67,28 @@ export default function UserMenu({
   };
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="vfy-user-menu">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="w-9 h-9 rounded-none border border-voice-border bg-voice-surface flex items-center justify-center text-sm font-semibold text-voice-text hover:border-voice-accent transition-colors"
+        className="vfy-user-menu-trigger"
         title={resolvedName}
       >
         {initialsOf(resolvedName)}
       </button>
 
       {open && (
-        <div
-          role="menu"
-          className="absolute right-0 mt-2 w-56 rounded-none border border-voice-border bg-voice-surface shadow-lg z-50 py-1"
-        >
-          <div className="px-3 py-2 border-b border-voice-border">
-            <p className="text-sm font-medium text-voice-text truncate">{resolvedName}</p>
-            <p className="text-xs text-voice-muted truncate">{resolvedEmail}</p>
+        <div role="menu" className="vfy-user-menu-panel">
+          <div className="vfy-user-menu-head">
+            <p className="vfy-user-menu-name">{resolvedName}</p>
+            <p className="vfy-user-menu-email">{resolvedEmail}</p>
           </div>
           <Link
             to="/dashboard/settings"
             role="menuitem"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-voice-text hover:bg-voice-border/40"
+            className="vfy-user-menu-item"
             onClick={() => setOpen(false)}
           >
             <Settings size={14} />
@@ -100,7 +97,7 @@ export default function UserMenu({
           <Link
             to="/dashboard"
             role="menuitem"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-voice-text hover:bg-voice-border/40"
+            className="vfy-user-menu-item"
             onClick={() => setOpen(false)}
           >
             <User size={14} />
@@ -110,7 +107,7 @@ export default function UserMenu({
             <Link
               to="/admin"
               role="menuitem"
-              className="flex items-center gap-2 px-3 py-2 text-sm text-voice-text hover:bg-voice-border/40"
+              className="vfy-user-menu-item"
               onClick={() => {
                 setConsoleMode('admin');
                 setOpen(false);
@@ -124,7 +121,7 @@ export default function UserMenu({
             type="button"
             role="menuitem"
             onClick={handleSignOut}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-voice-text hover:bg-voice-border/40 text-left"
+            className="vfy-user-menu-item"
           >
             <LogOut size={14} />
             Sign out

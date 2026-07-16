@@ -27,6 +27,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { assertOrgHasCredits, recordUsageAndDebit } from "../lib/credits.js";
 import type { AppEnv } from "../lib/types.js";
+import { requireSessionOrOrgApiKey } from "../middleware/session-or-api-key.js";
 import { requireOrg } from "../middleware/org.js";
 import { rateLimit } from "../middleware/rate-limit.js";
 import { requireSession } from "../middleware/session.js";
@@ -86,7 +87,7 @@ const turnSchema = z.object({
  */
 voiceRoutes.post(
   "/:orgId/agents/:agentId/turn",
-  requireSession,
+  requireSessionOrOrgApiKey,
   requireOrg("agents:read"),
   async (c) => {
     const orgId = c.get("orgId");

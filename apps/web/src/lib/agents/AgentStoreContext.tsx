@@ -22,6 +22,8 @@ interface AgentStoreValue {
   agents: AppAgent[];
   setAgents: React.Dispatch<React.SetStateAction<AppAgent[]>>;
   updateAgent: (agent: AppAgent) => void;
+  createAgent: (agent: AppAgent) => Promise<AppAgent>;
+  deleteAgent: (agent: AppAgent) => Promise<void>;
   getAgentById: (id: number) => AppAgent | undefined;
   getAgentForPersona: (personaId: string) => AppAgent | undefined;
   refreshFromApi: () => Promise<void>;
@@ -119,7 +121,6 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
   const updateAgent = useCallback((agent: AppAgent) => {
     setAgents((prev) => prev.map((a) => (a.id === agent.id ? { ...a, ...agent } : a)));
 
-    // Persist server agents so edits survive refresh / other clients
     const activeOrg = getActiveOrgId();
     if (activeOrg && agent.serverId) {
       void apiJson(`/api/orgs/${activeOrg}/agents/${agent.serverId}`, {
@@ -143,6 +144,66 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const createAgent = useCallback(async (agent: AppAgent): Promise<AppAgent> => {
+    const activeOrg = getActiveOrgId();
+    if (!activeOrg) {
+      setAgents((prev) => [...prev, { ...agent, isDemoDefault: false }]);
+      return agent;
+    }
+
+    const created = await apiJson<{
+      agent: {
+        id: string;
+        name: string;
+        type: string;
+        language: string;
+        status: string;
+        greeting: string | null;
+        voiceId: string | null;
+      };
+    }>(`/api/orgs/${activeOrg}/agents`, {
+      method: "POST",
+      body: JSON.stringify({
+        name: agent.name,
+        type: agent.type,
+        language: agent.language,
+        greeting: agent.greeting,
+        voiceId: agent.voice,
+        capabilities: Object.fromEntries(
+          (agent.capabilities ?? []).map((c) => [c, true]),
+        ),
+        triggers: Object.fromEntries(
+          (agent.triggers ?? []).map((t) => [t, true]),
+        ),
+      }),
+    });
+
+    const mapped: AppAgent = {
+      ...agent,
+      id: uuidToNumericId(created.agent.id),
+      serverId: created.agent.id,
+      name: created.agent.name,
+      type: created.agent.type,
+      language: created.agent.language,
+      status: created.agent.status === "active" ? "Active" : "Inactive",
+      greeting: created.agent.greeting ?? undefined,
+      voice: created.agent.voiceId ?? undefined,
+      isDemoDefault: false,
+    };
+    setAgents((prev) => [...prev, mapped]);
+    return mapped;
+  }, []);
+
+  const deleteAgent = useCallback(async (agent: AppAgent) => {
+    const activeOrg = getActiveOrgId();
+    if (activeOrg && agent.serverId) {
+      await apiJson(`/api/orgs/${activeOrg}/agents/${agent.serverId}`, {
+        method: "DELETE",
+      });
+    }
+    setAgents((prev) => prev.filter((a) => a.id !== agent.id));
+  }, []);
+
   const getAgentById = useCallback(
     (id: number) => agents.find((a) => a.id === id),
     [agents],
@@ -158,12 +219,23 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
       agents,
       setAgents,
       updateAgent,
+      createAgent,
+      deleteAgent,
       getAgentById,
       getAgentForPersona,
       refreshFromApi,
       orgId,
     }),
-    [agents, updateAgent, getAgentById, getAgentForPersona, refreshFromApi, orgId],
+    [
+      agents,
+      updateAgent,
+      createAgent,
+      deleteAgent,
+      getAgentById,
+      getAgentForPersona,
+      refreshFromApi,
+      orgId,
+    ],
   );
 
   return (
