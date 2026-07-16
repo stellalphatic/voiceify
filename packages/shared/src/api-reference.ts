@@ -57,6 +57,7 @@ export interface ApiEndpointDoc {
 export const API_NAV_SECTIONS = [
   { id: 'overview', label: 'Overview' },
   { id: 'authentication', label: 'Authentication' },
+  { id: 'embed', label: 'Website embed' },
   { id: 'personas', label: 'Personas' },
   { id: 'endpoints', label: 'Endpoints' },
   { id: 'streaming', label: 'Streaming' },
@@ -75,18 +76,14 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
     responseContentType: 'application/json',
     responseFields: [
       { name: 'status', type: 'string', desc: 'Always "ok" when the service is running' },
-      { name: 'gemini', type: 'boolean', desc: 'Whether GEMINI_API_KEY is configured' },
-      { name: 'elevenlabs', type: 'boolean', desc: 'Whether ELEVENLABS_API_KEY is configured' },
       { name: 'models', type: 'object', desc: 'Active LLM, TTS, and STT model IDs' },
       { name: 'stack', type: 'object', desc: 'Human-readable stack summary' },
     ],
     responseExample: `{
   "status": "ok",
-  "gemini": true,
-  "elevenlabs": true,
   "models": {
-    "llm": "gemini-2.5-flash",
-    "tts": "eleven_flash_v2_5",
+    "llm": "llama-3.1-8b-instant",
+    "tts": "flash_v2_5",
     "stt": "scribe_v2"
   },
   "targetLatencyMs": 500
@@ -94,29 +91,63 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
     notes: ['Use before starting a voice session to verify keys and models.'],
   },
   {
-    id: 'agents',
-    method: 'GET',
-    path: '/api/agents',
-    title: 'List agents',
-    description: 'Dashboard-friendly list of demo agent personas.',
-    auth: false,
-    responseContentType: 'application/json',
-    responseExample: `[
-  { "id": "restaurant", "name": "Nova", "tagline": "Rush-hour reservations", "status": "active" }
-]`,
-  },
-  {
     id: 'voice-voices',
     method: 'GET',
-    path: '/api/voice-voices',
+    path: '/api/voice/voices',
     title: 'List voices & personas',
-    description: 'ElevenLabs voices (up to 30) plus Voiceify persona voice mappings.',
+    description: 'Production voice catalog (up to 30) plus Voiceify persona voice mappings. Filter by accent and language labels in the dashboard Voices page.',
     auth: false,
     responseContentType: 'application/json',
     responseExample: `{
-  "voices": [{ "id": "EXAVITQu4vr4xnSDxMaL", "name": "Sarah", "labels": {} }],
+  "voices": [{ "id": "EXAVITQu4vr4xnSDxMaL", "name": "Sarah", "labels": { "accent": "american", "language": "en" } }],
   "personas": [{ "id": "restaurant", "name": "Nova", "tagline": "Rush-hour reservations", "voiceId": "EXAVITQu4vr4xnSDxMaL" }]
 }`,
+  },
+  {
+    id: 'org-agent-turn',
+    method: 'POST',
+    path: '/api/voice/:orgId/agents/:agentId/turn',
+    title: 'Tenant agent turn',
+    description:
+      'Metered voice turn for a workspace agent. Accepts session cookies or Authorization: Bearer vfk_… API keys. Injects knowledge-base chunks and can dispatch installed tools.',
+    auth: true,
+    requestContentType: 'application/json',
+    responseContentType: 'application/json',
+    body: [
+      { name: 'message', type: 'string', required: true, desc: 'Caller utterance' },
+      { name: 'history', type: 'array', desc: 'Prior turns for context' },
+      { name: 'language', type: 'string', desc: 'en | ur | auto / mixed' },
+    ],
+    requestExample: `curl -X POST https://voiceify.metapresence.co/api/voice/ORG_ID/agents/AGENT_ID/turn \\
+  -H "Authorization: Bearer vfk_YOUR_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "message": "I need a table for two", "history": [], "language": "auto" }'`,
+    notes: [
+      'Preferred path for production website backends and the dashboard sandbox.',
+      'Credits are deducted per successful turn.',
+    ],
+  },
+  {
+    id: 'embed-session',
+    method: 'POST',
+    path: '/api/public/session',
+    title: 'Public embed session',
+    description:
+      'Start a browser widget session with a public vw_… embed token. Origin allowlists are enforced server-side.',
+    auth: false,
+    requestContentType: 'application/json',
+    responseContentType: 'application/json',
+    body: [
+      { name: 'publicKey', type: 'string', required: true, desc: 'Embed token starting with vw_' },
+      { name: 'origin', type: 'string', desc: 'Calling page origin (validated against allowlist)' },
+    ],
+    requestExample: `curl -X POST https://voiceify.metapresence.co/api/public/session \\
+  -H "Content-Type: application/json" \\
+  -d '{ "publicKey": "vw_…", "origin": "https://your-site.com" }'`,
+    notes: [
+      'Create tokens in Dashboard → API keys → Embed widget.',
+      'Load https://voiceify.metapresence.co/widget.js with data-token="vw_…".',
+    ],
   },
   {
     id: 'voice-chat',
@@ -185,15 +216,15 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
     id: 'voice-transcribe',
     method: 'POST',
     path: '/api/voice/transcribe',
-    title: 'Speech-to-text (Scribe)',
-    description: 'Transcribe base64 audio via ElevenLabs Scribe v2. Optional speaker diarization.',
+    title: 'Speech-to-text',
+    description: 'Transcribe base64 audio via the Voiceify STT pipeline. Optional speaker diarization.',
     auth: true,
     requestContentType: 'application/json',
     responseContentType: 'application/json',
     body: [
       { name: 'audio', type: 'string', required: true, desc: 'Base64-encoded audio (max 8 MB decoded)' },
       { name: 'mimeType', type: 'string', desc: 'audio/webm (default), audio/wav, etc.' },
-      { name: 'languageCode', type: 'string', desc: 'Scribe hint: eng, urd, etc.' },
+      { name: 'languageCode', type: 'string', desc: 'Language hint: eng, urd, etc.' },
       { name: 'diarize', type: 'boolean', desc: 'true enables multi-speaker segmentation (slower)' },
       { name: 'maxSpeakers', type: 'number', desc: '2–8 when diarize is true' },
     ],
@@ -213,7 +244,7 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
     method: 'POST',
     path: '/api/voice/warmup',
     title: 'Warm up TTS',
-    description: 'Prime ElevenLabs connection for a persona voice. Call at session start to reduce first-reply latency.',
+    description: 'Prime the TTS connection for a persona voice. Call at session start to reduce first-reply latency.',
     auth: true,
     requestContentType: 'application/json',
     responseContentType: 'application/json',
@@ -224,8 +255,8 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
     id: 'gemini',
     method: 'POST',
     path: '/api/gemini',
-    title: 'Gemini text proxy',
-    description: 'Server-side Gemini generateContent. API key never exposed to the browser.',
+    title: 'LLM text proxy',
+    description: 'Server-side LLM generateContent. Provider API keys never exposed to the browser.',
     auth: true,
     requestContentType: 'application/json',
     responseContentType: 'application/json',
@@ -250,7 +281,7 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
     responseContentType: 'audio/pcm',
     body: [
       { name: 'text', type: 'string', required: true, desc: 'Text to speak (max 400 chars)' },
-      { name: 'voiceId', type: 'string', desc: 'ElevenLabs voice ID' },
+      { name: 'voiceId', type: 'string', desc: 'Voice library ID from GET /api/voice/voices' },
     ],
   },
   {
@@ -270,7 +301,7 @@ export const API_ERRORS = [
   { code: 401, title: 'Unauthorized', desc: 'Invalid or missing API key when VOICEIFY_API_KEY is set.' },
   { code: 413, title: 'Payload Too Large', desc: 'Message > 2000 chars or audio > 8 MB.' },
   { code: 429, title: 'Rate Limited', desc: '60 requests per minute per IP (sliding window).' },
-  { code: 502, title: 'Upstream Error', desc: 'Gemini or ElevenLabs call failed.' },
+  { code: 502, title: 'Upstream Error', desc: 'Speech or LLM upstream call failed.' },
 ];
 
 export const NDJSON_EVENTS = [

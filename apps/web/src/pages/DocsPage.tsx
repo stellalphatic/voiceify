@@ -110,7 +110,7 @@ export default function DocsPage() {
           <p className="docs-hero__eyebrow">Developer docs · v{API_VERSION}</p>
           <h1 className="docs-hero__title">Voiceify API</h1>
           <p className="docs-hero__desc">
-            REST endpoints for voice agents — Gemini LLM, ElevenLabs Scribe STT, and Flash TTS.
+            Production REST APIs for voice agents, website embeds, API keys, knowledge retrieval, and tools.
             Base URL: <code>{BASE}/api</code>
           </p>
         </header>
@@ -118,7 +118,7 @@ export default function DocsPage() {
         <section id="overview" className="docs-section">
           <p className="docs-section__label"><BookOpen size={14} /> Overview</p>
           <h2>Quick start</h2>
-          <p>Check service health, then send a text message to Nova:</p>
+          <p>Check service health, then call a workspace agent with your API key:</p>
           <div className="docs-code-gap">
             <CodeBlock
               language="bash"
@@ -129,49 +129,84 @@ export default function DocsPage() {
           <div className="docs-code-gap">
             <CodeBlock
               language="bash"
-              filename="chat.sh"
-              code={`curl -X POST ${BASE}/api/voice-chat \\
+              filename="agent-turn.sh"
+              code={`curl -X POST ${BASE}/api/voice/ORG_ID/agents/AGENT_ID/turn \\
+  -H "Authorization: Bearer vfk_YOUR_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{"message":"Book a table for four at eight","personaId":"restaurant"}'`}
+  -d '{"message":"Book a table for four at eight","history":[],"language":"auto"}'`}
             />
           </div>
           <Callout kind="tip">
-            For full voice (LLM + streamed audio), use <code>POST /api/voice/respond</code> and parse the NDJSON stream.
-            Try the <Link to="/demo">live demo</Link> first.
+            Create keys in <Link to="/dashboard/api-keys">Dashboard → API keys</Link>.
+            Try the <Link to="/demo">live demo</Link> or <Link to="/dashboard/sandbox">Sandbox</Link> first.
           </Callout>
-          <h3>Stack</h3>
+          <h3>Capabilities</h3>
           <ul>
-            <li><strong>LLM</strong> — Google Gemini 2.5 Flash</li>
-            <li><strong>STT</strong> — ElevenLabs Scribe v2</li>
-            <li><strong>TTS</strong> — ElevenLabs Flash v2.5 (22050 Hz PCM)</li>
-            <li><strong>Target latency</strong> — &lt;500ms time-to-first-audio</li>
+            <li><strong>Voice turn API</strong> — metered agent replies with STT / LLM / TTS on the server</li>
+            <li><strong>Website embed</strong> — public <code>vw_</code> tokens + <code>/widget.js</code></li>
+            <li><strong>Knowledge</strong> — upload docs that inject into live turns</li>
+            <li><strong>Tools</strong> — HTTP bridges to CRM, POS, databases, and MCP gateways</li>
+            <li><strong>Languages</strong> — English, Urdu, and auto-detect for mixed callers</li>
+            <li><strong>Target latency</strong> — sub-500ms time-to-first-audio on the streaming path</li>
           </ul>
         </section>
 
         <section id="authentication" className="docs-section">
           <p className="docs-section__label"><Key size={14} /> Authentication</p>
-          <h2>API key (optional in dev)</h2>
+          <h2>Workspace API keys</h2>
           <p>
-            When <code>VOICEIFY_API_KEY</code> is set on the server, protected routes require a header:
+            Production backends should use a workspace key created in the dashboard (<code>vfk_…</code>):
           </p>
           <div className="docs-code-gap">
             <CodeBlock
               language="bash"
-              code={`x-voiceify-key: your-server-api-key
+              code={`Authorization: Bearer vfk_YOUR_KEY
 # or
-Authorization: Bearer your-server-api-key`}
+x-voiceify-key: vfk_YOUR_KEY`}
             />
           </div>
-          <p>Public routes (no key): <code>GET /api/health</code>, <code>GET /api/agents</code>, <code>GET /api/voice-voices</code>, <code>GET /api/openapi</code>.</p>
+          <p>
+            Public routes (no key): <code>GET /api/health</code>, <code>GET /api/voice/voices</code>,{' '}
+            <code>GET /api/openapi.json</code>, <code>POST /api/public/session</code> (embed token required in body).
+          </p>
           <Callout>
-            Server secrets (<code>GEMINI_API_KEY</code>, <code>ELEVENLABS_API_KEY</code>) stay on the server — never put them in browser code.
+            Speech and LLM provider secrets stay on the Voiceify API host. Never paste them into browser code or customer sites.
+          </Callout>
+        </section>
+
+        <section id="embed" className="docs-section">
+          <p className="docs-section__label"><Zap size={14} /> Website embed</p>
+          <h2>Put an agent on your site</h2>
+          <p>
+            Generate an embed token in <Link to="/dashboard/api-keys">API keys → Embed widget</Link>, then drop the snippet on any page:
+          </p>
+          <div className="docs-code-gap">
+            <CodeBlock
+              language="html"
+              filename="embed.html"
+              code={`<script
+  src="${BASE}/widget.js"
+  data-token="vw_YOUR_PUBLIC_KEY"
+  async
+></script>`}
+            />
+          </div>
+          <ParamTable
+            rows={[
+              { name: 'data-token', type: 'string', required: true, desc: 'Public embed key (vw_…)' },
+              { name: 'origin allowlist', type: 'string[]', desc: 'Configured when creating the embed; wildcards supported' },
+            ]}
+          />
+          <Callout kind="tip">
+            For full server control (customer support backends, POS lookups, CRM writes), prefer the{' '}
+            <code>vfk_</code> API key + <code>/api/voice/:orgId/agents/:agentId/turn</code> endpoint instead of the public widget.
           </Callout>
         </section>
 
         <section id="personas" className="docs-section">
           <p className="docs-section__label"><Terminal size={14} /> Personas</p>
-          <h2>Agent personas</h2>
-          <p>Pass <code>personaId</code> on chat and voice endpoints:</p>
+          <h2>Demo personas</h2>
+          <p>Pass <code>personaId</code> on demo chat and streaming endpoints:</p>
           <div className="docs-persona-grid">
             {API_PERSONAS.map((p) => (
               <div key={p.id} className="docs-persona-card">
@@ -296,10 +331,10 @@ while (true) {
           <h2>Machine-readable spec</h2>
           <p>Download the OpenAPI 3.1 spec for codegen and API clients:</p>
           <div className="docs-code-gap">
-            <CodeBlock language="bash" code={`curl ${BASE}/api/openapi`} />
+            <CodeBlock language="bash" code={`curl ${BASE}/api/openapi.json`} />
           </div>
           <Callout kind="tip">
-            Import into Postman, Insomnia, or <code>npx openapi-typescript {BASE}/api/openapi -o ./api-types.ts</code>
+            Import into Postman, Insomnia, or <code>npx openapi-typescript {BASE}/api/openapi.json -o ./api-types.ts</code>
           </Callout>
         </section>
       </div>
