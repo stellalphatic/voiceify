@@ -295,20 +295,27 @@
   opacity: 0.65;
 }
 
-/* Dashboard — flat surfaces, no emerald gradients */
+/* Dashboard — keep surfaces flat; primary CTAs keep the premium green gradient */
 .vfy-dash::before {
   background: var(--gradient-hero) !important;
 }
 
 .vfy-sidebar-logo,
-.vfy-btn--primary,
-.vfy-top-cta,
 .vfy-stat-icon,
 .vfy-chart-bar,
 .vfy-progress-fill,
 .vfy-usage-bar__fill {
   background: var(--color-accent) !important;
   background-image: none !important;
+}
+
+.vfy-top-cta,
+.vfy-btn-primary,
+.vfy-btn--primary,
+.vfy-stat-cta-btn {
+  background: linear-gradient(135deg, #34e0b0 0%, #00d992 48%, #00c985 100%) !important;
+  color: #ffffff !important;
+  background-image: linear-gradient(135deg, #34e0b0 0%, #00d992 48%, #00c985 100%) !important;
 }
 
 .vfy-card,

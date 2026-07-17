@@ -10,18 +10,18 @@ body:has(.docs-page) .techy-ambient::after {
   --docs-nav-h: 56px;
   --docs-nav-gap: 28px;
   --docs-clearance: calc(var(--docs-nav-top) + var(--docs-nav-h) + var(--docs-nav-gap));
-  --docs-sidebar-w: 220px;
+  --docs-sidebar-w: 260px;
 
   position: relative;
   z-index: 1;
   min-height: 100vh;
   display: grid;
   grid-template-columns: var(--docs-sidebar-w) minmax(0, 1fr);
-  gap: clamp(28px, 3.5vw, 48px);
+  gap: clamp(28px, 3.5vw, 56px);
   align-items: start;
-  max-width: 1180px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: var(--docs-clearance) clamp(14px, 4vw, 24px) 80px;
+  padding: var(--docs-clearance) clamp(16px, 4vw, 28px) 96px;
   min-width: 0;
   overflow-x: clip;
 }
@@ -41,19 +41,87 @@ body:has(.docs-page) .techy-ambient::after {
   align-self: start;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-right: clamp(12px, 2.5vw, 20px);
-  border-right: 2px solid var(--color-border);
+  gap: 12px;
+  padding: 16px 14px 16px 0;
+  border-right: 1px solid var(--color-border);
   max-height: calc(100dvh - var(--docs-clearance) - 16px);
   overflow-y: auto;
   scrollbar-width: thin;
 }
 
+.docs-sidebar__brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px 4px;
+}
+
+.docs-sidebar__logo {
+  font-family: var(--font-sans, 'Geist', system-ui, sans-serif);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.docs-sidebar__ver {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.docs-sidebar__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 4px;
+  padding: 0 10px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+}
+
+.docs-sidebar__search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  font-family: inherit;
+}
+
+.docs-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0;
+}
+
+.docs-sidebar__group-title {
+  margin: 0 0 6px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
 .docs-sidebar__title {
-  font-family: var(--font-pixel-mono, 'VT323', monospace);
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0.08em;
+  font-family: var(--font-sans, 'Geist', system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   margin: 0 0 14px;
@@ -61,10 +129,13 @@ body:has(.docs-page) .techy-ambient::after {
 }
 
 .docs-sidebar__link {
-  display: block;
-  padding: 9px 10px;
-  border: 2px solid transparent;
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13.5px;
   line-height: 1.35;
   color: var(--color-text-secondary);
   text-decoration: none;
@@ -73,21 +144,36 @@ body:has(.docs-page) .techy-ambient::after {
 
 .docs-sidebar__link:hover {
   color: var(--color-text-primary);
-  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
-  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
 }
 
 .docs-sidebar__link.is-active {
   color: var(--color-text-primary);
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  border-color: var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
   font-weight: 600;
+}
+
+.docs-sidebar__empty {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.docs-sidebar__footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .docs-sidebar__demo {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 2px solid var(--color-border);
+  border-top: 1px solid var(--color-border);
   font-weight: 600;
 }
 
@@ -114,20 +200,21 @@ body:has(.docs-page) .techy-ambient::after {
 .docs-hero {
   margin-bottom: 40px;
   padding-bottom: 28px;
-  border-bottom: 2px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .docs-hero__eyebrow {
-  font-family: var(--font-pixel-mono, 'VT323', monospace);
+  font-family: var(--font-sans, 'Geist', system-ui, sans-serif);
   font-size: 12px;
-  letter-spacing: 0.08em;
+  font-weight: 650;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   margin: 0 0 10px;
 }
 
 .docs-hero__title {
-  font-size: clamp(1.75rem, 3.5vw, 2.35rem);
+  font-size: clamp(1.85rem, 3.5vw, 2.5rem);
   font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--color-text-primary);
@@ -136,19 +223,53 @@ body:has(.docs-page) .techy-ambient::after {
 }
 
 .docs-hero__desc {
-  font-size: 15px;
+  font-size: 15.5px;
   line-height: 1.65;
   color: var(--color-text-secondary);
-  margin: 0;
+  margin: 0 0 18px;
+  max-width: 62ch;
 }
 
 .docs-hero__desc code {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 0.92em;
   padding: 2px 6px;
+  border-radius: 4px;
   border: 1px solid var(--color-border);
   background: var(--color-bg-secondary);
+}
+
+.docs-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.docs-hero__btn {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  color: #ffffff;
+  background: linear-gradient(135deg, #34e0b0 0%, #00d992 48%, #00c985 100%);
+  box-shadow: 0 6px 16px -6px rgba(0, 217, 146, 0.45);
+}
+
+.docs-hero__btn--ghost {
   color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+.docs-filter-hint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0 0 16px;
 }
 
 .docs-section {
@@ -160,8 +281,9 @@ body:has(.docs-page) .techy-ambient::after {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--font-pixel-mono, 'VT323', monospace);
+  font-family: var(--font-sans, 'Geist', system-ui, sans-serif);
   font-size: 12px;
+  font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -230,13 +352,13 @@ body:has(.docs-page) .techy-ambient::after {
 
 .docs-callout {
   padding: 14px 16px;
-  border: 2px solid var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
   margin: 16px 0;
   font-size: 14px;
   line-height: 1.6;
   color: var(--color-text-secondary);
   background: var(--color-bg-secondary);
-  box-shadow: 2px 2px 0 var(--color-border-strong);
 }
 
 .docs-callout--info {

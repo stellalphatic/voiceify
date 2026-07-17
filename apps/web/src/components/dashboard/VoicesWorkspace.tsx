@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Mic2, Search, Volume2 } from 'lucide-react';
+import { Check, Copy, Mic2, Search, Volume2 } from 'lucide-react';
 import { apiJson } from '../../lib/auth/client';
 
 type VoiceRow = {
@@ -14,11 +14,43 @@ type VoicesPayload = {
 };
 
 function normalizeVoices(payload: VoicesPayload): VoiceRow[] {
-  return (payload.voices ?? []).map((v) => ({
-    id: v.id ?? v.voice_id ?? '',
-    name: v.name,
-    labels: v.labels,
-  })).filter((v) => v.id);
+  return (payload.voices ?? [])
+    .map((v) => ({
+      id: v.id ?? v.voice_id ?? '',
+      name: v.name,
+      labels: v.labels,
+    }))
+    .filter((v) => v.id);
+}
+
+function voiceMeta(v: VoiceRow) {
+  return [v.labels?.accent, v.labels?.language ?? v.labels?.locale, v.labels?.gender]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function CopyIdButton({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="vfy-btn vfy-btn-ghost vfy-voice-copy"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(id);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1400);
+        } catch {
+          /* ignore */
+        }
+      }}
+      title="Copy voice ID"
+      aria-label="Copy voice ID"
+    >
+      {copied ? <Check size={13} /> : <Copy size={13} />}
+      {copied ? 'Copied' : 'Copy ID'}
+    </button>
+  );
 }
 
 export default function VoicesWorkspace() {
@@ -83,16 +115,20 @@ export default function VoicesWorkspace() {
   }, [voices, search, accent, language]);
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="vfy-voices-page">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
           <p className="vfy-page-eyebrow">// configure · voices</p>
           <h1 className="vfy-page-title">Voice library</h1>
           <p className="vfy-page-sub">
-            Browse production voices with accents and language tags. Assign a voice ID to any agent
-            for English, Urdu, or mixed conversations.
+            Pick a voice for your agent. Copy the ID and paste it in the agent editor.
           </p>
         </div>
+        {!loading && (
+          <p className="vfy-voices-count" aria-live="polite">
+            {filtered.length} of {voices.length}
+          </p>
+        )}
       </div>
 
       {error && (
@@ -105,42 +141,45 @@ export default function VoicesWorkspace() {
         <section className="vfy-settings-card">
           <h3 className="vfy-settings-card-title">
             <Mic2 size={18} />
-            Recommended personas
+            Recommended
           </h3>
-          <div className="vfy-tools-grid">
+          <div className="vfy-voices-personas">
             {personas.map((p) => (
-              <div key={p.id} className="vfy-tools-card" style={{ cursor: 'default' }}>
-                <span className="vfy-tools-card-icon">
-                  <Volume2 size={18} />
+              <div key={p.id} className="vfy-voices-persona">
+                <span className="vfy-voices-persona-icon" aria-hidden>
+                  <Volume2 size={16} />
                 </span>
-                <span className="vfy-tools-card-title">{p.name}</span>
-                <span className="vfy-tools-card-desc">{p.tagline}</span>
-                <code className="vfy-settings-item-meta">{p.voiceId}</code>
+                <div className="vfy-voices-persona-body">
+                  <p className="vfy-voices-persona-name">{p.name}</p>
+                  <p className="vfy-voices-persona-tag">{p.tagline}</p>
+                </div>
+                <CopyIdButton id={p.voiceId} />
               </div>
             ))}
           </div>
         </section>
       )}
 
-      <div className="vfy-settings-row">
-        <Search size={16} style={{ color: 'var(--d-muted)' }} />
-        <input
-          className="vfy-field-input"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search library voices…"
-          aria-label="Search voices"
-        />
+      <div className="vfy-voices-toolbar">
+        <div className="vfy-voices-search">
+          <Search size={15} aria-hidden />
+          <input
+            className="vfy-field-input"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search voices…"
+            aria-label="Search voices"
+          />
+        </div>
         <select
           className="vfy-field-select"
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
           aria-label="Filter language"
-          style={{ maxWidth: 180 }}
         >
           {languages.map((l) => (
             <option key={l} value={l}>
-              {l === 'all' ? 'Language' : l}
+              {l === 'all' ? 'All languages' : l}
             </option>
           ))}
         </select>
@@ -149,11 +188,10 @@ export default function VoicesWorkspace() {
           value={accent}
           onChange={(e) => setAccent(e.target.value)}
           aria-label="Filter accent"
-          style={{ maxWidth: 180 }}
         >
           {accents.map((a) => (
             <option key={a} value={a}>
-              {a === 'all' ? 'Accent' : a}
+              {a === 'all' ? 'All accents' : a}
             </option>
           ))}
         </select>
@@ -162,27 +200,26 @@ export default function VoicesWorkspace() {
       {loading ? (
         <p className="vfy-settings-empty">Loading voices…</p>
       ) : (
-        <div className="vfy-tools-grid">
-          {filtered.map((v) => (
-            <div key={v.id} className="vfy-voice-card">
-              <div className="vfy-voice-avatar" aria-hidden>
-                {v.name.slice(0, 1).toUpperCase()}
-              </div>
-              <div>
-                <p className="vfy-settings-item-title">{v.name}</p>
-                <p className="vfy-settings-item-meta">
-                  {[v.labels?.accent, v.labels?.language ?? v.labels?.locale, v.labels?.gender]
-                    .filter(Boolean)
-                    .join(' · ') || 'General'}
-                </p>
-                <code className="vfy-settings-item-meta">{v.id}</code>
-              </div>
-            </div>
-          ))}
+        <ul className="vfy-voices-list">
+          {filtered.map((v) => {
+            const meta = voiceMeta(v);
+            return (
+              <li key={v.id} className="vfy-voice-row">
+                <span className="vfy-voice-avatar" aria-hidden>
+                  {v.name.slice(0, 1).toUpperCase()}
+                </span>
+                <div className="vfy-voice-row-main">
+                  <p className="vfy-voice-row-name">{v.name}</p>
+                  {meta ? <p className="vfy-voice-row-meta">{meta}</p> : null}
+                </div>
+                <CopyIdButton id={v.id} />
+              </li>
+            );
+          })}
           {filtered.length === 0 && (
-            <p className="vfy-settings-empty">No voices match these filters.</p>
+            <li className="vfy-settings-empty">No voices match these filters.</li>
           )}
-        </div>
+        </ul>
       )}
     </div>
   );

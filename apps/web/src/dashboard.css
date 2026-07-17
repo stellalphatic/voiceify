@@ -114,6 +114,34 @@
   margin: 0 auto;
   min-height: calc(100vh - var(--d-top-h));
   min-height: calc(100dvh - var(--d-top-h));
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Center page shells horizontally inside the content column */
+.vfy-route-view {
+  width: 100%;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.vfy-route-view > * {
+  width: 100%;
+  max-width: 1120px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.vfy-route-view > .max-w-3xl { max-width: 48rem; }
+.vfy-route-view > .max-w-5xl { max-width: 64rem; }
+.vfy-route-view > .max-w-6xl { max-width: 72rem; }
+.vfy-route-view > .vfy-voices-page { max-width: 880px; }
+.vfy-route-view > .vfy-sandbox-page,
+.vfy-route-view > .vfy-agents-page,
+.vfy-route-view > .vfy-overview {
+  max-width: 1280px;
 }
 
 @media (max-width: 1024px) {
@@ -237,9 +265,9 @@
   justify-content: center;
   width: 30px; height: 30px;
   border-radius: 7px;
-  background: linear-gradient(135deg, #00d992 0%, #00b67a 100%);
+  background: linear-gradient(135deg, #34e0b0 0%, #00d992 48%, #00c985 100%);
   color: #ffffff;
-  box-shadow: 0 6px 18px -6px rgba(0,217,146,0.55), inset 0 1px 0 rgba(255,255,255,0.25);
+  box-shadow: 0 6px 18px -6px rgba(0,217,146,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
   flex-shrink: 0;
 }
 .vfy-side-brand-orb svg {
@@ -508,7 +536,7 @@
 .vfy-side-user-avatar {
   width: 28px; height: 28px;
   border-radius: 6px;
-  background: linear-gradient(135deg, #00d992 0%, #00b67a 100%);
+  background: linear-gradient(135deg, #34e0b0 0%, #00d992 48%, #00c985 100%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -548,11 +576,33 @@
   backdrop-filter: saturate(140%) blur(10px);
   -webkit-backdrop-filter: saturate(140%) blur(10px);
   border-bottom: 1px solid var(--d-border);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 16px;
+  padding: 0 24px;
+  z-index: 20;
+}
+.vfy-top-left {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 24px;
-  z-index: 20;
+  min-width: 0;
+  justify-self: start;
+}
+.vfy-top-center {
+  display: flex;
+  justify-content: center;
+  justify-self: center;
+  width: min(420px, 42vw);
+}
+.vfy-top-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  justify-self: end;
 }
 
 .vfy-top-burger {
@@ -568,7 +618,12 @@
 }
 @media (max-width: 1024px) {
   .vfy-top-burger { display: inline-flex; }
-  .vfy-top { padding: 0 16px; gap: 8px; }
+  .vfy-top {
+    padding: 0 16px;
+    column-gap: 10px;
+    grid-template-columns: minmax(0, 1fr) minmax(140px, 1fr) minmax(0, 1fr);
+  }
+  .vfy-top-center { width: 100%; max-width: 280px; }
   .vfy-top-crumbs > span:not(:last-child) { display: none; }
   .vfy-top-status { display: none; }
   .vfy-side:hover,
@@ -578,11 +633,14 @@
   }
 }
 @media (max-width: 600px) {
-  .vfy-top { padding: 0 10px; gap: 6px; }
+  .vfy-top { padding: 0 10px; column-gap: 6px; }
   .vfy-top-iconbtn { display: none !important; }
-  .vfy-top-crumbs { max-width: 36vw; }
+  .vfy-top-docs span { display: none; }
+  .vfy-top-crumbs { max-width: 28vw; }
   .vfy-top-cta { padding: 7px 9px; font-size: 12px; }
   .vfy-top-cta-label { display: none; }
+  .vfy-top-center { max-width: 160px; }
+  .vfy-top-search-kbd { display: none; }
 }
 @media (max-width: 400px) {
   .vfy-dash-content { padding: 14px 10px 24px; }
@@ -691,8 +749,8 @@
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  background: linear-gradient(135deg, var(--d-accent) 0%, #00b67a 100%);
-  color: var(--color-voice-on-accent, #050507);
+  background: linear-gradient(135deg, #34e0b0 0%, #00d992 48%, #00c985 100%);
+  color: #ffffff;
   font-family: var(--d-sans);
   font-size: 13px;
   font-weight: 700;
@@ -702,18 +760,20 @@
   letter-spacing: -0.005em;
   white-space: nowrap;
   height: 32px;
-  box-shadow: 0 6px 16px -6px rgba(0,217,146,0.5), inset 0 1px 0 rgba(255,255,255,0.18);
-  transition: transform 0.12s ease, box-shadow 0.18s ease;
+  box-shadow: 0 6px 16px -6px rgba(0,217,146,0.5), inset 0 1px 0 rgba(255,255,255,0.28);
+  transition: transform 0.12s ease, box-shadow 0.18s ease, filter 0.15s ease;
 }
 .vfy-top-cta:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px -6px rgba(0,217,146,0.6), inset 0 1px 0 rgba(255,255,255,0.22);
+  color: #ffffff;
+  filter: brightness(1.04);
+  box-shadow: 0 10px 24px -6px rgba(0,217,146,0.55), inset 0 1px 0 rgba(255,255,255,0.32);
 }
 
 /* UserMenu — re-skin the avatar button so it matches our sharp topbar.
  * UserMenu.tsx uses a w-9 h-9 rounded-full avatar; inside .vfy-top we shrink
  * it to 32×32 with a 6px radius and our token colors. */
-.vfy-top > div > button[aria-haspopup="menu"] {
+.vfy-top-right button[aria-haspopup="menu"] {
   width: 32px !important;
   height: 32px !important;
   border-radius: var(--d-radius-sm) !important;
@@ -726,7 +786,7 @@
   letter-spacing: 0.02em !important;
   transition: border-color 0.15s ease !important;
 }
-.vfy-top > div > button[aria-haspopup="menu"]:hover {
+.vfy-top-right button[aria-haspopup="menu"]:hover {
   border-color: var(--d-border-2) !important;
 }
 
@@ -933,8 +993,8 @@
   align-items: center;
   gap: 5px;
   padding: 6px 14px;
-  background: linear-gradient(135deg, var(--d-accent) 0%, #00b67a 100%);
-  color: #050507;
+  background: linear-gradient(135deg, #34e0b0 0%, #00d992 48%, #00c985 100%);
+  color: #ffffff;
   font-family: var(--d-sans);
   font-size: 12px;
   font-weight: 700;
@@ -942,10 +1002,14 @@
   border-radius: var(--d-radius-sm);
   cursor: pointer;
   letter-spacing: -0.005em;
-  box-shadow: 0 4px 12px -4px rgba(0,217,146,0.55), inset 0 1px 0 rgba(255,255,255,0.18);
-  transition: transform 0.12s ease;
+  box-shadow: 0 4px 12px -4px rgba(0,217,146,0.45), inset 0 1px 0 rgba(255,255,255,0.28);
+  transition: transform 0.12s ease, filter 0.15s ease;
 }
-.vfy-stat-cta-btn:hover { transform: translateY(-1px); }
+.vfy-stat-cta-btn:hover {
+  transform: translateY(-1px);
+  color: #ffffff;
+  filter: brightness(1.04);
+}
 .vfy-stat-cta-sub {
   font-family: var(--d-mono);
   font-size: 10px;
@@ -1654,15 +1718,20 @@
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
 }
 .vfy-btn-primary {
-  background: linear-gradient(135deg, #00d992 0%, #00b67a 100%);
+  background: linear-gradient(135deg, #34e0b0 0%, #00d992 48%, #00c985 100%);
   color: #ffffff;
-  box-shadow: 0 6px 16px -6px rgba(0,217,146,0.5), inset 0 1px 0 rgba(255,255,255,0.18);
+  box-shadow: 0 6px 16px -6px rgba(0,217,146,0.45), inset 0 1px 0 rgba(255,255,255,0.28);
 }
-.vfy-btn-primary:hover { transform: translateY(-1px); color: #ffffff; }
+.vfy-btn-primary:hover {
+  transform: translateY(-1px);
+  color: #ffffff;
+  filter: brightness(1.04);
+}
 .vfy-btn-primary:disabled {
   opacity: 0.55;
   cursor: not-allowed;
   transform: none;
+  filter: none;
 }
 .vfy-btn-ghost {
   background: var(--d-card);
@@ -1682,12 +1751,6 @@
 .vfy-dash-content {
   position: relative;
   z-index: 2;
-}
-
-.vfy-route-view {
-  width: 100%;
-  min-width: 0;
-  position: relative;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -2674,15 +2737,140 @@
   padding: 14px;
 }
 .vfy-voice-avatar {
-  width: 40px; height: 40px;
-  border-radius: 999px;
+  width: 36px; height: 36px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--d-accent), #00b67a);
+  background: linear-gradient(135deg, #00d992, #00b67a);
   color: #04140f;
   font-weight: 700;
+  font-size: 13px;
   flex-shrink: 0;
+}
+
+.vfy-voices-page {
+  max-width: 880px;
+  width: 100%;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.vfy-voices-count {
+  margin: 0;
+  font-family: var(--d-mono);
+  font-size: 12px;
+  color: var(--d-muted);
+  white-space: nowrap;
+}
+.vfy-voices-personas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vfy-voices-persona {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--d-border);
+  border-radius: var(--d-radius-md);
+  background: var(--d-card-2);
+}
+.vfy-voices-persona-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--d-accent-soft);
+  color: var(--d-accent);
+  flex-shrink: 0;
+}
+.vfy-voices-persona-body {
+  flex: 1;
+  min-width: 0;
+}
+.vfy-voices-persona-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--d-text);
+}
+.vfy-voices-persona-tag {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--d-muted);
+}
+.vfy-voices-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.vfy-voices-search {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--d-muted);
+}
+.vfy-voices-search .vfy-field-input {
+  flex: 1;
+}
+.vfy-voices-toolbar .vfy-field-select {
+  width: auto;
+  min-width: 140px;
+  max-width: 180px;
+}
+.vfy-voices-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--d-border);
+  border-radius: var(--d-radius-md);
+  background: var(--d-card);
+  overflow: hidden;
+}
+.vfy-voice-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--d-border);
+}
+.vfy-voice-row:last-child {
+  border-bottom: none;
+}
+.vfy-voice-row:hover {
+  background: color-mix(in srgb, var(--d-card-2) 70%, transparent);
+}
+.vfy-voice-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.vfy-voice-row-name {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--d-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vfy-voice-row-meta {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--d-muted);
+  text-transform: capitalize;
+}
+.vfy-voice-copy {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  font-size: 12px;
 }
 
 .vfy-flow { display: flex; flex-direction: column; gap: 0; max-width: 360px; }
@@ -2797,10 +2985,10 @@
    TOPBAR COMMAND SEARCH
    ════════════════════════════════════════════════════════════ */
 .vfy-top-search {
-  flex: 1;
+  width: 100%;
   max-width: 420px;
-  min-width: 160px;
-  margin: 0 8px;
+  min-width: 0;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 8px;
