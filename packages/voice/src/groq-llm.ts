@@ -1,4 +1,4 @@
-import { LLM_VOICE_CONFIG } from './voice-models';
+import { LLM_VOICE_CONFIG, resolveLlmModel } from './voice-models';
 import { sanitizeVoiceReply } from './voice-sanitize';
 
 const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -9,7 +9,7 @@ export function groqApiKey(): string | undefined {
 }
 
 export function groqModelId(): string {
-  return process.env.GROQ_MODEL?.trim() || 'llama-3.1-8b-instant';
+  return resolveLlmModel();
 }
 
 /** Low-latency Groq chat — returns null on failure so caller can fall back to Gemini. */

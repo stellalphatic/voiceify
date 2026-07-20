@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
 import { useAgentStore } from '../../lib/agents/AgentStoreContext';
+import { apiJson, getActiveOrgId } from '../../lib/auth/client';
 
 type GuardrailsState = {
   blockPii: boolean;
@@ -67,6 +68,8 @@ export default function GuardrailsWorkspace() {
   );
   const [form, setForm] = useState<GuardrailsState>(DEFAULTS);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (typeof agentId === 'number') {
@@ -79,6 +82,29 @@ export default function GuardrailsWorkspace() {
     if (typeof agentId !== 'number') return;
     window.localStorage.setItem(storageKey(agentId), JSON.stringify(form));
     setSaved(true);
+    setError(null);
+
+    const orgId = getActiveOrgId();
+    const serverId = selected?.serverId;
+    if (orgId && serverId) {
+      setBusy(true);
+      void (async () => {
+        try {
+          await apiJson(`/api/orgs/${orgId}/agents/${serverId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ guardrails: form }),
+          });
+        } catch (err) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Saved locally, but server sync failed',
+          );
+        } finally {
+          setBusy(false);
+        }
+      })();
+    }
   };
 
   return (
@@ -244,12 +270,23 @@ export default function GuardrailsWorkspace() {
               </div>
             </div>
 
-            <button type="button" className="vfy-btn vfy-btn-primary" onClick={save}>
+            <button
+              type="button"
+              className="vfy-btn vfy-btn-primary"
+              disabled={busy}
+              onClick={save}
+            >
               Save guardrails
             </button>
+            {error && (
+              <p className="text-sm" role="alert" style={{ color: 'var(--d-danger)' }}>
+                {error}
+              </p>
+            )}
             {saved && (
               <p className="text-sm" style={{ color: 'var(--d-accent)' }}>
-                Guardrails saved for {selected?.name}.
+                Guardrails saved for {selected?.name}
+                {selected?.serverId ? ' (synced to server)' : ''}.
               </p>
             )}
           </div>

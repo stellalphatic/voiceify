@@ -3,7 +3,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Copy, KeyRound, Link2, Lock, Trash2, User, Zap } from 'lucide-react';
+import { Check, Copy, Download, KeyRound, Link2, Lock, Trash2, User, Zap } from 'lucide-react';
 import {
   apiJson,
   changePassword,
@@ -64,6 +64,7 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [exportBusy, setExportBusy] = useState(false);
 
   const { showBilling, showDevelopers, title: pageTitle, eyebrow: pageEyebrow, subtitle: pageSub } =
     getSettingsPageMeta(focus);
@@ -135,6 +136,30 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
     setNewPassword('');
     setConfirmPassword('');
     setPasswordMessage('Password updated. Other sessions were signed out.');
+  };
+
+  const downloadPrivacyExport = async () => {
+    if (!orgId) return;
+    setExportBusy(true);
+    setError(null);
+    try {
+      const data = await apiJson<Record<string, unknown>>(
+        `/api/orgs/${orgId}/privacy/export`,
+      );
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `voiceify-export-${orgId.slice(0, 8)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Export failed');
+    } finally {
+      setExportBusy(false);
+    }
   };
 
   const createKey = async () => {
@@ -307,6 +332,29 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
               </p>
             )}
           </div>
+        </section>
+      )}
+
+      {showBilling && (
+        <section className="vfy-settings-card">
+          <h3 className="vfy-settings-card-title">
+            <Download size={18} />
+            Privacy &amp; data export
+          </h3>
+          <p className="vfy-settings-help">
+            Download a machine-readable snapshot of this workspace (agents, tools, knowledge
+            metadata, conversations, and credit ledger) for portability or subject-access
+            requests.
+          </p>
+          <button
+            type="button"
+            className="vfy-btn vfy-btn-ghost"
+            disabled={exportBusy || !orgId}
+            onClick={() => void downloadPrivacyExport()}
+          >
+            <Download size={14} />
+            {exportBusy ? 'Preparing…' : 'Download data export'}
+          </button>
         </section>
       )}
 

@@ -1,13 +1,13 @@
 # Voiceify Walkthrough
-Updated: 2026-07-14
+Updated: 2026-07-20
 
 ## What this is
 
-Voiceify is a multi-tenant voice AI SaaS for support, sales, and operations. Tenants build voice agents, attach tools and Automation Packs, and embed a web widget. Deployment target: single AWS EC2 host running Docker Compose.
+Voiceify is a multi-tenant voice AI SaaS for support, sales, and operations. Tenants build voice agents, attach tools and Automation Packs, and embed a web widget. Deployment target: single AWS EC2 host running Docker Compose. Full product report: [PROJECT_REPORT.md](./PROJECT_REPORT.md).
 
 ## Current phase
 
-**Phases 0–7 implemented** in the monorepo. See [docs/roadmap.md](./roadmap.md).
+**Phases 0–7 implemented** plus hybrid open-source backend hooks (Llama 3.3, Coqui XTTS, Qdrant). See [docs/roadmap.md](./roadmap.md).
 
 | Phase | Name | Status |
 |-------|------|--------|
@@ -31,13 +31,14 @@ Voiceify is a multi-tenant voice AI SaaS for support, sales, and operations. Ten
 | Worker | BullMQ (`apps/worker`) |
 | DB | Postgres 16 + Drizzle (`packages/db`) |
 | Auth | Better Auth (`packages/auth`) |
-| Voice | ElevenLabs STT/TTS + Groq/Gemini (`packages/voice`) |
+| Voice | Llama 3.3 (Groq) + Gemini failover + ElevenLabs STT/TTS; optional Coqui XTTS + Qdrant |
 
 ## Active TODOs
 
 1. Run `pnpm db:generate && pnpm db:migrate && pnpm db:seed` against local Postgres.
-2. End-to-end demo on EC2 with real ElevenLabs keys.
-3. Optional: Playwright smoke tests.
+2. End-to-end demo on EC2 with real provider keys.
+3. Optional: `docker compose --profile vectors up -d qdrant` for vector RAG.
+4. Optional: Playwright smoke tests.
 
 ## Recently completed
 

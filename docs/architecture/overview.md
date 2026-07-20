@@ -29,8 +29,9 @@ Updated: 2026-07-14
                                │
          ┌─────────────────────┼─────────────────────┐
          ▼                     ▼                     ▼
-   ElevenLabs STT/TTS     Groq / Gemini LLM     Stripe (test)
-```
+   ElevenLabs STT/TTS     Groq Llama 3.3         Stripe (optional)
+   (or Coqui XTTS)        (+ Gemini failover)    Admin credit grants
+                          Qdrant (optional)```
 
 Single EC2 host runs all Compose services. External calls leave the host only for model providers and Stripe.
 
@@ -63,7 +64,7 @@ Single EC2 host runs all Compose services. External calls leave the host only fo
    - Worker or inline runner executes HTTP tools with timeouts + redacted logs.
    - Results return to the LLM for a final spoken response.
 5. **Sanitize** — Strip unsafe content and length-cap for TTS ([voice-sanitize](../../packages/voice/src/voice-sanitize.ts)).
-6. **TTS** — ElevenLabs Flash streams PCM; API coalesces chunks and yields base64 audio events (TTFA metric included).
+6. **TTS** — ElevenLabs Flash streams PCM by default, or Coqui XTTS when `TTS_PROVIDER=coqui`.
 7. **Meter** — Debit credits (STT seconds + LLM tokens + TTS chars) via `packages/usage`; Redis holds soft rate limits.
 
 ```
@@ -93,6 +94,8 @@ See [security/threat-model.md](../security/threat-model.md).
 
 ## Related docs
 
+- Product report / PRD: [../PROJECT_REPORT.md](../PROJECT_REPORT.md)
+- Open-source stack: [../integrations/open-source-stack.md](../integrations/open-source-stack.md)
 - ADRs: [architecture/decisions/](./decisions/)
 - Schema: [db/schema.md](../db/schema.md)
 - ElevenLabs: [integrations/elevenlabs.md](../integrations/elevenlabs.md)

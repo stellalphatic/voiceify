@@ -280,20 +280,31 @@ export async function* streamSpeechPcm(text: string, voiceId: string): AsyncGene
   }
 }
 
-/** Non-streaming fallback — still uses turbo model. */
+/** Non-streaming fallback — ElevenLabs Flash or Coqui XTTS when TTS_PROVIDER=coqui. */
 export async function synthesizeSpeech(text: string, voiceId: string): Promise<ArrayBuffer> {
-  const chunks: Uint8Array[] = [];
-  for await (const chunk of streamSpeechPcm(text, voiceId)) {
-    chunks.push(chunk);
-  }
-  const total = chunks.reduce((n, c) => n + c.byteLength, 0);
-  const out = new Uint8Array(total);
-  let offset = 0;
-  for (const c of chunks) {
-    out.set(c, offset);
-    offset += c.byteLength;
-  }
-  return out.buffer;
+  const { routeSynthesizeSpeech } = await import('./tts-router.js');
+  const routed = await routeSynthesizeSpeech({
+    text,
+    voiceId,
+    elevenLabsSynth: async () => {
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of streamSpeechPcm(text, voiceId)) {
+        chunks.push(chunk);
+      }
+      const total = chunks.reduce((n, c) => n + c.byteLength, 0);
+      const out = new Uint8Array(total);
+      let offset = 0;
+      for (const c of chunks) {
+        out.set(c, offset);
+        offset += c.byteLength;
+      }
+      return { audio: Buffer.from(out.buffer), contentType: 'audio/pcm' };
+    },
+  });
+  return routed.audio.buffer.slice(
+    routed.audio.byteOffset,
+    routed.audio.byteOffset + routed.audio.byteLength,
+  );
 }
 
 export async function listElevenLabsVoices(): Promise<

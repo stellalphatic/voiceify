@@ -102,12 +102,46 @@ async function ingestDocument(input: {
     })),
   );
 
+  // Optional Qdrant mirror — Postgres remains source of truth for chunks.
+  let vectorBackend: "postgres" | "qdrant+postgres" = "postgres";
+  try {
+    const { isQdrantConfigured, upsertPoints } = await import("@voiceify/voice");
+    if (isQdrantConfigured()) {
+      await upsertPoints(
+        input.orgId,
+        pieces.map((content, chunkIndex) => {
+          const h = createHash("md5")
+            .update(`${doc.id}:${chunkIndex}`)
+            .digest("hex");
+          const id = `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
+          return {
+            id,
+            vector: embedText(content),
+            payload: {
+              orgId: input.orgId,
+              docId: doc.id,
+              chunkIndex,
+              content,
+            },
+          };
+        }),
+      );
+      vectorBackend = "qdrant+postgres";
+    }
+  } catch {
+    /* Qdrant optional — never fail ingest */
+  }
+
   await db
     .update(knowledgeDocs)
     .set({ status: "ready" })
     .where(eq(knowledgeDocs.id, doc.id));
 
-  return { doc: { ...doc, status: "ready" as const }, chunks: pieces.length };
+  return {
+    doc: { ...doc, status: "ready" as const },
+    chunks: pieces.length,
+    vectorBackend,
+  };
 }
 
 async function extractPdf(buffer: Buffer): Promise<string> {
@@ -285,13 +319,30 @@ knowledgeRoutes.get(
     if (!q) return c.json({ hits: [] });
 
     const pattern = `%${q.replace(/%/g, "")}%`;
+    const queryEmb = embedText(q);
+
+    try {
+      const { isQdrantConfigured, searchPoints } = await import("@voiceify/voice");
+      if (isQdrantConfigured()) {
+        const qHits = await searchPoints({
+          orgId,
+          vector: queryEmb,
+          limit: 8,
+        });
+        if (qHits.length) {
+          return c.json({ hits: qHits, mode: "qdrant" });
+        }
+      }
+    } catch {
+      /* fall through to Postgres hybrid */
+    }
+
     const rows = await db
       .select()
       .from(knowledgeChunks)
       .where(eq(knowledgeChunks.orgId, orgId))
       .limit(80);
 
-    const queryEmb = embedText(q);
     const ranked = rows
       .map((row) => {
         const emb = parseEmbedding(row.tsv);

@@ -7,7 +7,9 @@ import {
 } from './voice-handlers';
 import { runVoicePipeline, warmupVoicePipeline } from './voice-pipeline';
 import { transcribeSpeech } from './stt-diarize';
-import { VOICE_MODELS, VOICE_STACK } from './voice-models';
+import { VOICE_MODELS, VOICE_STACK, OPEN_SOURCE_STACK } from './voice-models';
+import { isCoquiConfigured } from './coqui-tts';
+import { isQdrantConfigured } from './qdrant';
 import {
   buildOpenApiSpec,
   resolveBasePersonaId,
@@ -49,6 +51,8 @@ export function handleHealth(): Response {
     elevenlabs: Boolean(process.env.ELEVENLABS_API_KEY),
     groq: Boolean(process.env.GROQ_API_KEY),
     gemini: Boolean(process.env.GEMINI_API_KEY),
+    coqui: isCoquiConfigured(),
+    qdrant: isQdrantConfigured(),
     scribeStt: Boolean(process.env.ELEVENLABS_API_KEY),
     scribeRealtime: Boolean(process.env.ELEVENLABS_API_KEY),
     diarization: Boolean(process.env.ELEVENLABS_API_KEY),
@@ -57,6 +61,7 @@ export function handleHealth(): Response {
     pipeline: 'stream-pcm-flash',
     targetLatencyMs: 500,
     stack: VOICE_STACK,
+    openSource: OPEN_SOURCE_STACK,
     docs: '/docs',
     openapi: '/api/openapi',
   });
