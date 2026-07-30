@@ -123,69 +123,76 @@ export default function AnalyticsDashboard() {
           <p className="vfy-page-eyebrow">// analytics · workspace</p>
           <h1 className="vfy-page-title">Analytics</h1>
           <p className="vfy-page-sub">
-            Business outcomes and technical latency from your Voiceify workspace. No demo data.
+            Plain-English business outcomes first, then technical latency for operators.
           </p>
         </div>
       </div>
 
       {error && (
-        <p className="text-sm text-red-500" role="alert">
+        <p className="text-sm" role="alert" style={{ color: 'var(--d-danger)' }}>
           {error}
         </p>
       )}
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-voice-surface border border-voice-border rounded-2xl p-5">
-          <p className="text-xs text-voice-muted mb-1">Hours saved this week</p>
-          <p className="text-2xl font-bold text-voice-text">
-            {loading ? "…" : `~${business.hoursSaved} hrs`}
-          </p>
-          <p className="text-xs text-voice-muted mt-2">
-            Based on {business.thisWeek} conversations handled by agents
-          </p>
-        </div>
-        <div className="bg-voice-surface border border-voice-border rounded-2xl p-5">
-          <p className="text-xs text-voice-muted mb-1">Bookings / leads captured</p>
-          <p className="text-2xl font-bold text-voice-text">
-            {loading ? "…" : business.bookingsCaptured}
-          </p>
-          <p className="text-xs text-voice-muted mt-2">
-            Sessions that reached your agents while you were busy
-          </p>
-        </div>
-        <div className="bg-voice-surface border border-voice-border rounded-2xl p-5">
-          <p className="text-xs text-voice-muted mb-1">Missed-call recovery</p>
-          <p className="text-2xl font-bold text-voice-text">
-            {loading ? "…" : `${business.recoveryRate}%`}
-          </p>
-          <p className="text-xs text-voice-muted mt-2">
-            Share of recent conversations that completed successfully
-          </p>
+      <section>
+        <h2 className="vfy-settings-card-title" style={{ marginBottom: 12 }}>
+          Business outcomes
+        </h2>
+        <div className="vfy-biz-grid">
+          <article className="vfy-biz-card">
+            <p className="vfy-biz-card-label">Time back this week</p>
+            <p className="vfy-biz-card-value">
+              {loading ? '…' : `You saved ~${business.hoursSaved} hours this week`}
+            </p>
+            <p className="vfy-biz-card-note">
+              Based on {business.thisWeek} conversations your agents handled instead of a human callback.
+            </p>
+          </article>
+          <article className="vfy-biz-card">
+            <p className="vfy-biz-card-label">Leads while you were busy</p>
+            <p className="vfy-biz-card-value">
+              {loading
+                ? '…'
+                : `${business.bookingsCaptured} bookings captured while you were busy`}
+            </p>
+            <p className="vfy-biz-card-note">
+              Sessions that reached Sandbox, embed, or API agents in the recent window.
+            </p>
+          </article>
+          <article className="vfy-biz-card">
+            <p className="vfy-biz-card-label">Missed-call recovery</p>
+            <p className="vfy-biz-card-value">
+              {loading ? '…' : `Missed-call recovery rate: ${business.recoveryRate}%`}
+            </p>
+            <p className="vfy-biz-card-note">
+              Share of recent conversations that completed successfully.
+            </p>
+          </article>
         </div>
       </section>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-voice-surface border border-voice-border rounded-2xl p-5">
-          <p className="text-xs text-voice-muted mb-1">Conversations</p>
-          <p className="text-2xl font-bold text-voice-text">
-            {loading ? "…" : data?.summary.conversations ?? 0}
+        <div className="vfy-biz-card">
+          <p className="vfy-biz-card-label">Conversations</p>
+          <p className="vfy-biz-card-value" style={{ fontSize: 22 }}>
+            {loading ? '…' : data?.summary.conversations ?? 0}
           </p>
         </div>
-        <div className="bg-voice-surface border border-voice-border rounded-2xl p-5">
-          <p className="text-xs text-voice-muted mb-1">Average latency</p>
-          <p className="text-2xl font-bold text-voice-text">
+        <div className="vfy-biz-card">
+          <p className="vfy-biz-card-label">Average latency</p>
+          <p className="vfy-biz-card-value" style={{ fontSize: 22 }}>
             {loading
-              ? "…"
+              ? '…'
               : data?.summary.avgLatency
                 ? `${data.summary.avgLatency} ms`
-                : "—"}
+                : '—'}
           </p>
         </div>
-        <div className="bg-voice-surface border border-voice-border rounded-2xl p-5">
-          <p className="text-xs text-voice-muted mb-1">Credit balance</p>
-          <p className="text-2xl font-bold text-voice-text">
+        <div className="vfy-biz-card">
+          <p className="vfy-biz-card-label">Credit balance</p>
+          <p className="vfy-biz-card-value" style={{ fontSize: 22 }}>
             {loading
-              ? "…"
+              ? '…'
               : `$${((data?.creditBalanceCents ?? 0) / 100).toFixed(2)}`}
           </p>
         </div>

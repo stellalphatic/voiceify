@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
-import { GitBranch, Play, Sparkles } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { GitBranch, Sparkles, Utensils, Headphones, CalendarDays } from 'lucide-react';
 import { apiJson, getActiveOrgId } from '../../lib/auth/client';
 import { useAgentStore } from '../../lib/agents/AgentStoreContext';
+import { SMB_CONNECTORS } from '../../lib/connectors/catalog';
+import ConnectorGrid from '../connectors/ConnectorGrid';
 import WorkflowCanvas from './WorkflowCanvas';
 
 type Pack = {
@@ -16,10 +18,19 @@ type AutomationsPayload = {
   available: Pack[];
 };
 
+type ToolRow = { slug: string };
+
+const PACK_ICONS: Record<string, typeof Utensils> = {
+  restaurant: Utensils,
+  receptionist: Headphones,
+  appointments: CalendarDays,
+};
+
 export default function WorkflowsWorkspace() {
   const orgId = getActiveOrgId();
   const { refreshFromApi } = useAgentStore();
   const [packs, setPacks] = useState<Pack[]>([]);
+  const [tools, setTools] = useState<ToolRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -28,8 +39,12 @@ export default function WorkflowsWorkspace() {
     if (!orgId) return;
     setError(null);
     try {
-      const data = await apiJson<AutomationsPayload>(`/api/orgs/${orgId}/automations`);
-      setPacks(data.available);
+      const [auto, toolData] = await Promise.all([
+        apiJson<AutomationsPayload>(`/api/orgs/${orgId}/automations`),
+        apiJson<{ tools: ToolRow[] }>(`/api/orgs/${orgId}/tools`),
+      ]);
+      setPacks(auto.available);
+      setTools(toolData.tools);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load workflows');
     }
@@ -38,6 +53,8 @@ export default function WorkflowsWorkspace() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const installedSlugs = useMemo(() => new Set(tools.map((t) => t.slug)), [tools]);
 
   const install = async (packId: string) => {
     if (!orgId) return;
@@ -65,8 +82,8 @@ export default function WorkflowsWorkspace() {
           <p className="vfy-page-eyebrow">// configure · workflows</p>
           <h1 className="vfy-page-title">Workflows</h1>
           <p className="vfy-page-sub">
-            Design conversation graphs with drag-and-drop nodes and connecting lines, then install
-            vertical packs that seed tools and agents for Sandbox.
+            Design conversation graphs with Sheets, WhatsApp, Calendar, and Email nodes. Install
+            vertical packs for Restaurant, Receptionist, and Appointments.
           </p>
         </div>
       </div>
@@ -82,6 +99,18 @@ export default function WorkflowsWorkspace() {
         </p>
       )}
 
+      <section className="vfy-settings-card vfy-connector-hero">
+        <h3 className="vfy-settings-card-title">Connect tools used in your flow</h3>
+        <p className="vfy-settings-help">
+          Add these once so canvas tool nodes can fire for real during Sandbox turns.
+        </p>
+        <ConnectorGrid
+          connectors={SMB_CONNECTORS}
+          installedSlugs={installedSlugs}
+          onInstalled={() => void load()}
+        />
+      </section>
+
       <section className="vfy-settings-card">
         <h3 className="vfy-settings-card-title">
           <GitBranch size={18} />
@@ -96,29 +125,32 @@ export default function WorkflowsWorkspace() {
           Automation packs
         </h3>
         <div className="vfy-tools-grid">
-          {packs.map((p) => (
-            <div key={p.id} className="vfy-tools-card" style={{ cursor: 'default' }}>
-              <span className="vfy-tools-card-icon">
-                <Play size={18} />
-              </span>
-              <span className="vfy-tools-card-title">
-                {p.name}
-                {p.installed && <span className="vfy-tag">Installed</span>}
-              </span>
-              <span className="vfy-tools-card-desc">
-                {p.description ?? 'Production-ready vertical workflow pack.'}
-              </span>
-              <button
-                type="button"
-                className="vfy-btn vfy-btn-primary"
-                disabled={busy || !orgId || p.installed}
-                onClick={() => void install(p.id)}
-                style={{ marginTop: 8 }}
-              >
-                {p.installed ? 'Ready' : 'Install pack'}
-              </button>
-            </div>
-          ))}
+          {packs.map((p) => {
+            const Icon = PACK_ICONS[p.id] ?? Sparkles;
+            return (
+              <div key={p.id} className="vfy-tools-card vfy-connector-card" style={{ cursor: 'default' }}>
+                <span className="vfy-connector-icon">
+                  <Icon size={22} />
+                </span>
+                <span className="vfy-tools-card-title">
+                  {p.name}
+                  {p.installed && <span className="vfy-tag vfy-tag--ok">Installed</span>}
+                </span>
+                <span className="vfy-tools-card-desc">
+                  {p.description ?? 'Production-ready vertical workflow pack.'}
+                </span>
+                <button
+                  type="button"
+                  className="vfy-btn vfy-btn-primary"
+                  disabled={busy || !orgId || p.installed}
+                  onClick={() => void install(p.id)}
+                  style={{ marginTop: 8 }}
+                >
+                  {p.installed ? 'Ready' : 'Install pack'}
+                </button>
+              </div>
+            );
+          })}
           {packs.length === 0 && (
             <p className="vfy-settings-empty">No packs available yet.</p>
           )}

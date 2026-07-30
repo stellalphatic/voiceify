@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   CheckCircle2,
   CircleAlert,
@@ -9,7 +9,10 @@ import {
   Server,
   Sparkles,
   Waves,
-} from "lucide-react";
+} from 'lucide-react';
+import { apiJson, getActiveOrgId } from '../../lib/auth/client';
+import { SMB_CONNECTORS } from '../../lib/connectors/catalog';
+import ConnectorGrid from '../connectors/ConnectorGrid';
 
 type Health = {
   gemini?: boolean;
@@ -18,118 +21,140 @@ type Health = {
   emailConfigured?: boolean;
   coqui?: boolean;
   qdrant?: boolean;
-  openSource?: {
-    llm?: string;
-    tts?: string;
-    vectors?: string;
-  };
   models?: {
     llm?: string;
     llmFallback?: string;
     stt?: string;
     tts?: string;
   };
-  stack?: Record<string, string>;
 };
 
+type ToolRow = { slug: string };
+
 export default function IntegrationsWorkspace() {
+  const orgId = getActiveOrgId();
   const [health, setHealth] = useState<Health | null>(null);
+  const [tools, setTools] = useState<ToolRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const loadTools = useCallback(async () => {
+    if (!orgId) return;
+    try {
+      const data = await apiJson<{ tools: ToolRow[] }>(`/api/orgs/${orgId}/tools`);
+      setTools(data.tools);
+    } catch {
+      /* optional */
+    }
+  }, [orgId]);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch("/api/health", { credentials: "include" });
+        const res = await fetch('/api/health', { credentials: 'include' });
         if (!res.ok) throw new Error(`Health check failed (${res.status})`);
         const data = (await res.json()) as Health;
         if (!cancelled) setHealth(data);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Unable to load provider status");
+          setError(err instanceof Error ? err.message : 'Unable to load provider status');
         }
       }
     })();
+    void loadTools();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadTools]);
+
+  const installedSlugs = useMemo(() => new Set(tools.map((t) => t.slug)), [tools]);
 
   const providers = [
     {
-      name: "Speech engine",
+      name: 'Speech engine',
       role: health?.models?.stt
-        ? `STT ${health.models.stt} · TTS ${health.models.tts ?? "flash"}`
-        : "Realtime speech-to-text and natural text-to-speech",
+        ? `STT ${health.models.stt} · TTS ${health.models.tts ?? 'flash'}`
+        : 'Realtime speech-to-text and natural text-to-speech',
       ok: health?.elevenlabs,
       icon: Mic,
-      statusLabel: (ready: boolean) =>
-        ready ? "Configured" : "Not configured",
+      statusLabel: (ready: boolean) => (ready ? 'Configured' : 'Not configured'),
     },
     {
-      name: "Primary LLM",
+      name: 'Primary LLM',
       role: health?.models?.llm
         ? `Groq · ${health.models.llm}`
-        : "Low-latency reasoning for live agent replies",
+        : 'Low-latency reasoning for live agent replies',
       ok: health?.groq,
       icon: Sparkles,
-      statusLabel: (ready: boolean) =>
-        ready ? "Configured" : "Not configured",
+      statusLabel: (ready: boolean) => (ready ? 'Configured' : 'Not configured'),
     },
     {
-      name: "Fallback LLM",
+      name: 'Fallback LLM',
       role: health?.models?.llmFallback
         ? `Optional · ${health.models.llmFallback}`
-        : "Optional Gemini backup for resilience",
+        : 'Optional Gemini backup for resilience',
       ok: health?.gemini,
       icon: Waves,
       statusLabel: (ready: boolean) => {
-        if (ready) return "Configured";
-        if (health?.groq) return "Optional (primary healthy)";
-        return "Not configured";
+        if (ready) return 'Configured';
+        if (health?.groq) return 'Optional (primary healthy)';
+        return 'Not configured';
       },
     },
   ];
 
   const openSource = [
     {
-      name: "Coqui XTTS",
-      role: "Self-hosted TTS alternative (TTS_PROVIDER=coqui)",
+      name: 'Coqui XTTS',
+      role: 'Self-hosted TTS alternative (TTS_PROVIDER=coqui)',
       ok: health?.coqui,
       icon: Server,
     },
     {
-      name: "Qdrant",
-      role: "Optional vector store for knowledge retrieval",
+      name: 'Qdrant',
+      role: 'Optional vector store for knowledge retrieval',
       ok: health?.qdrant,
       icon: Database,
     },
   ];
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-5xl space-y-6">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
           <p className="vfy-page-eyebrow">// manage · integrations</p>
           <h1 className="vfy-page-title">Integrations</h1>
           <p className="vfy-page-sub">
-            Voiceify runs STT, LLM, and TTS on the server. Tenant workspaces connect via API keys and
-            embed widgets, not by pasting provider secrets in the browser.
+            Connect Google Sheets, WhatsApp, Calendar, and Email in one click. Platform voice
+            providers stay on the server, never in the browser.
           </p>
         </div>
       </div>
 
       {error && (
-        <p role="alert" className="text-sm" style={{ color: "var(--d-danger)" }}>
+        <p role="alert" className="text-sm" style={{ color: 'var(--d-danger)' }}>
           {error}
         </p>
       )}
 
+      <section className="vfy-settings-card vfy-connector-hero">
+        <h3 className="vfy-settings-card-title">Business connectors</h3>
+        <p className="vfy-settings-help">
+          Built for non-technical teams. Log bookings to Sheets, ping WhatsApp, create Calendar
+          events, and email yourself when a lead comes in.
+        </p>
+        <ConnectorGrid
+          connectors={SMB_CONNECTORS}
+          installedSlugs={installedSlugs}
+          onInstalled={() => void loadTools()}
+        />
+      </section>
+
       <section className="vfy-settings-card">
         <h3 className="vfy-settings-card-title">Voice pipeline (platform)</h3>
         <p className="vfy-settings-help">
-          Status reflects keys configured on the API host. Platform operators manage these in server
-          environment variables, not in the tenant dashboard.
+          Status reflects keys on the API host. Operators manage these in server environment
+          variables.
         </p>
         <div className="grid gap-3 md:grid-cols-3">
           {providers.map((p) => {
@@ -139,7 +164,7 @@ export default function IntegrationsWorkspace() {
               <article
                 key={p.name}
                 className="vfy-settings-list-item"
-                style={{ flexDirection: "column", alignItems: "flex-start" }}
+                style={{ flexDirection: 'column', alignItems: 'flex-start' }}
               >
                 <div className="flex items-center gap-2 mb-2">
                   <Icon size={16} />
@@ -148,10 +173,10 @@ export default function IntegrationsWorkspace() {
                 <p className="vfy-settings-item-meta">{p.role}</p>
                 <p
                   className="vfy-settings-item-meta"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8 }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8 }}
                 >
                   {ready ? <CheckCircle2 size={14} /> : <CircleAlert size={14} />}
-                  {health == null ? "Checking…" : p.statusLabel(ready)}
+                  {health == null ? 'Checking…' : p.statusLabel(ready)}
                 </p>
               </article>
             );
@@ -162,8 +187,7 @@ export default function IntegrationsWorkspace() {
       <section className="vfy-settings-card">
         <h3 className="vfy-settings-card-title">Open-source backends</h3>
         <p className="vfy-settings-help">
-          Optional self-hosted path (Llama 3.3 via Groq by default, Coqui XTTS, Qdrant). Enable via
-          server env — not tenant secrets.
+          Optional self-hosted path (Llama 3.3 via Groq by default, Coqui XTTS, Qdrant).
         </p>
         <div className="grid gap-3 md:grid-cols-2">
           {openSource.map((p) => {
@@ -173,7 +197,7 @@ export default function IntegrationsWorkspace() {
               <article
                 key={p.name}
                 className="vfy-settings-list-item"
-                style={{ flexDirection: "column", alignItems: "flex-start" }}
+                style={{ flexDirection: 'column', alignItems: 'flex-start' }}
               >
                 <div className="flex items-center gap-2 mb-2">
                   <Icon size={16} />
@@ -182,10 +206,10 @@ export default function IntegrationsWorkspace() {
                 <p className="vfy-settings-item-meta">{p.role}</p>
                 <p
                   className="vfy-settings-item-meta"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8 }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8 }}
                 >
                   {ready ? <CheckCircle2 size={14} /> : <CircleAlert size={14} />}
-                  {health == null ? "Checking…" : ready ? "Configured" : "Not enabled"}
+                  {health == null ? 'Checking…' : ready ? 'Configured' : 'Not enabled'}
                 </p>
               </article>
             );
@@ -206,18 +230,18 @@ export default function IntegrationsWorkspace() {
           <Link
             to="/dashboard/api-keys"
             className="vfy-btn vfy-btn-primary"
-            style={{ display: "inline-flex" }}
+            style={{ display: 'inline-flex' }}
           >
             API keys &amp; embed
           </Link>
           <Link
             to="/dashboard/tools"
             className="vfy-btn vfy-btn-ghost"
-            style={{ display: "inline-flex" }}
+            style={{ display: 'inline-flex' }}
           >
-            Browse tools
+            All tools
           </Link>
-          <Link to="/docs" className="vfy-btn vfy-btn-ghost" style={{ display: "inline-flex" }}>
+          <Link to="/docs" className="vfy-btn vfy-btn-ghost" style={{ display: 'inline-flex' }}>
             API docs
           </Link>
         </div>
