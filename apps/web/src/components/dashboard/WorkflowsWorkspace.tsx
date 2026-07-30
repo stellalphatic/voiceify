@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { GitBranch, Play, Sparkles } from 'lucide-react';
 import { apiJson, getActiveOrgId } from '../../lib/auth/client';
+import { useAgentStore } from '../../lib/agents/AgentStoreContext';
 import WorkflowCanvas from './WorkflowCanvas';
 
 type Pack = {
@@ -17,6 +18,7 @@ type AutomationsPayload = {
 
 export default function WorkflowsWorkspace() {
   const orgId = getActiveOrgId();
+  const { refreshFromApi } = useAgentStore();
   const [packs, setPacks] = useState<Pack[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +49,8 @@ export default function WorkflowsWorkspace() {
         method: 'POST',
         body: JSON.stringify({ packId, createAgent: true }),
       });
-      setMessage(`Installed ${packId}. Agent and tools are ready to use in Sandbox.`);
-      await load();
+      setMessage(`Installed ${packId}. Agent and pack tools are ready in Agents and Sandbox.`);
+      await Promise.all([load(), refreshFromApi()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Install failed');
     } finally {

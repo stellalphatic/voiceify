@@ -144,6 +144,9 @@ export interface UseVoiceAgentOptions {
   sessionId?: string;
   /** Start listening automatically on mount and when persona/agent changes. */
   autoStart?: boolean;
+  /** When set with agentServerId, sandbox uses the metered org turn pipeline. */
+  orgId?: string | null;
+  agentServerId?: string | null;
 }
 
 export function useVoiceAgent(
@@ -197,13 +200,24 @@ export function useVoiceAgent(
   const agentConfigRef = useRef(options?.agentConfig);
   const customGreetingRef = useRef(options?.customGreeting);
   const agentNameRef = useRef(options?.agentName);
+  const orgIdRef = useRef(options?.orgId ?? null);
+  const agentServerIdRef = useRef(options?.agentServerId ?? null);
+  const conversationIdRef = useRef<string | null>(null);
   const autoStartAllowedRef = useRef(true);
 
   useEffect(() => {
     agentConfigRef.current = options?.agentConfig;
     customGreetingRef.current = options?.customGreeting;
     agentNameRef.current = options?.agentName;
-  }, [options?.agentConfig, options?.customGreeting, options?.agentName]);
+    orgIdRef.current = options?.orgId ?? null;
+    agentServerIdRef.current = options?.agentServerId ?? null;
+  }, [
+    options?.agentConfig,
+    options?.customGreeting,
+    options?.agentName,
+    options?.orgId,
+    options?.agentServerId,
+  ]);
 
   const displayName = useCallback(
     () => agentNameRef.current?.trim() || persona.name,
@@ -219,6 +233,47 @@ export function useVoiceAgent(
       };
     },
     [],
+  );
+
+  /** Prefer authenticated org turn (tools/knowledge/packs); fall back to legacy /respond. */
+  const fetchVoicePipeline = useCallback(
+    async (
+      payload: Record<string, unknown>,
+      signal: AbortSignal,
+    ): Promise<Response> => {
+      const orgId = orgIdRef.current;
+      const agentServerId = agentServerIdRef.current;
+      const ttsOnly = payload.mode === 'tts_only';
+
+      if (orgId && agentServerId) {
+        const res = await fetch(`/api/voice/${orgId}/agents/${agentServerId}/turn`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: payload.message,
+            history: payload.history ?? [],
+            channel: 'sandbox',
+            ttsOnly: Boolean(ttsOnly),
+            ...(conversationIdRef.current
+              ? { conversationId: conversationIdRef.current }
+              : {}),
+          }),
+          signal,
+        });
+        const convId = res.headers.get('x-conversation-id');
+        if (convId) conversationIdRef.current = convId;
+        return res;
+      }
+
+      return fetch('/api/voice/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(voiceApiBody(payload)),
+        signal,
+      });
+    },
+    [voiceApiBody],
   );
 
   useEffect(() => {
@@ -244,7 +299,8 @@ export function useVoiceAgent(
   const stopPlaybackOnly = useCallback(() => {
     holdAbortRef.current?.abort();
     holdAbortRef.current = null;
-    playerRef.current?.stop();
+    /* Soft clear — keep AudioContext so reply TTS is not blocked by autoplay policy. */
+    playerRef.current?.reset();
     speakingRef.current = false;
   }, []);
 
@@ -255,6 +311,16 @@ export function useVoiceAgent(
     abortRef.current = null;
     playerRef.current?.stop();
     playerRef.current = null;
+    speakingRef.current = false;
+  }, []);
+
+  /** Interrupt current speech without destroying the AudioContext (barge-in / turn handoff). */
+  const softInterruptPlayback = useCallback(() => {
+    holdAbortRef.current?.abort();
+    holdAbortRef.current = null;
+    abortRef.current?.abort();
+    abortRef.current = null;
+    playerRef.current?.reset();
     speakingRef.current = false;
   }, []);
 
@@ -388,9 +454,7 @@ export function useVoiceAgent(
 
     bargeInCooldownRef.current = Date.now();
     turnIdRef.current += 1;
-    abortRef.current?.abort();
-    abortRef.current = null;
-    stopAudio();
+    softInterruptPlayback();
     speakingRef.current = false;
     thinkingRef.current = false;
     processingRef.current = false;
@@ -413,7 +477,13 @@ export function useVoiceAgent(
 
     setInterruptCount((count) => count + 1);
     setStatus('listening');
-  }, [getLastAgentText, markLastAssistantInterrupted, restartRecorderForInterrupt, stopVadMonitor]);
+  }, [
+    getLastAgentText,
+    markLastAssistantInterrupted,
+    restartRecorderForInterrupt,
+    softInterruptPlayback,
+    stopVadMonitor,
+  ]);
 
   handleBargeInRef.current = handleBargeIn;
 
@@ -585,7 +655,7 @@ export function useVoiceAgent(
   const speakPipeline = useCallback(
     async (text: string, measureFrom?: number): Promise<number | null> => {
       const turnId = turnIdRef.current;
-      stopAudio();
+      softInterruptPlayback();
       speakingRef.current = true;
       setStatus('speaking');
       syncVadMonitor();
@@ -601,11 +671,8 @@ export function useVoiceAgent(
 
       let res: Response;
       try {
-        res = await fetch('/api/voice/respond', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          voiceApiBody({
+        res = await fetchVoicePipeline(
+          {
             message: text,
             personaId: persona.id,
             history: toChatHistory(historyRef.current),
@@ -615,10 +682,9 @@ export function useVoiceAgent(
               lastLanguageRef.current,
               text,
             ),
-          }),
-        ),
-          signal: controller.signal,
-        });
+          },
+          controller.signal,
+        );
       } catch (err: unknown) {
         window.clearTimeout(fetchTimer);
         speakingRef.current = false;
@@ -684,7 +750,15 @@ export function useVoiceAgent(
       }
       return ttfa;
     },
-    [applyDetectedLanguage, getPlayer, persona.id, stopAudio, stopVadMonitor, syncVadMonitor, voiceApiBody],
+    [
+      applyDetectedLanguage,
+      fetchVoicePipeline,
+      getPlayer,
+      persona.id,
+      softInterruptPlayback,
+      stopVadMonitor,
+      syncVadMonitor,
+    ],
   );
 
   /** Brief hold audio while LLM thinks — never aborts the main turn fetch/stream. */
@@ -697,23 +771,19 @@ export function useVoiceAgent(
       const phrase = holdPhraseForLanguage(lastLanguageRef.current);
 
       try {
-        const res = await fetch('/api/voice/respond', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(
-            voiceApiBody({
-              message: phrase,
-              personaId: persona.id,
-              history: toChatHistory(historyRef.current),
-              mode: 'tts_only',
-              language: languageForRequest(
-                languageModeRef.current,
-                lastLanguageRef.current,
-              ),
-            }),
-          ),
-          signal: holdController.signal,
-        });
+        const res = await fetchVoicePipeline(
+          {
+            message: phrase,
+            personaId: persona.id,
+            history: toChatHistory(historyRef.current),
+            mode: 'tts_only',
+            language: languageForRequest(
+              languageModeRef.current,
+              lastLanguageRef.current,
+            ),
+          },
+          holdController.signal,
+        );
         if (!res.ok || forTurnId !== turnIdRef.current) return;
 
         const player = getPlayer();
@@ -738,7 +808,7 @@ export function useVoiceAgent(
         if (holdAbortRef.current === holdController) holdAbortRef.current = null;
       }
     },
-    [getPlayer, persona.id, syncVadMonitor, voiceApiBody],
+    [fetchVoicePipeline, getPlayer, persona.id, syncVadMonitor],
   );
 
   const runTurn = useCallback(
@@ -782,11 +852,8 @@ export function useVoiceAgent(
 
       let res: Response;
       try {
-        res = await fetch('/api/voice/respond', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          voiceApiBody({
+        res = await fetchVoicePipeline(
+          {
             message: userText,
             personaId: persona.id,
             history: toChatHistory(historyBeforeTurn),
@@ -795,10 +862,9 @@ export function useVoiceAgent(
               lastLanguageRef.current,
               userText,
             ),
-          }),
-        ),
-          signal: controller.signal,
-        });
+          },
+          controller.signal,
+        );
       } catch (err: unknown) {
         cancelHoldPlayback();
         thinkingRef.current = false;
@@ -815,7 +881,6 @@ export function useVoiceAgent(
 
       cancelHoldPlayback();
       stopPlaybackOnly();
-      player.reset();
 
       if (!res.ok) {
         thinkingRef.current = false;
@@ -895,7 +960,17 @@ export function useVoiceAgent(
         setStatus('listening');
       }
     },
-    [applyDetectedLanguage, displayName, getPlayer, persona.id, playThinkingHold, stopPlaybackOnly, stopVadMonitor, syncVadMonitor, voiceApiBody],
+    [
+      applyDetectedLanguage,
+      displayName,
+      fetchVoicePipeline,
+      getPlayer,
+      persona.id,
+      playThinkingHold,
+      stopPlaybackOnly,
+      stopVadMonitor,
+      syncVadMonitor,
+    ],
   );
 
   const processUserMessage = useCallback(
@@ -1391,6 +1466,7 @@ export function useVoiceAgent(
   }, [clearBargeInAwaitingFinal, releaseRecorder, stopAudio, stopRecognition, stopVadMonitor]);
 
   const resetConversation = useCallback(() => {
+    conversationIdRef.current = null;
     if (isActive) {
       endSession();
     } else {

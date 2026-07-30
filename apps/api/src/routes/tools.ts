@@ -43,29 +43,56 @@ toolsRoutes.get("/:orgId/tools", requireOrg("agents:read"), async (c) => {
 
 toolsRoutes.post("/:orgId/tools", requireOrg("agents:write"), async (c) => {
   const orgId = c.get("orgId");
-  const input = toolCreateSchema.parse(await c.req.json());
+  const parsed = toolCreateSchema.safeParse(await c.req.json());
+  if (!parsed.success) {
+    return c.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid tool payload" },
+      400,
+    );
+  }
+  const input = parsed.data;
   if (input.type === "http") {
-    parseHttpToolDefinition({
-      name: input.slug,
-      description: input.description || input.name,
-      ...input.config,
-    });
+    try {
+      parseHttpToolDefinition({
+        name: input.slug,
+        description: input.description || input.name,
+        ...input.config,
+      });
+    } catch (err) {
+      return c.json(
+        {
+          error:
+            err instanceof Error
+              ? err.message
+              : "Invalid HTTP tool configuration (check URL and method)",
+        },
+        400,
+      );
+    }
   }
 
-  const [row] = await db
-    .insert(tools)
-    .values({
-      orgId,
-      name: input.name,
-      slug: input.slug,
-      description: input.description ?? "",
-      type: input.type,
-      config: input.config,
-      inputSchema: input.inputSchema,
-    })
-    .returning();
+  try {
+    const [row] = await db
+      .insert(tools)
+      .values({
+        orgId,
+        name: input.name,
+        slug: input.slug,
+        description: input.description ?? "",
+        type: input.type,
+        config: input.config,
+        inputSchema: input.inputSchema,
+      })
+      .returning();
 
-  return c.json({ tool: row }, 201);
+    return c.json({ tool: row }, 201);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to create tool";
+    if (/unique|duplicate/i.test(msg)) {
+      return c.json({ error: "A tool with this slug already exists" }, 409);
+    }
+    return c.json({ error: msg }, 500);
+  }
 });
 
 toolsRoutes.patch(
@@ -74,14 +101,21 @@ toolsRoutes.patch(
   async (c) => {
     const orgId = c.get("orgId");
     const toolId = c.req.param("toolId");
-    const body = z
+    const parsed = z
       .object({
         name: z.string().min(1).max(80).optional(),
         description: z.string().max(500).optional(),
         config: z.record(z.unknown()).optional(),
         inputSchema: z.record(z.unknown()).optional(),
       })
-      .parse(await c.req.json());
+      .safeParse(await c.req.json());
+    if (!parsed.success) {
+      return c.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid tool update" },
+        400,
+      );
+    }
+    const body = parsed.data;
 
     const [tool] = await db
       .select()
@@ -92,11 +126,23 @@ toolsRoutes.patch(
 
     const nextConfig = body.config ?? tool.config;
     if (tool.type === "http") {
-      parseHttpToolDefinition({
-        name: tool.slug,
-        description: body.description ?? tool.description ?? tool.name,
-        ...nextConfig,
-      });
+      try {
+        parseHttpToolDefinition({
+          name: tool.slug,
+          description: body.description ?? tool.description ?? tool.name,
+          ...nextConfig,
+        });
+      } catch (err) {
+        return c.json(
+          {
+            error:
+              err instanceof Error
+                ? err.message
+                : "Invalid HTTP tool configuration (check URL and method)",
+          },
+          400,
+        );
+      }
     }
 
     const [row] = await db

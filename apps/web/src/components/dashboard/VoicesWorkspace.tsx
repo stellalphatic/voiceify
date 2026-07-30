@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Copy, Mic2, Search, Volume2 } from 'lucide-react';
 import { apiJson } from '../../lib/auth/client';
 
@@ -50,6 +50,76 @@ function CopyIdButton({ id }: { id: string }) {
       {copied ? <Check size={13} /> : <Copy size={13} />}
       {copied ? 'Copied' : 'Copy ID'}
     </button>
+  );
+}
+
+function PreviewVoiceButton({ voiceId, name }: { voiceId: string; name: string }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const play = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch('/api/voice/tts', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: `Hi, I'm ${name}. This is how I sound on Voiceify.`,
+          voiceId,
+        }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error ?? `Preview failed (${res.status})`);
+      }
+      const pcm = await res.arrayBuffer();
+      const Ctx =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) throw new Error('Web Audio not supported');
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        audioCtxRef.current = new Ctx({ sampleRate: 22050 });
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') await ctx.resume();
+
+      const int16 = new Int16Array(pcm);
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) float32[i] = (int16[i] ?? 0) / 32768;
+      const buffer = ctx.createBuffer(1, float32.length, 22050);
+      buffer.getChannelData(0).set(float32);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Preview failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+      <button
+        type="button"
+        className="vfy-btn vfy-btn-ghost"
+        disabled={busy}
+        onClick={() => void play()}
+        aria-label={`Preview ${name}`}
+      >
+        <Volume2 size={13} />
+        {busy ? 'Playing…' : 'Preview'}
+      </button>
+      {err ? (
+        <span className="vfy-settings-item-meta" style={{ color: 'var(--d-danger)', maxWidth: 160 }}>
+          {err}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -154,6 +224,7 @@ export default function VoicesWorkspace() {
                   <p className="vfy-voices-persona-tag">{p.tagline}</p>
                 </div>
                 <CopyIdButton id={p.voiceId} />
+                <PreviewVoiceButton voiceId={p.voiceId} name={p.name} />
               </div>
             ))}
           </div>
@@ -213,6 +284,7 @@ export default function VoicesWorkspace() {
                   {meta ? <p className="vfy-voice-row-meta">{meta}</p> : null}
                 </div>
                 <CopyIdButton id={v.id} />
+                <PreviewVoiceButton voiceId={v.id} name={v.name} />
               </li>
             );
           })}

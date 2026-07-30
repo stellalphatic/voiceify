@@ -353,7 +353,7 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
             onClick={() => void downloadPrivacyExport()}
           >
             <Download size={14} />
-            {exportBusy ? 'Preparing…' : 'Download data export'}
+            {exportBusy ? 'Preparing…' : 'Export my data'}
           </button>
         </section>
       )}

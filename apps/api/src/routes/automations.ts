@@ -5,6 +5,7 @@ import {
   packIdSchema,
 } from "@voiceify/automations";
 import {
+  agentVersions,
   agents,
   automationInstalls,
   db,
@@ -15,6 +16,7 @@ import {
   and,
   tools,
 } from "@voiceify/db";
+import { buildDashboardSystemPrompt } from "@voiceify/shared";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../lib/types.js";
@@ -82,22 +84,29 @@ automationsRoutes.post(
       install = created;
     }
 
+    const createdToolIds: string[] = [];
     for (const tool of pack.tools) {
       const found = await db
         .select()
         .from(tools)
         .where(and(eq(tools.orgId, orgId), eq(tools.slug, tool.name)))
         .limit(1);
-      if (!found.length) {
-        await db.insert(tools).values({
-          orgId,
-          name: tool.name,
-          slug: tool.name,
-          description: tool.description,
-          type: "pack",
-          config: { packId: body.packId, ...tool },
-          inputSchema: {},
-        });
+      if (found[0]) {
+        createdToolIds.push(found[0].id);
+      } else {
+        const [inserted] = await db
+          .insert(tools)
+          .values({
+            orgId,
+            name: tool.name,
+            slug: tool.name,
+            description: tool.description,
+            type: "pack",
+            config: { packId: body.packId, ...tool },
+            inputSchema: {},
+          })
+          .returning();
+        if (inserted) createdToolIds.push(inserted.id);
       }
     }
 
@@ -152,21 +161,79 @@ automationsRoutes.post(
     let agent = null;
     if (body.createAgent && pack.agents[0]) {
       const def = pack.agents[0];
-      const [created] = await db
-        .insert(agents)
-        .values({
-          orgId,
-          name: def.name,
-          type: def.type,
-          language: def.language,
-          greeting: def.greeting,
-          voiceId: def.voiceId,
-          capabilities: Object.fromEntries(def.capabilities.map((c) => [c, true])),
-          triggers: Object.fromEntries(def.triggers.map((t) => [t, true])),
-          status: "draft",
-        })
-        .returning();
-      agent = created;
+      const user = c.get("user");
+      const existingAgent = await db
+        .select()
+        .from(agents)
+        .where(and(eq(agents.orgId, orgId), eq(agents.name, def.name)))
+        .limit(1);
+
+      if (existingAgent[0]) {
+        agent = existingAgent[0];
+      } else {
+        const [created] = await db
+          .insert(agents)
+          .values({
+            orgId,
+            name: def.name,
+            type: def.type,
+            language: def.language,
+            greeting: def.greeting,
+            voiceId: def.voiceId,
+            capabilities: Object.fromEntries(def.capabilities.map((c) => [c, true])),
+            triggers: Object.fromEntries(def.triggers.map((t) => [t, true])),
+            status: "active",
+          })
+          .returning();
+        agent = created;
+
+        if (agent) {
+          const systemPrompt = buildDashboardSystemPrompt({
+            name: agent.name,
+            type: agent.type,
+            language: agent.language,
+            greeting: agent.greeting ?? undefined,
+            capabilities: def.capabilities,
+            triggers: def.triggers,
+            voiceId: agent.voiceId ?? undefined,
+          });
+
+          const [version] = await db
+            .insert(agentVersions)
+            .values({
+              agentId: agent.id,
+              orgId,
+              version: 1,
+              systemPrompt,
+              voiceId: agent.voiceId,
+              greeting: agent.greeting,
+              language: agent.language,
+              toolIds: createdToolIds,
+              knowledgeDocIds: [],
+              config: {
+                capabilities: agent.capabilities,
+                triggers: agent.triggers,
+                guardrails: agent.guardrails ?? {},
+                packId: body.packId,
+              },
+              createdBy: user.id,
+            })
+            .returning();
+
+          if (version) {
+            const [deployed] = await db
+              .update(agents)
+              .set({
+                deployedVersionId: version.id,
+                status: "active",
+                updatedAt: new Date(),
+              })
+              .where(eq(agents.id, agent.id))
+              .returning();
+            agent = deployed ?? agent;
+          }
+        }
+      }
     }
 
     return c.json(

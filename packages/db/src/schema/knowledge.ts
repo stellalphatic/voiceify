@@ -1,6 +1,7 @@
 import {
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -28,6 +29,8 @@ export const knowledgeDocs = pgTable(
     filename: text("filename").notNull(),
     mimeType: text("mime_type").notNull(),
     status: knowledgeDocStatusEnum("status").notNull().default("pending"),
+    /** Empty = available to all agents; otherwise only listed agent UUIDs. */
+    agentIds: jsonb("agent_ids").$type<string[]>().notNull().default([]),
     createdAt: createdAtColumn(),
   },
   (table) => [index("knowledge_docs_org_idx").on(table.orgId)],

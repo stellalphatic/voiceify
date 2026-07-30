@@ -117,6 +117,7 @@ interface Task {
 
 interface Agent extends StoredVoiceAgent {
   tasks?: Task[];
+  serverId?: string;
 }
 
 function asDashboardAgents(agents: StoredVoiceAgent[]): Agent[] {
@@ -791,6 +792,30 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
     location.state?.agentId || agents[0]?.id || null,
   );
   const activeAgent = agents.find(a => a.id === activeAgentId) || agents[0];
+  const orgId = getActiveOrgId();
+
+  const {
+    status,
+    messages,
+    error,
+    latencyMs,
+    isActive,
+    activeLanguage,
+    geminiEnabled,
+    groqEnabled,
+    scribeSttEnabled,
+    scribeRealtimeEnabled,
+    interruptCount,
+    interimTranscript,
+    sttFallbackWarning,
+    startSession,
+    endSession,
+    resetConversation,
+  } = useVoiceAgentFromRecord(activeAgent, undefined, {
+    autoStart: false,
+    orgId,
+    agentServerId: activeAgent?.serverId ?? null,
+  });
 
   if (!agents.length || !activeAgent) {
     return (
@@ -814,25 +839,6 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
       </div>
     );
   }
-
-  const {
-    status,
-    messages,
-    error,
-    latencyMs,
-    isActive,
-    activeLanguage,
-    geminiEnabled,
-    groqEnabled,
-    scribeSttEnabled,
-    scribeRealtimeEnabled,
-    interruptCount,
-    interimTranscript,
-    sttFallbackWarning,
-    startSession,
-    endSession,
-    resetConversation,
-  } = useVoiceAgentFromRecord(activeAgent, undefined, { autoStart: false });
 
   const [logs, setLogs] = useState<{sender: 'user' | 'agent' | 'system', text: string, timestamp: string, isoTimestamp: string}[]>([]);
   const [filterSender, setFilterSender] = useState<'All' | 'user' | 'agent' | 'system'>('All');
@@ -1309,6 +1315,51 @@ const AgentsView = ({
   onManageTasks: (agent: Agent) => void;
 }) => {
   const navigate = useNavigate();
+  const orgId = getActiveOrgId();
+  const { refreshFromApi } = useAgentStore();
+  const [packBusy, setPackBusy] = useState(false);
+  const [packError, setPackError] = useState<string | null>(null);
+  const [packMessage, setPackMessage] = useState<string | null>(null);
+
+  const templates = [
+    {
+      packId: 'restaurant',
+      name: 'Restaurant host',
+      blurb: 'Reservations, menu questions, waitlist.',
+    },
+    {
+      packId: 'receptionist',
+      name: 'Front-desk receptionist',
+      blurb: 'Routing, FAQ, department handoff.',
+    },
+    {
+      packId: 'appointments',
+      name: 'Appointments desk',
+      blurb: 'Booking, intake, reminders.',
+    },
+  ] as const;
+
+  const installTemplate = async (packId: string) => {
+    if (!orgId) {
+      setPackError('Select a workspace first.');
+      return;
+    }
+    setPackBusy(true);
+    setPackError(null);
+    setPackMessage(null);
+    try {
+      await apiJson(`/api/orgs/${orgId}/automations/install`, {
+        method: 'POST',
+        body: JSON.stringify({ packId, createAgent: true }),
+      });
+      await refreshFromApi();
+      setPackMessage(`Installed ${packId}. Open Sandbox to test.`);
+    } catch (err) {
+      setPackError(err instanceof Error ? err.message : 'Could not install template');
+    } finally {
+      setPackBusy(false);
+    }
+  };
 
   const perfData: Record<number, { calls: number; success: number; latency: number }> = {
     1: { calls: 47,  success: 97.8, latency: 380 },
@@ -1363,6 +1414,41 @@ const AgentsView = ({
           <p className="vfy-page-sub">Manage AI personas, voices, and triggers across your organization.</p>
         </div>
       </div>
+
+      <section className="vfy-settings-card" style={{ marginBottom: 24 }}>
+        <h3 className="vfy-settings-card-title">Start from a pre-built pack</h3>
+        <p className="vfy-settings-help">
+          Install Restaurant, Receptionist, or Appointments. Each pack creates an agent, pack tools,
+          and seed data ready for Sandbox.
+        </p>
+        {packError && (
+          <p className="text-sm" role="alert" style={{ color: 'var(--d-danger)' }}>
+            {packError}
+          </p>
+        )}
+        {packMessage && (
+          <p className="text-sm" role="status" style={{ color: 'var(--d-accent)' }}>
+            {packMessage}
+          </p>
+        )}
+        <div className="grid gap-3 md:grid-cols-3" style={{ marginTop: 12 }}>
+          {templates.map((t) => (
+            <article key={t.packId} className="vfy-settings-list-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+              <p className="vfy-settings-item-title">{t.name}</p>
+              <p className="vfy-settings-item-meta">{t.blurb}</p>
+              <button
+                type="button"
+                className="vfy-btn vfy-btn-primary"
+                style={{ marginTop: 10 }}
+                disabled={packBusy || !orgId}
+                onClick={() => void installTemplate(t.packId)}
+              >
+                {packBusy ? 'Installing…' : 'Install to workspace'}
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <div className="vfy-agents-grid">
         {agents.map(agent => {

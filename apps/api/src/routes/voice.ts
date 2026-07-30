@@ -6,8 +6,10 @@ import {
   conversations,
   db,
   eq,
+  inArray,
   isNull,
   knowledgeChunks,
+  knowledgeDocs,
   messages,
   sql,
   toolInvocations,
@@ -16,6 +18,7 @@ import {
 import { executeHttpTool } from "@voiceify/tools";
 import { resolveBasePersonaId } from "@voiceify/shared";
 import {
+  handleElevenLabsTts,
   handleScribeRealtimeToken,
   handleVoiceRespond,
   handleVoiceTranscribe,
@@ -64,6 +67,10 @@ voiceRoutes.post("/transcribe", async (c) => {
 voiceRoutes.post("/respond", async (c) => {
   const res = await handleVoiceRespond(c.req.raw);
   return res;
+});
+
+voiceRoutes.post("/tts", async (c) => {
+  return handleElevenLabsTts(c.req.raw);
 });
 
 const turnSchema = z.object({
@@ -145,13 +152,18 @@ voiceRoutes.post(
       content: body.message,
     });
 
-    // Attach tool names for LLM context via greeting/prompt enrichment
-    const orgTools = await db
+    // Attach tools — prefer deployed version toolIds when set
+    const allOrgTools = await db
       .select()
       .from(tools)
       .where(eq(tools.orgId, orgId));
+    const versionToolIds = version?.toolIds ?? [];
+    const orgTools =
+      versionToolIds.length > 0
+        ? allOrgTools.filter((t) => versionToolIds.includes(t.id))
+        : allOrgTools;
 
-    // Lightweight knowledge retrieval (ILIKE) — inject top chunks into the prompt
+    // Lightweight knowledge retrieval — agent-scoped docs when assigned
     const knowledgeTerms = body.message
       .split(/\s+/)
       .map((w) => w.replace(/[^a-zA-Z0-9]/g, ""))
@@ -161,16 +173,48 @@ voiceRoutes.post(
     if (knowledgeTerms.length) {
       const pattern = `%${knowledgeTerms[0]}%`;
       try {
-        const hits = await db
-          .select({ content: knowledgeChunks.content })
-          .from(knowledgeChunks)
-          .where(
-            and(
-              eq(knowledgeChunks.orgId, orgId),
-              sql`${knowledgeChunks.content} ILIKE ${pattern}`,
-            ),
-          )
-          .limit(4);
+        const versionDocIds = version?.knowledgeDocIds ?? [];
+        let hits: Array<{ content: string }> = [];
+
+        if (versionDocIds.length > 0) {
+          hits = await db
+            .select({ content: knowledgeChunks.content })
+            .from(knowledgeChunks)
+            .where(
+              and(
+                eq(knowledgeChunks.orgId, orgId),
+                inArray(knowledgeChunks.docId, versionDocIds),
+                sql`${knowledgeChunks.content} ILIKE ${pattern}`,
+              ),
+            )
+            .limit(4);
+        } else {
+          const rows = await db
+            .select({
+              content: knowledgeChunks.content,
+              agentIds: knowledgeDocs.agentIds,
+            })
+            .from(knowledgeChunks)
+            .innerJoin(
+              knowledgeDocs,
+              eq(knowledgeChunks.docId, knowledgeDocs.id),
+            )
+            .where(
+              and(
+                eq(knowledgeChunks.orgId, orgId),
+                sql`${knowledgeChunks.content} ILIKE ${pattern}`,
+              ),
+            )
+            .limit(12);
+          hits = rows
+            .filter((h) => {
+              const ids = h.agentIds ?? [];
+              return ids.length === 0 || ids.includes(agentId);
+            })
+            .slice(0, 4)
+            .map((h) => ({ content: h.content }));
+        }
+
         if (hits.length) {
           knowledgeHint = `\n\n[Knowledge base]\n${hits
             .map((h) => `- ${h.content.slice(0, 400)}`)

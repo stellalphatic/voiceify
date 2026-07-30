@@ -156,6 +156,10 @@ export class PcmStreamPlayer {
     this.sources.clear();
   }
 
+  /**
+   * Hard stop — closes AudioContext. Only use when ending the whole session.
+   * Prefer reset() between turns so reply TTS stays inside the original user gesture.
+   */
   stop(): void {
     this.stopped = true;
     this.isFirstBuffer = true;
@@ -187,6 +191,7 @@ export class PcmStreamPlayer {
     this.nextTime = 0;
   }
 
+  /** Soft clear for turn transitions — keeps AudioContext alive for subsequent TTS. */
   reset(): void {
     this.stopAllSources();
 

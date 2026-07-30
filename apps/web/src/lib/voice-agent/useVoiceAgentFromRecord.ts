@@ -13,7 +13,11 @@ import { useVoiceAgent, type UseVoiceAgentOptions } from './useVoiceAgent';
 export function useVoiceAgentFromRecord(
   agent: VoiceAgentRecord | undefined,
   languageModeOverride?: LanguageMode,
-  opts?: { autoStart?: boolean },
+  opts?: {
+    autoStart?: boolean;
+    orgId?: string | null;
+    agentServerId?: string | null;
+  },
 ) {
   const runtime = useMemo(
     () => (agent ? resolveVoiceAgentRuntime(agent, languageModeOverride) : null),
@@ -24,6 +28,7 @@ export function useVoiceAgentFromRecord(
       agent?.language,
       agent?.personaId,
       agent?.greeting,
+      agent?.voice,
       agent?.capabilities?.join('|'),
       agent?.triggers?.join('|'),
       languageModeOverride,
@@ -40,6 +45,8 @@ export function useVoiceAgentFromRecord(
         agentName: runtime.agentName,
         sessionId: String(agent?.id ?? runtime.personaId),
         autoStart,
+        orgId: opts?.orgId ?? null,
+        agentServerId: opts?.agentServerId ?? null,
       }
     : { sessionId: 'restaurant', autoStart };
 

@@ -49,6 +49,7 @@ app.use(
       "x-org-id",
     ],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    exposeHeaders: ["x-conversation-id", "x-credits-soft-warn"],
     credentials: true,
   }),
 );

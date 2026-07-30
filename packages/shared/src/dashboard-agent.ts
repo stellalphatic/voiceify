@@ -28,6 +28,8 @@ const BASE_PERSONA_BY_TYPE: Record<string, string> = {
   healthcare: 'healthcare',
   'customer service': 'support',
   support: 'support',
+  receptionist: 'support',
+  appointments: 'healthcare',
   restaurant: 'restaurant',
   'real estate': 'restaurant',
 };
@@ -78,6 +80,7 @@ export function buildDashboardSystemPrompt(agent: CustomAgentConfig): string {
 
 export function toCustomAgentConfig(agent: DashboardAgentRecord): CustomAgentConfig {
   const personaId = resolveBasePersonaId(agent.type);
+  const selectedVoice = agent.voice?.trim();
   return {
     name: agent.name,
     type: agent.type,
@@ -85,7 +88,7 @@ export function toCustomAgentConfig(agent: DashboardAgentRecord): CustomAgentCon
     greeting: agent.greeting?.trim() || undefined,
     capabilities: agent.capabilities,
     triggers: agent.triggers,
-    voiceId: DEFAULT_VOICE_IDS[personaId],
+    voiceId: selectedVoice || DEFAULT_VOICE_IDS[personaId],
   };
 }
 

@@ -11,6 +11,8 @@ describe('dashboard-agent', () => {
   it('maps agent types to base personas', () => {
     expect(resolveBasePersonaId('Healthcare')).toBe('healthcare');
     expect(resolveBasePersonaId('Customer Service')).toBe('support');
+    expect(resolveBasePersonaId('Receptionist')).toBe('support');
+    expect(resolveBasePersonaId('Appointments')).toBe('healthcare');
     expect(resolveBasePersonaId('Real Estate')).toBe('restaurant');
     expect(resolveBasePersonaId('Unknown')).toBe('restaurant');
   });
@@ -60,5 +62,17 @@ describe('dashboard-agent', () => {
     });
     expect(cfg.name).toBe('Support Bot');
     expect(cfg.voiceId).toBeTruthy();
+  });
+
+  it('preserves the user-selected voice over persona defaults', () => {
+    const cfg = toCustomAgentConfig({
+      id: 3,
+      name: 'Custom Voice Agent',
+      type: 'Restaurant',
+      language: 'English',
+      status: 'Active',
+      voice: 'VR6AewLTigWG4xSOukaG',
+    });
+    expect(cfg.voiceId).toBe('VR6AewLTigWG4xSOukaG');
   });
 });

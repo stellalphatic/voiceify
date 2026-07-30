@@ -134,6 +134,89 @@ const CATALOG: CatalogItem[] = [
     },
   },
   {
+    id: 'google-sheets',
+    name: 'Google Sheets',
+    category: 'SMB',
+    description: 'Log leads and bookings into a Google Sheet via Apps Script webhook.',
+    badge: '1-click',
+    template: {
+      name: 'Google Sheets Logger',
+      slug: 'google_sheets_log',
+      description: 'Append a row to Google Sheets',
+      type: 'http',
+      config: {
+        method: 'POST',
+        url: 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec',
+        headers: { 'Content-Type': 'application/json' },
+        bodyTemplate:
+          '{"name":"{{name}}","phone":"{{phone}}","notes":"{{notes}}","source":"voiceify"}',
+      },
+    },
+  },
+  {
+    id: 'google-calendar',
+    name: 'Google Calendar',
+    category: 'SMB',
+    description: 'Create calendar events through a Calendar webhook or Apps Script.',
+    badge: '1-click',
+    template: {
+      name: 'Google Calendar Booking',
+      slug: 'google_calendar_book',
+      description: 'Create a calendar event',
+      type: 'http',
+      config: {
+        method: 'POST',
+        url: 'https://script.google.com/macros/s/YOUR_CALENDAR_DEPLOYMENT/exec',
+        headers: { 'Content-Type': 'application/json' },
+        bodyTemplate:
+          '{"title":"{{title}}","start":"{{datetime}}","guest":"{{customerName}}","phone":"{{phone}}"}',
+      },
+    },
+  },
+  {
+    id: 'gmail-notify',
+    name: 'Email (Gmail / Outlook)',
+    category: 'SMB',
+    description: 'Send a booking notification email via your Zapier/Make/n8n mail webhook.',
+    badge: '1-click',
+    template: {
+      name: 'Email Notify',
+      slug: 'email_notify',
+      description: 'Email ops on new booking',
+      type: 'http',
+      config: {
+        method: 'POST',
+        url: 'https://hooks.zapier.com/hooks/catch/YOUR_HOOK_ID/',
+        headers: { 'Content-Type': 'application/json' },
+        bodyTemplate:
+          '{"to":"{{to}}","subject":"New Voiceify booking","body":"{{summary}}","customer":"{{customerName}}"}',
+      },
+    },
+  },
+  {
+    id: 'whatsapp-business',
+    name: 'WhatsApp Business',
+    category: 'SMB',
+    description: 'Send WhatsApp follow-ups via Meta Cloud API or a BSP webhook.',
+    badge: '1-click',
+    template: {
+      name: 'WhatsApp Follow-up',
+      slug: 'whatsapp_followup',
+      description: 'Send WhatsApp template message',
+      type: 'http',
+      config: {
+        method: 'POST',
+        url: 'https://graph.facebook.com/v19.0/YOUR_PHONE_NUMBER_ID/messages',
+        headers: {
+          Authorization: 'Bearer YOUR_WHATSAPP_TOKEN',
+          'Content-Type': 'application/json',
+        },
+        bodyTemplate:
+          '{"messaging_product":"whatsapp","to":"{{phone}}","type":"text","text":{"body":"{{summary}}"}}',
+      },
+    },
+  },
+  {
     id: 'mcp',
     name: 'Custom MCP bridge',
     category: 'Developer Tools',
@@ -159,6 +242,7 @@ const CATALOG: CatalogItem[] = [
 
 const CATEGORIES = [
   'All integrations',
+  'SMB',
   'CRM',
   'Messaging',
   'Developer Tools',
@@ -237,6 +321,10 @@ export default function ToolsWorkspace() {
 
   const createCustom = async () => {
     if (!orgId) return;
+    if (!customUrl.trim() || !/^https?:\/\//i.test(customUrl.trim())) {
+      setError('URL must be a full http(s) address, e.g. https://example.com/hook');
+      return;
+    }
     let headers: Record<string, unknown> = {};
     try {
       headers = JSON.parse(customHeaders || '{}') as Record<string, unknown>;
@@ -271,6 +359,10 @@ export default function ToolsWorkspace() {
   };
 
   const openEdit = (tool: ToolRow) => {
+    if (tool.type !== 'http') {
+      setError('Pack tools are configured by their automation pack. Use Workflows to reinstall or manage them.');
+      return;
+    }
     setEditing(tool);
     setEditUrl(String(tool.config.url ?? ''));
     setEditMethod(String(tool.config.method ?? 'POST'));
@@ -280,6 +372,10 @@ export default function ToolsWorkspace() {
 
   const saveEdit = async () => {
     if (!orgId || !editing) return;
+    if (!editUrl.trim() || !/^https?:\/\//i.test(editUrl.trim())) {
+      setError('URL must be a full http(s) address, e.g. https://example.com/hook');
+      return;
+    }
     let headers: Record<string, unknown> = {};
     try {
       headers = JSON.parse(editHeaders || '{}') as Record<string, unknown>;
@@ -350,8 +446,8 @@ export default function ToolsWorkspace() {
           <p className="vfy-page-eyebrow">// configure · tools</p>
           <h1 className="vfy-page-title">Tools & integrations</h1>
           <p className="vfy-page-sub">
-            Connect CRMs, databases, POS systems, Slack, and custom APIs. Configure URLs, headers,
-            and body templates so agents can call tools during conversations.
+            Connect Google Sheets, Calendar, WhatsApp, email, CRMs, and custom APIs. Configure URLs,
+            headers, and body templates so agents can call tools during conversations.
           </p>
         </div>
       </div>

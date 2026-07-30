@@ -8,12 +8,16 @@ type KnowledgeDoc = {
   filename: string;
   status: string;
   createdAt: string;
+  agentIds?: string[];
 };
+
+type AgentOption = { id: string; name: string };
 
 export default function KnowledgeWorkspace() {
   const orgId = getActiveOrgId();
   const fileRef = useRef<HTMLInputElement>(null);
   const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
+  const [agents, setAgents] = useState<AgentOption[]>([]);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [uploadTitle, setUploadTitle] = useState('');
@@ -27,8 +31,14 @@ export default function KnowledgeWorkspace() {
     if (!orgId) return;
     setError(null);
     try {
-      const data = await apiJson<{ docs: KnowledgeDoc[] }>(`/api/orgs/${orgId}/knowledge`);
-      setDocs(data.docs);
+      const [docsData, agentsData] = await Promise.all([
+        apiJson<{ docs: KnowledgeDoc[] }>(`/api/orgs/${orgId}/knowledge`),
+        apiJson<{ agents: Array<{ id: string; name: string }> }>(
+          `/api/orgs/${orgId}/agents`,
+        ),
+      ]);
+      setDocs(docsData.docs);
+      setAgents(agentsData.agents.map((a) => ({ id: a.id, name: a.name })));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load knowledge base');
     }
@@ -99,6 +109,28 @@ export default function KnowledgeWorkspace() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const assignAgents = async (docId: string, agentIds: string[]) => {
+    if (!orgId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await apiJson(`/api/orgs/${orgId}/knowledge/${docId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ agentIds }),
+      });
+      setMessage(
+        agentIds.length
+          ? `Document linked to ${agentIds.length} agent(s).`
+          : 'Document available to all agents.',
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update agent assignment');
     } finally {
       setBusy(false);
     }
@@ -268,25 +300,55 @@ export default function KnowledgeWorkspace() {
             <li className="vfy-settings-empty">No documents yet. Upload your first source above.</li>
           )}
           {docs.map((d) => (
-            <li key={d.id} className="vfy-settings-list-item">
-              <div>
-                <p className="vfy-settings-item-title">{d.title}</p>
-                <p className="vfy-settings-item-meta">
-                  {d.filename} · {d.status} · {new Date(d.createdAt).toLocaleDateString()}
-                </p>
+            <li key={d.id} className="vfy-settings-list-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, width: '100%' }}>
+                <div>
+                  <p className="vfy-settings-item-title">{d.title}</p>
+                  <p className="vfy-settings-item-meta">
+                    {d.filename} · {d.status} · {new Date(d.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span className="vfy-tag">{d.status}</span>
+                  <button
+                    type="button"
+                    className="vfy-btn vfy-btn-ghost"
+                    disabled={busy}
+                    onClick={() => void removeDoc(d.id)}
+                    aria-label={`Delete ${d.title}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span className="vfy-tag">{d.status}</span>
-                <button
-                  type="button"
-                  className="vfy-btn vfy-btn-ghost"
-                  disabled={busy}
-                  onClick={() => void removeDoc(d.id)}
-                  aria-label={`Delete ${d.title}`}
+              <label className="vfy-settings-item-meta" style={{ display: 'block' }}>
+                Assign to agents (empty = all agents)
+                <select
+                  className="vfy-field-select"
+                  multiple
+                  disabled={busy || agents.length === 0}
+                  value={d.agentIds ?? []}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
+                    void assignAgents(d.id, selected);
+                  }}
+                  style={{ width: '100%', minHeight: 72, marginTop: 6 }}
+                  aria-label={`Assign agents for ${d.title}`}
                 >
-                  <Trash2 size={14} />
-                </button>
-              </div>
+                  {agents.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="vfy-settings-item-meta">
+                {(d.agentIds?.length ?? 0) === 0
+                  ? 'Shared with every agent in this workspace'
+                  : `Linked to ${(d.agentIds ?? [])
+                      .map((id) => agents.find((a) => a.id === id)?.name ?? id.slice(0, 8))
+                      .join(', ')}`}
+              </p>
             </li>
           ))}
         </ul>

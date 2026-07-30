@@ -310,6 +310,32 @@ knowledgeRoutes.delete(
   },
 );
 
+knowledgeRoutes.patch(
+  "/:orgId/knowledge/:docId",
+  requireOrg("agents:write"),
+  async (c) => {
+    const orgId = c.get("orgId");
+    const docId = c.req.param("docId");
+    const body = z
+      .object({
+        agentIds: z.array(z.string().uuid()).max(50),
+        title: z.string().min(1).max(200).optional(),
+      })
+      .parse(await c.req.json());
+
+    const [doc] = await db
+      .update(knowledgeDocs)
+      .set({
+        agentIds: body.agentIds,
+        ...(body.title ? { title: body.title } : {}),
+      })
+      .where(and(eq(knowledgeDocs.id, docId), eq(knowledgeDocs.orgId, orgId)))
+      .returning();
+    if (!doc) return c.json({ error: "Document not found" }, 404);
+    return c.json({ doc });
+  },
+);
+
 knowledgeRoutes.get(
   "/:orgId/knowledge/search",
   requireOrg("agents:read"),
