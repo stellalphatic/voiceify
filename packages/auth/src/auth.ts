@@ -42,7 +42,11 @@ function forbidden(message: string): never {
  * Platform fields: status (pending|approved|rejected|suspended), platformRole.
  */
 export function createAuth() {
-  const autoApprove = process.env.AUTO_APPROVE_SIGNUPS === "true";
+  /**
+   * Signups are approved immediately. Operators can still gate them by setting
+   * AUTO_APPROVE_SIGNUPS=false, and admins can suspend or reject an account later.
+   */
+  const autoApprove = process.env.AUTO_APPROVE_SIGNUPS !== "false";
   const platformAdminEmail = (
     process.env.PLATFORM_ADMIN_EMAIL ?? "admin@metapresence.co"
   ).toLowerCase();
@@ -65,7 +69,7 @@ export function createAuth() {
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
-      // Pending accounts should not get a session on signup (was throwing → HTTP 500).
+      // Gated deployments must not get a session on signup (was throwing → HTTP 500).
       autoSignIn: autoApprove,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user: resetUser, url }) => {
@@ -162,7 +166,7 @@ export function createAuth() {
             }
             if (row.status === "pending") {
               forbidden(
-                "Your account is pending admin approval. Please wait for Voiceify to approve your signup.",
+                "This workspace reviews new accounts before sign in. An admin will approve yours shortly.",
               );
             }
             if (row.status === "rejected") {

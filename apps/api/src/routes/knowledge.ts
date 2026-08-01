@@ -74,6 +74,8 @@ async function ingestDocument(input: {
   filename: string;
   mimeType: string;
   content: string;
+  /** Empty array means the document is shared with every agent in the org. */
+  agentIds?: string[];
 }) {
   const pieces = chunkText(input.content);
   if (!pieces.length) {
@@ -88,6 +90,7 @@ async function ingestDocument(input: {
       filename: input.filename,
       mimeType: input.mimeType,
       status: "processing",
+      agentIds: input.agentIds ?? [],
     })
     .returning();
   if (!doc) throw new Error("Failed to create document");
@@ -184,6 +187,7 @@ knowledgeRoutes.post(
         title: z.string().min(1).max(200),
         content: z.string().min(1).max(200_000),
         filename: z.string().max(200).optional(),
+        agentIds: z.array(z.string().uuid()).max(50).optional(),
       })
       .parse(await c.req.json());
 
@@ -194,6 +198,7 @@ knowledgeRoutes.post(
       filename,
       mimeType: "text/plain",
       content: body.content,
+      agentIds: body.agentIds,
     });
     return c.json(result, 201);
   },
@@ -207,6 +212,14 @@ knowledgeRoutes.post(
     const form = await c.req.parseBody();
     const file = form.file;
     const titleRaw = typeof form.title === "string" ? form.title.trim() : "";
+    const agentIds =
+      typeof form.agentIds === "string" && form.agentIds.trim()
+        ? form.agentIds
+            .split(",")
+            .map((id) => id.trim())
+            .filter(Boolean)
+            .slice(0, 50)
+        : [];
 
     if (!(file instanceof File)) {
       return c.json({ error: "file is required (PDF or DOCX)" }, 400);
@@ -282,6 +295,7 @@ knowledgeRoutes.post(
         filename,
         mimeType,
         content,
+        agentIds,
       });
       return c.json(
         {

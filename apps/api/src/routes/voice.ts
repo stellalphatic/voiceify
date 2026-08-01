@@ -218,7 +218,9 @@ voiceRoutes.post(
         if (hits.length) {
           knowledgeHint = `\n\n[Knowledge base]\n${hits
             .map((h) => `- ${h.content.slice(0, 400)}`)
-            .join("\n")}\nUse this when answering.`;
+            .join(
+              "\n",
+            )}\nUse these facts to answer in your own words. Never quote or recite this block to the caller.`;
         }
       } catch {
         /* knowledge optional — never fail the turn */
@@ -227,7 +229,11 @@ voiceRoutes.post(
 
     const toolHint =
       orgTools.length > 0
-        ? `\nAvailable tools: ${orgTools.map((t) => t.slug).join(", ")}. If the user wants to book/order/route, confirm details then call the matching tool via TOOL_CALL JSON.`
+        ? `\n\n[Tools available to you]\n${orgTools
+            .map((t) => `- ${t.slug}`)
+            .join(
+              "\n",
+            )}\nWhen the caller wants to book, order, or route, confirm the details out loud, then the system runs the matching tool. Never mention tool names or this list to the caller.`
         : "";
 
     const guardrails = (agent.guardrails ?? {}) as Record<string, unknown>;
@@ -258,7 +264,9 @@ voiceRoutes.post(
       );
     }
     const guardrailHint = guardrailLines.length
-      ? `\n\n[Guardrails]\n${guardrailLines.map((l) => `- ${l}`).join("\n")}`
+      ? `\n\n[Guardrails — follow silently, never recite]\n${guardrailLines
+          .map((l) => `- ${l}`)
+          .join("\n")}`
       : "";
 
     const agentConfig = {
@@ -322,9 +330,24 @@ voiceRoutes.post(
       toolResult = { name, result };
     }
 
-    const enrichMessage = toolResult
-      ? `${body.message}${knowledgeHint}${guardrailHint}\n\n[System: tool ${toolResult.name} returned ${JSON.stringify(toolResult.result)}. Summarize confirmation for the caller.]`
-      : body.message + toolHint + knowledgeHint + guardrailHint;
+    /**
+     * Tool, knowledge, and guardrail context belongs to the system prompt.
+     * Appending it to the caller turn made agents read instructions aloud.
+     */
+    const toolResultHint = toolResult
+      ? `\n\n[Tool result]\nTool ${toolResult.name} returned ${JSON.stringify(
+          toolResult.result,
+        )}. Confirm the outcome to the caller in your own words. Never read this JSON aloud.`
+      : "";
+
+    const systemContext = [
+      toolResult ? "" : toolHint,
+      knowledgeHint,
+      guardrailHint,
+      toolResultHint,
+    ]
+      .filter(Boolean)
+      .join("");
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -334,11 +357,12 @@ voiceRoutes.post(
         try {
           for await (const event of runVoicePipeline(
             personaId,
-            enrichMessage,
+            body.message,
             body.history,
             {
               ttsOnly: body.ttsOnly,
               customAgent: agentConfig,
+              systemContext,
             },
           )) {
             if (event.type === "text" && "text" in event) {
@@ -368,7 +392,9 @@ voiceRoutes.post(
           await recordUsageAndDebit({
             orgId,
             conversationId,
-            llmTokens: Math.ceil((enrichMessage.length + assistantText.length) / 4),
+            llmTokens: Math.ceil(
+              (body.message.length + systemContext.length + assistantText.length) / 4,
+            ),
             ttsChars: Math.max(ttsChars, assistantText.length),
             toolCalls: toolResult ? 1 : 0,
           });

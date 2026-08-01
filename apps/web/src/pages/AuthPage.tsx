@@ -167,15 +167,22 @@ export default function AuthPage() {
         return;
       }
 
-      const session = await getSession().catch(() => null);
-      if (!session) {
-        if (isSignUp) {
+      let session = await getSession().catch(() => null);
+
+      /* Signup normally returns a session. Retry sign-in before assuming a gated workspace. */
+      if (!session && isSignUp) {
+        const retry = await signInEmail({ email: email.trim(), password });
+        if (!retry.ok && /pending|approval|suspended|rejected/i.test(retry.error)) {
           setPendingApproval(true);
           setLoading(false);
           return;
         }
+        session = await getSession().catch(() => null);
+      }
+
+      if (!session) {
         setErrors({
-          form: 'Sign-in blocked. If you just registered, wait for admin approval.',
+          form: 'We could not start your session. Try signing in again.',
         });
         setLoading(false);
         return;
@@ -254,7 +261,7 @@ export default function AuthPage() {
               </h1>
               <p className="ap-sub">
                 {pendingApproval
-                  ? 'A platform admin must approve your signup before you can sign in.'
+                  ? 'This workspace requires an admin to review new accounts before sign in.'
                   : resetSent
                     ? `If an account exists for ${email.trim()}, we sent a reset link.`
                     : isForgot

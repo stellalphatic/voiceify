@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import { Check, Copy, Mic2, Search, Volume2 } from 'lucide-react';
 import { apiJson } from '../../lib/auth/client';
 
@@ -53,35 +54,60 @@ function CopyIdButton({ id }: { id: string }) {
   );
 }
 
+const PREVIEW_SAMPLE_RATE = 22050;
+
+async function requestPreview(text: string, voiceId: string): Promise<ArrayBuffer> {
+  const res = await fetch('/api/voice/tts', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, voiceId }),
+  });
+
+  if (res.ok) return res.arrayBuffer();
+
+  const body = (await res.json().catch(() => ({}))) as { error?: string };
+  if (res.status === 404) {
+    throw new Error('Preview endpoint missing — redeploy the API service.');
+  }
+  throw new Error(body.error ?? `Preview failed (${res.status})`);
+}
+
 function PreviewVoiceButton({ voiceId, name }: { voiceId: string; name: string }) {
   const [busy, setBusy] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+
+  useEffect(() => {
+    return () => {
+      sourceRef.current?.stop();
+      void audioCtxRef.current?.close();
+    };
+  }, []);
 
   const play = async () => {
     setBusy(true);
     setErr(null);
     try {
-      const res = await fetch('/api/voice/tts', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: `Hi, I'm ${name}. This is how I sound on Voiceify.`,
-          voiceId,
-        }),
-      });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? `Preview failed (${res.status})`);
+      sourceRef.current?.stop();
+      sourceRef.current = null;
+
+      const pcm = await requestPreview(
+        `Hi, I'm ${name}. This is how I sound on Voiceify.`,
+        voiceId,
+      );
+      if (pcm.byteLength === 0) {
+        throw new Error('Provider returned no audio for this voice.');
       }
-      const pcm = await res.arrayBuffer();
+
       const Ctx =
         window.AudioContext ||
         (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Ctx) throw new Error('Web Audio not supported');
+      if (!Ctx) throw new Error('Web Audio is not supported in this browser.');
       if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-        audioCtxRef.current = new Ctx({ sampleRate: 22050 });
+        audioCtxRef.current = new Ctx({ sampleRate: PREVIEW_SAMPLE_RATE });
       }
       const ctx = audioCtxRef.current;
       if (ctx.state === 'suspended') await ctx.resume();
@@ -89,14 +115,22 @@ function PreviewVoiceButton({ voiceId, name }: { voiceId: string; name: string }
       const int16 = new Int16Array(pcm);
       const float32 = new Float32Array(int16.length);
       for (let i = 0; i < int16.length; i++) float32[i] = (int16[i] ?? 0) / 32768;
-      const buffer = ctx.createBuffer(1, float32.length, 22050);
+      const buffer = ctx.createBuffer(1, float32.length, PREVIEW_SAMPLE_RATE);
       buffer.getChannelData(0).set(float32);
+
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(ctx.destination);
+      source.onended = () => {
+        setPlaying(false);
+        sourceRef.current = null;
+      };
+      sourceRef.current = source;
+      setPlaying(true);
       source.start();
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Preview failed');
+      setPlaying(false);
     } finally {
       setBusy(false);
     }
@@ -112,10 +146,14 @@ function PreviewVoiceButton({ voiceId, name }: { voiceId: string; name: string }
         aria-label={`Preview ${name}`}
       >
         <Volume2 size={13} />
-        {busy ? 'Playing…' : 'Preview'}
+        {busy ? 'Loading…' : playing ? 'Playing' : 'Preview'}
       </button>
       {err ? (
-        <span className="vfy-settings-item-meta" style={{ color: 'var(--d-danger)', maxWidth: 160 }}>
+        <span
+          role="alert"
+          className="vfy-settings-item-meta"
+          style={{ color: 'var(--d-danger)', maxWidth: 200, textAlign: 'right' }}
+        >
           {err}
         </span>
       ) : null}

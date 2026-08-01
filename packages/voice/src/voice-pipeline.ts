@@ -24,7 +24,13 @@ export async function* runVoicePipeline(
   personaId: string,
   message: string,
   history: ChatMessage[],
-  options?: { ttsOnly?: boolean; language?: LanguageCode; customAgent?: CustomAgentConfig | null },
+  options?: {
+    ttsOnly?: boolean;
+    language?: LanguageCode;
+    customAgent?: CustomAgentConfig | null;
+    /** Tool/knowledge/guardrail context injected into the system prompt, not the caller turn. */
+    systemContext?: string;
+  },
 ): AsyncGenerator<PipelineEvent> {
   const runtime = resolveAgentRuntime(personaId, options?.customAgent);
   const t0 = Date.now();
@@ -41,8 +47,11 @@ export async function* runVoicePipeline(
           language,
           customAgent: options?.customAgent,
           runtime,
+          systemContext: options?.systemContext,
         });
-    const text = sanitizeVoiceReply(rawText);
+    const text =
+      sanitizeVoiceReply(rawText) ||
+      'Sorry, could you say that again?';
     const llmMs = Date.now() - llmStart;
     yield { type: 'text', text, llmMs, language };
 

@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BookOpen, FileText, Globe, Plus, Search, Trash2, Upload } from 'lucide-react';
+import {
+  BookOpen,
+  Bot,
+  Check,
+  FileText,
+  Globe,
+  Plus,
+  Search,
+  Trash2,
+  Upload,
+  Users,
+} from 'lucide-react';
 import { apiJson, getActiveOrgId } from '../../lib/auth/client';
 
 type KnowledgeDoc = {
@@ -13,6 +24,127 @@ type KnowledgeDoc = {
 
 type AgentOption = { id: string; name: string };
 
+/** `all` mirrors an empty agentIds array on the server: every agent may retrieve the doc. */
+type AgentScope = { mode: 'all' | 'specific'; agentIds: string[] };
+
+const EMPTY_SCOPE: AgentScope = { mode: 'specific', agentIds: [] };
+
+function scopeToAgentIds(scope: AgentScope): string[] {
+  return scope.mode === 'all' ? [] : scope.agentIds;
+}
+
+function scopeIsIncomplete(scope: AgentScope): boolean {
+  return scope.mode === 'specific' && scope.agentIds.length === 0;
+}
+
+function docToScope(doc: KnowledgeDoc): AgentScope {
+  const ids = doc.agentIds ?? [];
+  return ids.length === 0 ? { mode: 'all', agentIds: [] } : { mode: 'specific', agentIds: ids };
+}
+
+function describeScope(
+  scope: AgentScope,
+  agents: AgentOption[],
+  prefix: string,
+): string {
+  if (scope.mode === 'all') return `${prefix} Available to every agent.`;
+  const names = scope.agentIds
+    .map((id) => agents.find((a) => a.id === id)?.name ?? 'agent')
+    .join(', ');
+  return `${prefix} Linked to ${names}.`;
+}
+
+function AgentScopePicker({
+  agents,
+  value,
+  onChange,
+  disabled,
+  idPrefix,
+}: {
+  agents: AgentOption[];
+  value: AgentScope;
+  onChange: (next: AgentScope) => void;
+  disabled?: boolean;
+  idPrefix: string;
+}) {
+  const toggle = (agentId: string) => {
+    const next = value.agentIds.includes(agentId)
+      ? value.agentIds.filter((id) => id !== agentId)
+      : [...value.agentIds, agentId];
+    onChange({ mode: 'specific', agentIds: next });
+  };
+
+  return (
+    <div className="vfy-scope">
+      <p className="vfy-scope-label">Which agents can use this document?</p>
+      <div className="vfy-scope-modes" role="radiogroup" aria-label="Document access">
+        <label
+          className={`vfy-scope-mode${value.mode === 'specific' ? ' is-active' : ''}`}
+          htmlFor={`${idPrefix}-specific`}
+        >
+          <input
+            id={`${idPrefix}-specific`}
+            type="radio"
+            name={`${idPrefix}-mode`}
+            checked={value.mode === 'specific'}
+            disabled={disabled}
+            onChange={() => onChange({ mode: 'specific', agentIds: value.agentIds })}
+          />
+          <Bot size={14} />
+          Selected agents
+        </label>
+        <label
+          className={`vfy-scope-mode${value.mode === 'all' ? ' is-active' : ''}`}
+          htmlFor={`${idPrefix}-all`}
+        >
+          <input
+            id={`${idPrefix}-all`}
+            type="radio"
+            name={`${idPrefix}-mode`}
+            checked={value.mode === 'all'}
+            disabled={disabled}
+            onChange={() => onChange({ mode: 'all', agentIds: value.agentIds })}
+          />
+          <Users size={14} />
+          Every agent
+        </label>
+      </div>
+
+      {value.mode === 'specific' && (
+        <>
+          {agents.length === 0 ? (
+            <p className="vfy-settings-help">
+              No agents yet. Create an agent first, or share this document with every agent.
+            </p>
+          ) : (
+            <div className="vfy-scope-chips">
+              {agents.map((agent) => {
+                const selected = value.agentIds.includes(agent.id);
+                return (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    disabled={disabled}
+                    aria-pressed={selected}
+                    className={`vfy-scope-chip${selected ? ' is-selected' : ''}`}
+                    onClick={() => toggle(agent.id)}
+                  >
+                    {selected ? <Check size={13} /> : <Bot size={13} />}
+                    {agent.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {scopeIsIncomplete(value) && agents.length > 0 && (
+            <p className="vfy-settings-help">Pick at least one agent to continue.</p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function KnowledgeWorkspace() {
   const orgId = getActiveOrgId();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -21,6 +153,10 @@ export default function KnowledgeWorkspace() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadScope, setUploadScope] = useState<AgentScope>(EMPTY_SCOPE);
+  const [pasteScope, setPasteScope] = useState<AgentScope>(EMPTY_SCOPE);
+  /** Holds in-flight edits so switching to "Selected agents" does not snap back before a pick. */
+  const [docScopes, setDocScopes] = useState<Record<string, AgentScope>>({});
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<Array<{ content: string; docId: string }>>([]);
   const [busy, setBusy] = useState(false);
@@ -50,17 +186,26 @@ export default function KnowledgeWorkspace() {
 
   const createDoc = async () => {
     if (!orgId || !title.trim() || !content.trim()) return;
+    if (scopeIsIncomplete(pasteScope)) {
+      setError('Select which agents should use this document.');
+      return;
+    }
     setBusy(true);
     setError(null);
     setMessage(null);
     try {
       await apiJson(`/api/orgs/${orgId}/knowledge`, {
         method: 'POST',
-        body: JSON.stringify({ title: title.trim(), content: content.trim() }),
+        body: JSON.stringify({
+          title: title.trim(),
+          content: content.trim(),
+          agentIds: scopeToAgentIds(pasteScope),
+        }),
       });
       setTitle('');
       setContent('');
-      setMessage('Text ingested, chunked, and embedded.');
+      setPasteScope(EMPTY_SCOPE);
+      setMessage(describeScope(pasteScope, agents, 'Text ingested, chunked, and embedded.'));
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to ingest document');
@@ -71,6 +216,11 @@ export default function KnowledgeWorkspace() {
 
   const uploadFile = async (file: File) => {
     if (!orgId) return;
+    if (scopeIsIncomplete(uploadScope)) {
+      setError('Select which agents should use this document before uploading.');
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -78,6 +228,8 @@ export default function KnowledgeWorkspace() {
       const form = new FormData();
       form.append('file', file);
       if (uploadTitle.trim()) form.append('title', uploadTitle.trim());
+      const scopedIds = scopeToAgentIds(uploadScope);
+      if (scopedIds.length) form.append('agentIds', scopedIds.join(','));
       const data = await apiJson<{
         chunks: number;
         discardedOriginal?: boolean;
@@ -89,9 +241,14 @@ export default function KnowledgeWorkspace() {
       setUploadTitle('');
       if (fileRef.current) fileRef.current.value = '';
       setMessage(
-        data.note ??
-          `Extracted and indexed ${data.chunks} chunks. Original file discarded after embedding.`,
+        describeScope(
+          uploadScope,
+          agents,
+          data.note ??
+            `Extracted and indexed ${data.chunks} chunks. Original file discarded after embedding.`,
+        ),
       );
+      setUploadScope(EMPTY_SCOPE);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
@@ -125,9 +282,14 @@ export default function KnowledgeWorkspace() {
       });
       setMessage(
         agentIds.length
-          ? `Document linked to ${agentIds.length} agent(s).`
-          : 'Document available to all agents.',
+          ? `Document linked to ${agentIds.length} agent${agentIds.length === 1 ? '' : 's'}.`
+          : 'Document is now available to every agent.',
       );
+      setDocScopes((prev) => {
+        const next = { ...prev };
+        delete next[docId];
+        return next;
+      });
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update agent assignment');
@@ -160,7 +322,8 @@ export default function KnowledgeWorkspace() {
           <h1 className="vfy-page-title">Knowledge base</h1>
           <p className="vfy-page-sub">
             Paste text or upload PDF/DOCX. We extract text, chunk it, embed it for retrieval, then
-            discard the original file. Agents pull matching chunks during live turns.
+            discard the original file. Choose exactly which agents can use each document — nothing
+            is shared workspace-wide unless you say so.
           </p>
         </div>
       </div>
@@ -207,11 +370,19 @@ export default function KnowledgeWorkspace() {
             placeholder="Optional title override"
             aria-label="Upload title"
           />
+          <AgentScopePicker
+            idPrefix="kb-upload"
+            agents={agents}
+            value={uploadScope}
+            onChange={setUploadScope}
+            disabled={busy}
+          />
           <input
             ref={fileRef}
             type="file"
             accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
             aria-label="Choose PDF or DOCX"
+            disabled={busy || scopeIsIncomplete(uploadScope)}
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) void uploadFile(file);
@@ -244,10 +415,23 @@ export default function KnowledgeWorkspace() {
             placeholder="Paste knowledge content here…"
             aria-label="Document content"
           />
+          <AgentScopePicker
+            idPrefix="kb-paste"
+            agents={agents}
+            value={pasteScope}
+            onChange={setPasteScope}
+            disabled={busy}
+          />
           <button
             type="button"
             className="vfy-btn vfy-btn-primary"
-            disabled={busy || !orgId || !title.trim() || !content.trim()}
+            disabled={
+              busy ||
+              !orgId ||
+              !title.trim() ||
+              !content.trim() ||
+              scopeIsIncomplete(pasteScope)
+            }
             onClick={() => void createDoc()}
           >
             Upload to knowledge base
@@ -321,34 +505,16 @@ export default function KnowledgeWorkspace() {
                   </button>
                 </div>
               </div>
-              <label className="vfy-settings-item-meta" style={{ display: 'block' }}>
-                Assign to agents (empty = all agents)
-                <select
-                  className="vfy-field-select"
-                  multiple
-                  disabled={busy || agents.length === 0}
-                  value={d.agentIds ?? []}
-                  onChange={(e) => {
-                    const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
-                    void assignAgents(d.id, selected);
-                  }}
-                  style={{ width: '100%', minHeight: 72, marginTop: 6 }}
-                  aria-label={`Assign agents for ${d.title}`}
-                >
-                  {agents.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <p className="vfy-settings-item-meta">
-                {(d.agentIds?.length ?? 0) === 0
-                  ? 'Shared with every agent in this workspace'
-                  : `Linked to ${(d.agentIds ?? [])
-                      .map((id) => agents.find((a) => a.id === id)?.name ?? id.slice(0, 8))
-                      .join(', ')}`}
-              </p>
+              <AgentScopePicker
+                idPrefix={`kb-doc-${d.id}`}
+                agents={agents}
+                value={docScopes[d.id] ?? docToScope(d)}
+                onChange={(next) => {
+                  setDocScopes((prev) => ({ ...prev, [d.id]: next }));
+                  if (!scopeIsIncomplete(next)) void assignAgents(d.id, scopeToAgentIds(next));
+                }}
+                disabled={busy}
+              />
             </li>
           ))}
         </ul>
