@@ -548,36 +548,268 @@
   outline-offset: 3px;
 }
 
-/* ── Simple hero variant — label, padded transcript, footer CTA ── */
-.lp-call-card--simple {
+/* ── Hero live-call panel ───────────────────────────────────── */
+.lp-livecall {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  max-width: 420px;
+  max-width: 440px;
   margin-left: auto;
-  box-shadow: 0 4px 24px rgba(12, 10, 9, 0.06);
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(12, 10, 9, 0.04), 0 12px 40px -12px rgba(12, 10, 9, 0.10);
+  overflow: hidden;
 }
 
-.lp-call-card-label {
-  margin: 0;
-  padding: 16px 20px 12px;
-  font-family: var(--font-ui, 'Inter', sans-serif);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--lp-dim);
+.lp-livecall-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
   border-bottom: 1px solid var(--lp-border);
 }
 
-.lp-call-card--simple .lp-transcript {
-  padding: 18px 20px 20px;
-  gap: 16px;
+.lp-livecall-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-ui, 'Inter', sans-serif);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--lp-text);
 }
 
-.lp-call-card--simple .lp-msg {
-  max-width: 88%;
+.lp-livecall-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  /* Muted green — the bright success token is too loud for the editorial canvas. */
+  background: #2f9e6b;
+  animation: lp-livecall-pulse 1.8s ease-in-out infinite;
 }
 
-.lp-call-card--simple .lp-call-cta {
-  margin-top: auto;
+.lp-livecall-status.is-done .lp-livecall-dot {
+  background: var(--lp-dim);
+  animation: none;
+}
+
+@keyframes lp-livecall-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+
+.lp-livecall-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--lp-dim);
+  min-width: 0;
+}
+
+.lp-livecall-timer {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: var(--lp-bg-alt, var(--lp-bg));
+  color: var(--lp-muted);
+}
+
+.lp-livecall-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* Fixed height keeps the hero from reflowing as turns stream in. */
+  min-height: 208px;
+  padding: 18px 16px;
+  justify-content: flex-end;
+}
+
+.lp-livecall-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-start;
+  animation: lp-livecall-rise 0.28s ease both;
+}
+
+.lp-livecall-turn--agent { align-items: flex-end; }
+
+@keyframes lp-livecall-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lp-livecall-who {
+  font-family: var(--font-ui, 'Inter', sans-serif);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--lp-dim);
+  padding-inline: 3px;
+}
+
+.lp-livecall-bubble {
+  margin: 0;
+  max-width: 86%;
+  padding: 10px 13px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  background: var(--lp-bg-alt, var(--lp-bg));
+  border: 1px solid var(--lp-border);
+  color: var(--lp-muted);
+  border-bottom-left-radius: 4px;
+}
+
+.lp-livecall-turn--agent .lp-livecall-bubble {
+  background: var(--color-brand-primary, #292524);
+  border-color: var(--color-brand-primary, #292524);
+  color: #fafaf9;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 4px;
+}
+
+.lp-livecall-caret {
+  display: inline-block;
+  width: 2px;
+  height: 13px;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: currentColor;
+  animation: lp-livecall-blink 0.9s step-end infinite;
+}
+
+@keyframes lp-livecall-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.lp-livecall-latency {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  color: var(--lp-dim);
+  padding-inline: 3px;
+}
+
+.lp-livecall-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-top: 1px solid var(--lp-border);
+  background: var(--lp-bg-alt, var(--lp-bg));
+}
+
+/* Waveform — bars idle flat, then breathe while the agent speaks. */
+.lp-livecall-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.lp-livecall-wave i {
+  width: 2px;
+  height: 3px;
+  border-radius: 9999px;
+  background: var(--lp-dim);
+  transition: height 0.2s ease, background 0.2s ease;
+}
+
+.lp-livecall-wave.is-active i {
+  background: var(--lp-text);
+  animation: lp-livecall-bar 0.9s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 45ms);
+}
+
+@keyframes lp-livecall-bar {
+  0%, 100% { height: 3px; }
+  50% { height: 15px; }
+}
+
+.lp-livecall-foot-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--lp-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lp-livecall-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.lp-livecall-replay,
+.lp-livecall-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 9999px;
+  font-family: var(--font-ui, 'Inter', sans-serif);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.lp-livecall-replay {
+  border: 1px solid var(--lp-border-strong, var(--lp-border));
+  background: var(--lp-surface);
+  color: var(--lp-muted);
+}
+
+.lp-livecall-replay:hover {
+  color: var(--lp-text);
+  border-color: var(--lp-text);
+}
+
+.lp-livecall-link {
+  border: 1px solid var(--color-brand-primary, #292524);
+  background: var(--color-brand-primary, #292524);
+  color: #fafaf9;
+}
+
+.lp-livecall-link:hover {
+  background: var(--color-brand-hover, #0c0a09);
+  color: #ffffff;
+}
+
+@media (max-width: 960px) {
+  .lp-livecall {
+    margin-inline: auto;
+    max-width: 480px;
+  }
+}
+
+@media (max-width: 420px) {
+  .lp-livecall-foot-text { display: none; }
+  .lp-livecall-wave { flex: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-livecall-dot,
+  .lp-livecall-caret,
+  .lp-livecall-turn,
+  .lp-livecall-wave.is-active i {
+    animation: none;
+  }
 }
 
 .lp-call-header {
@@ -3867,11 +4099,6 @@
   .lp-hero-grid,
   .lp-sandbox-layout {
     grid-template-columns: 1fr;
-  }
-
-  .lp-call-card--simple {
-    margin-inline: auto;
-    max-width: 480px;
   }
 
   .lp-sandbox-stats {

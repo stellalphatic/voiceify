@@ -269,9 +269,9 @@
 }
 .vfy-side-brand-text {
   font-family: var(--d-sans);
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: -0.015em;
+  font-weight: 600;
+  font-size: 15.5px;
+  letter-spacing: -0.02em;
   flex: 1;
 }
 .vfy-side-brand-version {
@@ -1618,11 +1618,11 @@
 
 .vfy-label {
   display: block;
-  font-family: var(--d-mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: var(--d-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--d-muted);
   margin-bottom: 6px;
 }
@@ -1633,58 +1633,135 @@
 .vfy-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: var(--color-bg-overlay, rgba(12, 10, 9, 0.4));
-  backdrop-filter: blur(4px);
+  /* Layout wrappers such as `.vfy-route-view > *` must never clamp the overlay. */
+  width: 100vw;
+  max-width: none;
+  margin: 0;
+  background: var(--color-bg-overlay, rgba(12, 10, 9, 0.32));
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 80;
-  padding: 16px;
+  z-index: 200;
+  padding: clamp(12px, 4vh, 32px) 16px;
+  overscroll-behavior: contain;
 }
 .vfy-modal {
   width: 100%;
-  max-width: 440px;
-  max-height: min(90vh, 720px);
+  max-width: 460px;
+  max-height: 100%;
   background: var(--d-card);
   border: 1px solid var(--d-border);
   border-radius: 16px;
-  box-shadow: 0 24px 64px -8px rgba(12, 10, 9, 0.16);
-  overflow: auto;
+  box-shadow: 0 32px 80px -16px rgba(12, 10, 9, 0.28);
+  /* Column layout keeps head + foot pinned while only the body scrolls. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.vfy-modal--sm { max-width: 400px; }
+.vfy-modal--md { max-width: 520px; }
+.vfy-modal--lg { max-width: 720px; }
+
+.vfy-modal-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
 }
 .vfy-modal-head {
-  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 20px 14px;
   border-bottom: 1px solid var(--d-border);
+  flex-shrink: 0;
+}
+.vfy-modal-head-text {
+  min-width: 0;
+  flex: 1;
+}
+.vfy-modal-head-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 1px solid var(--d-border);
+  border-radius: 10px;
+  background: var(--d-bg-2);
 }
 .vfy-modal-eyebrow {
-  font-family: var(--d-mono);
-  font-size: 10.5px;
+  font-family: var(--d-sans);
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--d-danger);
-  margin: 0 0 4px;
+  color: var(--d-muted);
+  margin: 0 0 5px;
 }
+.vfy-modal-eyebrow--danger { color: var(--d-danger); }
 .vfy-modal-title {
   font-family: var(--d-sans);
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 600;
   color: var(--d-text);
   margin: 0;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.015em;
+}
+.vfy-modal-desc {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--d-muted);
+}
+.vfy-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--d-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.vfy-modal-close:hover {
+  background: var(--d-card-2);
+  color: var(--d-text);
 }
 .vfy-modal-body {
-  padding: 16px 20px;
+  padding: 18px 20px;
   font-size: 13.5px;
   color: var(--d-text-2);
   line-height: 1.55;
+  /* The only scroll region — footer stays reachable at every viewport height. */
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: var(--d-border-2) transparent;
 }
 .vfy-modal-foot {
-  padding: 12px 20px;
+  padding: 14px 20px;
   border-top: 1px solid var(--d-border);
   background: var(--d-bg-2);
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+@media (max-width: 520px) {
+  .vfy-modal-foot { flex-direction: column-reverse; align-items: stretch; }
+  .vfy-modal-foot .vfy-btn { justify-content: center; width: 100%; }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -1953,16 +2030,6 @@
    ════════════════════════════════════════════════════════════ */
 .vfy-modal--form {
   max-width: 520px;
-  max-height: min(92dvh, 880px);
-  display: flex;
-  flex-direction: column;
-}
-
-.vfy-modal-body--scroll {
-  overflow-y: auto;
-  max-height: min(62dvh, 640px);
-  scrollbar-width: thin;
-  scrollbar-color: var(--d-border-2) transparent;
 }
 
 .vfy-agent-form {
@@ -1978,12 +2045,12 @@
 
 .vfy-agent-form .vfy-field-label {
   display: block;
-  font-family: var(--d-mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--d-muted);
+  font-family: var(--d-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--d-text-2);
   margin-bottom: 6px;
 }
 

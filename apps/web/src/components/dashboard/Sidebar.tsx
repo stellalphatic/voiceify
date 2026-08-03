@@ -4,7 +4,6 @@ import {
   Activity,
   BarChart3,
   BookOpen,
-  Bot,
   GitBranch,
   KeyRound,
   MessageSquare,
@@ -22,6 +21,7 @@ import { useAuthAccountOptional } from '../../lib/auth/AuthAccountContext';
 import { setConsoleMode } from '../../lib/auth/console-mode';
 import { apiJson, getActiveOrgId } from '../../lib/auth/client';
 import { isDashboardNavActive, DASHBOARD_NAV_PATHS } from '../../lib/dashboard/nav';
+import VoiceifyMark from '../VoiceifyMark';
 
 type NavItem = {
   id: string;
@@ -140,9 +140,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         <Link to="/dashboard" className="vfy-side-brand" onClick={releaseNavFocus}>
           <span className="vfy-side-brand-orb">
-            <Bot size={16} strokeWidth={2.4} />
+            <VoiceifyMark size={18} />
           </span>
-          <span className="vfy-side-brand-text vfy-side-collapse-hide">voiceify</span>
+          <span className="vfy-side-brand-text vfy-side-collapse-hide">Voiceify</span>
         </Link>
 
         <div className="vfy-side-account vfy-side-collapse-hide">

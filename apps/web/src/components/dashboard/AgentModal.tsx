@@ -3,6 +3,7 @@ import { ChevronDown, Mic2 } from 'lucide-react';
 import type { AppAgent } from '../../lib/agents/AgentStoreContext';
 import { validateAgentName } from '../../lib/dashboard/settings';
 import { apiJson } from '../../lib/auth/client';
+import Modal from './Modal';
 
 const AGENT_TYPES = [
   'Healthcare',
@@ -52,8 +53,6 @@ type AgentModalProps = {
 
 export default function AgentModal({ isOpen, onClose, onSave, initialData }: AgentModalProps) {
   const isEdit = Boolean(initialData);
-  const backdropRef = useRef<HTMLDivElement>(null);
-  const openedAtRef = useRef(0);
   const voicePickerRef = useRef<HTMLDivElement>(null);
 
   const [name, setName] = useState('');
@@ -69,7 +68,6 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
 
   useEffect(() => {
     if (!isOpen) return;
-    openedAtRef.current = Date.now();
     if (initialData) {
       setName(initialData.name);
       setType(initialData.type || AGENT_TYPES[0]);
@@ -123,38 +121,27 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
     };
   }, [isOpen]);
 
+  // Voice combobox dismissal. Escape is marked handled so the dialog stays open
+  // while a popper is showing.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !voiceOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (voiceOpen) setVoiceOpen(false);
-        else onClose();
-      }
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      setVoiceOpen(false);
     };
     const onDoc = (e: MouseEvent) => {
-      if (!voicePickerRef.current?.contains(e.target as Node)) {
-        setVoiceOpen(false);
-      }
+      if (!voicePickerRef.current?.contains(e.target as Node)) setVoiceOpen(false);
     };
     window.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onDoc);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     return () => {
       window.removeEventListener('keydown', onKey);
       document.removeEventListener('mousedown', onDoc);
-      document.body.style.overflow = prevOverflow;
     };
-  }, [isOpen, onClose, voiceOpen]);
+  }, [isOpen, voiceOpen]);
 
-  if (!isOpen) return null;
-
-  const handleBackdropPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (Date.now() - openedAtRef.current < 200) return;
-    if (e.target === backdropRef.current) onClose();
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const nameErr = validateAgentName(name);
     if (nameErr) {
@@ -191,25 +178,31 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
   });
 
   return (
-    <div
-      ref={backdropRef}
-      className="vfy-modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="agent-modal-title"
-      onPointerDown={handleBackdropPointerDown}
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      size="md"
+      eyebrow={isEdit ? 'Configure · Agent' : 'Create · Agent'}
+      title={isEdit ? 'Edit agent' : 'Create agent'}
+      description={
+        isEdit
+          ? 'Update the persona, voice, and language this agent uses on every call.'
+          : 'Name your agent and pick the voice and language it answers calls with.'
+      }
+      onSubmit={handleSubmit}
+      footer={
+        <>
+          <button type="button" className="vfy-btn vfy-btn-ghost" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="vfy-btn vfy-btn-primary">
+            {isEdit ? 'Save changes' : 'Create agent'}
+          </button>
+        </>
+      }
     >
-      <div className="vfy-modal" onPointerDown={(e) => e.stopPropagation()}>
-        <div className="vfy-modal-head">
-          <p className="vfy-modal-eyebrow">{isEdit ? '// edit agent' : '// new agent'}</p>
-          <h2 className="vfy-modal-title" id="agent-modal-title">
-            {isEdit ? 'Edit agent' : 'Create agent'}
-          </h2>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="vfy-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div>
               <label className="vfy-label" htmlFor="agent-name">
                 Name
               </label>
@@ -371,18 +364,7 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
                 After create, open Knowledge, Tools, Workflows, and Guardrails to deepen the agent.
               </p>
             )}
-          </div>
-
-          <div className="vfy-modal-foot">
-            <button type="button" className="vfy-btn vfy-btn-ghost" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="vfy-btn vfy-btn-primary">
-              {isEdit ? 'Save changes' : 'Create agent'}
-            </button>
-          </div>
-        </form>
       </div>
-    </div>
+    </Modal>
   );
 }

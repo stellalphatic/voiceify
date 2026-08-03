@@ -54,6 +54,7 @@ import OverviewDashboard from '@/components/dashboard/OverviewDashboard';
 import AnalyticsDashboard from '@/components/dashboard/AnalyticsDashboard';
 import SettingsWorkspace from '@/components/dashboard/SettingsWorkspace';
 import AgentModal from '@/components/dashboard/AgentModal';
+import Modal, { ModalShell } from '@/components/dashboard/Modal';
 import IntegrationsWorkspace from '@/components/dashboard/IntegrationsWorkspace';
 import KnowledgeWorkspace from '@/components/dashboard/KnowledgeWorkspace';
 import ToolsWorkspace from '@/components/dashboard/ToolsWorkspace';
@@ -417,12 +418,17 @@ const AgentTasksModal = ({
   const isFiltered = filterStatus !== 'All' || filterPriority !== 'All' || searchTerm !== '' || filterStartDate !== '' || filterEndDate !== '' || sortBy !== 'Manual' || filterDateType !== 'createdAt';
   const canDrag = !isFiltered;
 
-  if (!isOpen || !agent) return null;
-
   return (
-    <div className="fixed inset-0 bg-voice-backdrop backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-voice-surface border border-voice-border rounded-2xl w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in duration-200 flex flex-col max-h-[85vh]">
-        <div className="p-6 border-b border-voice-border flex flex-col gap-4">
+    <ModalShell open={isOpen && Boolean(agent)} onClose={onClose}>
+      {(surfaceRef) => !agent ? null : (
+      <div
+        ref={surfaceRef}
+        className="vfy-modal--animate bg-voice-surface border border-voice-border rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-full min-h-0 overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Manage tasks for ${agent.name}`}
+      >
+        <div className="p-6 border-b border-voice-border flex flex-col gap-4 shrink-0">
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl font-bold text-voice-text">Manage Tasks</h2>
@@ -453,7 +459,7 @@ const AgentTasksModal = ({
           </div>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+        <div className="p-6 overflow-y-auto flex-1 min-h-0 space-y-6">
           {/* Add Task Form */}
           <form onSubmit={handleAddTask} className="flex flex-col gap-4 bg-voice-bg p-5 rounded-2xl border border-voice-border shadow-inner">
             <div className="flex gap-3">
@@ -595,7 +601,7 @@ const AgentTasksModal = ({
           </div>
 
           {/* Task List */}
-          <div className="flex-1 overflow-y-auto p-6 pt-0 min-h-[300px]">
+          <div>
             {canDrag && filteredTasks.length > 1 && (
               <div className="flex items-center gap-2 text-[10px] text-voice-accent font-medium uppercase tracking-widest mb-4 bg-voice-accent/5 py-1.5 px-3 rounded-lg border border-voice-accent/10">
                 <ArrowUpDown className="w-3 h-3" />
@@ -747,7 +753,8 @@ const AgentTasksModal = ({
           </div>
         </div>
       </div>
-    </div>
+      )}
+    </ModalShell>
   );
 };
 
@@ -1510,34 +1517,26 @@ const AgentsView = ({
 const SettingsView = () => <SettingsWorkspace focus="settings" />;
 const ApiKeysView = () => <SettingsWorkspace focus="api-keys" />;
 
-const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, agentName }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, agentName: string }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div
-      className="vfy-modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      <div className="vfy-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="vfy-modal-head">
-          <p className="vfy-modal-eyebrow">// destructive action</p>
-          <h2 className="vfy-modal-title">Delete agent?</h2>
-        </div>
-        <div className="vfy-modal-body">
-          You are about to permanently remove{' '}
-          <span style={{ color: 'var(--d-text)', fontFamily: 'var(--d-mono)', fontSize: 13 }}>"{agentName}"</span>.
-          This will delete all associated tasks and call logs. This action cannot be undone.
-        </div>
-        <div className="vfy-modal-foot">
-          <button onClick={onClose} className="vfy-btn vfy-btn-ghost">Cancel</button>
-          <button onClick={onConfirm} className="vfy-btn vfy-btn-danger">Delete agent</button>
-        </div>
-      </div>
-    </div>
-  );
-};
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, agentName }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, agentName: string }) => (
+  <Modal
+    open={isOpen}
+    onClose={onClose}
+    size="sm"
+    tone="danger"
+    eyebrow="Destructive action"
+    title="Delete agent?"
+    footer={
+      <>
+        <button type="button" onClick={onClose} className="vfy-btn vfy-btn-ghost">Cancel</button>
+        <button type="button" onClick={onConfirm} className="vfy-btn vfy-btn-danger">Delete agent</button>
+      </>
+    }
+  >
+    You are about to permanently remove{' '}
+    <span style={{ color: 'var(--d-text)', fontWeight: 600 }}>&ldquo;{agentName}&rdquo;</span>.
+    This will delete all associated tasks and call logs. This action cannot be undone.
+  </Modal>
+);
 
 const AnalyticsView = () => <AnalyticsDashboard />;
 

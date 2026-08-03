@@ -16,6 +16,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, ArrowRight } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import VoiceifyMark from './VoiceifyMark';
 
 const NAV_LINKS = [
   { label: 'Features', href: '/features' },
@@ -71,14 +72,7 @@ export default function Navbar() {
         <div className="navbar-left">
           <Link to="/" className="navbar-logo" aria-label="Voiceify home" id="nav-logo">
             <span className="navbar-logo-orb" aria-hidden>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M2 8h1.5M5 4v8M8 2v12M11 4v8M14 8h-1.5"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <VoiceifyMark size={17} />
             </span>
             <span className="navbar-logo-text">Voiceify</span>
           </Link>

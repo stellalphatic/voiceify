@@ -1,11 +1,12 @@
-import { useEffect, useId, useState } from 'react';
-import { CheckCircle2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import {
   buildConnectorInstallPayload,
   type ConnectorDef,
 } from '../../lib/connectors/catalog';
 import { apiJson, getActiveOrgId } from '../../lib/auth/client';
 import { BrandIcon } from './BrandIcons';
+import Modal from '../dashboard/Modal';
 
 type Props = {
   connector: ConnectorDef;
@@ -21,7 +22,6 @@ export default function ConnectorSetupModal({
   onInstalled,
 }: Props) {
   const orgId = getActiveOrgId();
-  const titleId = useId();
   const [url, setUrl] = useState(String(connector.template.config.url ?? ''));
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
@@ -35,17 +35,6 @@ export default function ConnectorSetupModal({
     setError(null);
     setDone(false);
   }, [open, connector]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
 
   const submit = async () => {
     if (!orgId) {
@@ -80,89 +69,15 @@ export default function ConnectorSetupModal({
   };
 
   return (
-    <div
-      className="vfy-modal-backdrop vfy-modal-backdrop--animate"
-      role="presentation"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="vfy-modal vfy-modal--wide vfy-modal--animate"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-      >
-        <div className="vfy-modal-head" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <span className="vfy-connector-icon vfy-connector-icon--lg">
-            <BrandIcon brand={connector.brand} size={28} />
-          </span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p className="vfy-modal-eyebrow">// connect · {connector.category}</p>
-            <h2 id={titleId} className="vfy-modal-title">
-              {connector.name}
-            </h2>
-          </div>
-          <button
-            type="button"
-            className="vfy-btn vfy-btn-ghost"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="vfy-modal-body">
-          <p style={{ marginTop: 0 }}>{connector.description}</p>
-
-          <ol className="vfy-connector-steps">
-            {connector.setupSteps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
-
-          {connector.fields.map((field) => (
-            <label key={field.key} className="vfy-field" style={{ display: 'block', marginTop: 14 }}>
-              <span className="vfy-field-label">{field.label}</span>
-              <input
-                className="vfy-field-input"
-                type={field.key === 'token' ? 'password' : 'url'}
-                value={field.key === 'token' ? token : url}
-                onChange={(e) =>
-                  field.key === 'token' ? setToken(e.target.value) : setUrl(e.target.value)
-                }
-                placeholder={field.placeholder}
-                autoComplete="off"
-              />
-              {field.help ? <span className="vfy-settings-item-meta">{field.help}</span> : null}
-            </label>
-          ))}
-
-          {error && (
-            <p role="alert" className="text-sm" style={{ color: 'var(--d-danger)', marginTop: 12 }}>
-              {error}
-            </p>
-          )}
-          {done && (
-            <p
-              role="status"
-              className="text-sm"
-              style={{
-                color: 'var(--d-accent)',
-                marginTop: 12,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              <CheckCircle2 size={14} />
-              Connected. Ready for Sandbox and workflows.
-            </p>
-          )}
-        </div>
-
-        <div className="vfy-modal-foot">
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="lg"
+      eyebrow={`Connect · ${connector.category}`}
+      title={connector.name}
+      icon={<BrandIcon brand={connector.brand} size={26} />}
+      footer={
+        <>
           <button type="button" className="vfy-btn vfy-btn-ghost" onClick={onClose}>
             Cancel
           </button>
@@ -174,8 +89,55 @@ export default function ConnectorSetupModal({
           >
             {busy ? 'Connecting…' : done ? 'Connected' : 'Connect to workspace'}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <p style={{ marginTop: 0 }}>{connector.description}</p>
+
+      <ol className="vfy-connector-steps">
+        {connector.setupSteps.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ol>
+
+      {connector.fields.map((field) => (
+        <label key={field.key} className="vfy-field" style={{ display: 'block', marginTop: 14 }}>
+          <span className="vfy-field-label">{field.label}</span>
+          <input
+            className="vfy-field-input"
+            type={field.key === 'token' ? 'password' : 'url'}
+            value={field.key === 'token' ? token : url}
+            onChange={(e) =>
+              field.key === 'token' ? setToken(e.target.value) : setUrl(e.target.value)
+            }
+            placeholder={field.placeholder}
+            autoComplete="off"
+          />
+          {field.help ? <span className="vfy-settings-item-meta">{field.help}</span> : null}
+        </label>
+      ))}
+
+      {error && (
+        <p role="alert" className="text-sm" style={{ color: 'var(--d-danger)', marginTop: 12 }}>
+          {error}
+        </p>
+      )}
+      {done && (
+        <p
+          role="status"
+          className="text-sm"
+          style={{
+            color: 'var(--d-accent)',
+            marginTop: 12,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          <CheckCircle2 size={14} />
+          Connected. Ready for Sandbox and workflows.
+        </p>
+      )}
+    </Modal>
   );
 }

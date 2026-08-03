@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
 type DialogContextValue = {
@@ -44,19 +45,48 @@ function DialogTrigger({
 
 function DialogContent({ className, children }: { className?: string; children: React.ReactNode }) {
   const ctx = React.useContext(DialogContext);
-  if (!ctx || !ctx.open) return null;
+  const open = Boolean(ctx?.open);
+  const setOpen = ctx?.setOpen;
 
-  return (
+  React.useEffect(() => {
+    if (!open || !setOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented) setOpen(false);
+    };
+    const { body } = document;
+    const prevOverflow = body.style.overflow;
+    body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      body.style.overflow = prevOverflow;
+    };
+  }, [open, setOpen]);
+
+  if (!open || !setOpen) return null;
+
+  // Portalled so ancestor layout constraints cannot clamp the fixed overlay.
+  return createPortal(
     <div className="fixed inset-0 z-[110]">
       <button
         aria-label="Close dialog overlay"
-        className="absolute inset-0 bg-[var(--color-bg-overlay)]"
-        onClick={() => ctx.setOpen(false)}
+        className="absolute inset-0 bg-[var(--color-bg-overlay)] backdrop-blur-[3px]"
+        onClick={() => setOpen(false)}
       />
-      <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className={cn('w-full max-w-xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6', className)}>{children}</div>
+      <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className={cn(
+            'pointer-events-auto w-full max-w-xl max-h-full overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 shadow-2xl',
+            className,
+          )}
+        >
+          {children}
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

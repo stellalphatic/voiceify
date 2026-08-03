@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CORE_PAIN_POINT, PERSONA_TIME_SAVERS, POSITIONING } from '../lib/positioning';
+import HeroCallPanel from '../components/landing/HeroCallPanel';
 import {
   ArrowRight,
   Building2,
@@ -389,26 +390,7 @@ export default function LandingPage() {
             </div>
 
             <div className="lp-call-wrap">
-              <Link to="/demo?persona=restaurant" className="lp-call-card lp-call-card--simple" aria-label="Open live voice demo">
-                <p className="lp-call-card-label">Example call · Restaurant booking</p>
-                <div className="lp-transcript">
-                  <div className="lp-msg-group">
-                    <span className="lp-msg-label">Caller</span>
-                    <div className="lp-msg lp-msg--user">
-                      I&apos;d like to book a table for two at 8 tonight.
-                    </div>
-                  </div>
-                  <div className="lp-msg-group lp-msg-group--agent">
-                    <span className="lp-msg-label">Nova</span>
-                    <div className="lp-msg lp-msg--agent">
-                      Of course — 8 PM for two. Any seating preference?
-                    </div>
-                  </div>
-                </div>
-                <span className="lp-call-cta">
-                  Open demo <ArrowRight size={14} aria-hidden />
-                </span>
-              </Link>
+              <HeroCallPanel persona={heroPersona} />
             </div>
           </div>
         </div>
