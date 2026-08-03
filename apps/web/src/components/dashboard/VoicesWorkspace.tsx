@@ -226,7 +226,7 @@ export default function VoicesWorkspace() {
     <div className="vfy-voices-page">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// configure · voices</p>
+          <p className="vfy-page-eyebrow">Configure · Voices</p>
           <h1 className="vfy-page-title">Voice library</h1>
           <p className="vfy-page-sub">
             Pick a voice for your agent. Copy the ID and paste it in the agent editor.

@@ -111,7 +111,7 @@ export default function GuardrailsWorkspace() {
     <div className="max-w-3xl space-y-6">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// configure · guardrails</p>
+          <p className="vfy-page-eyebrow">Configure · Guardrails</p>
           <h1 className="vfy-page-title">Guardrails</h1>
           <p className="vfy-page-sub">
             Advanced policy controls for PII, topic bounds, tool limits, jailbreak refusal, and

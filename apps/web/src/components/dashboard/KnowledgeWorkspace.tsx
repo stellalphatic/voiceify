@@ -318,7 +318,7 @@ export default function KnowledgeWorkspace() {
     <div className="max-w-5xl space-y-6">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// configure · knowledge</p>
+          <p className="vfy-page-eyebrow">Configure · Knowledge</p>
           <h1 className="vfy-page-title">Knowledge base</h1>
           <p className="vfy-page-sub">
             Paste text or upload PDF/DOCX. We extract text, chunk it, embed it for retrieval, then

@@ -822,7 +822,7 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
       <div className="vfy-overview">
         <div className="vfy-page-head">
           <div className="vfy-page-head-titles">
-            <p className="vfy-page-eyebrow">// sandbox</p>
+            <p className="vfy-page-eyebrow">Build · Sandbox</p>
             <h1 className="vfy-page-title">Sandbox</h1>
             <p className="vfy-page-sub">
               Create an agent first, then talk to it here with your microphone.
@@ -967,7 +967,7 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
     <div className="vfy-sandbox-page">
       <div className="vfy-sandbox-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// sandbox · live mode</p>
+          <p className="vfy-page-eyebrow">Sandbox · Live mode</p>
           <h1 className="vfy-page-title">Testing sandbox</h1>
           <p className="vfy-page-sub">Test your agent&apos;s responses and latency in real-time.</p>
         </div>
@@ -1409,7 +1409,7 @@ const AgentsView = ({
     <div className="vfy-agents-page">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// agents · {agents.length} active</p>
+          <p className="vfy-page-eyebrow">Agents · {agents.length} active</p>
           <h1 className="vfy-page-title">Agents</h1>
           <p className="vfy-page-sub">Manage AI personas, voices, and triggers across your organization.</p>
         </div>
@@ -1586,7 +1586,7 @@ const AgentDetailView = ({
             <ChevronDown size={15} style={{ transform: 'rotate(90deg)' }} />
           </button>
           <div className="vfy-page-head-titles">
-            <p className="vfy-page-eyebrow">// agent · {agent.type.toLowerCase()}</p>
+            <p className="vfy-page-eyebrow">Agent · {agent.type.toLowerCase()}</p>
             <h1 className="vfy-page-title">{agent.name}</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
               <span style={{ fontFamily: 'var(--d-mono)', fontSize: 11, color: 'var(--d-muted)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>

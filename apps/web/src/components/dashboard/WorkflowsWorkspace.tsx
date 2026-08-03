@@ -79,7 +79,7 @@ export default function WorkflowsWorkspace() {
     <div className="max-w-6xl space-y-6">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// configure · workflows</p>
+          <p className="vfy-page-eyebrow">Configure · Workflows</p>
           <h1 className="vfy-page-title">Workflows</h1>
           <p className="vfy-page-sub">
             Design conversation graphs with Sheets, WhatsApp, Calendar, and Email nodes. Install

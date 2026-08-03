@@ -69,7 +69,7 @@ export default function ConversationsWorkspace() {
     <div className="max-w-6xl space-y-6">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// monitor · conversations</p>
+          <p className="vfy-page-eyebrow">Monitor · Conversations</p>
           <h1 className="vfy-page-title">Conversation history</h1>
           <p className="vfy-page-sub">
             Review live and completed agent turns, latency, and transcripts from your workspace.

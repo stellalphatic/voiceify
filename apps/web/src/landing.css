@@ -114,12 +114,13 @@
 
 .lp-h1 {
   font-family: var(--font-display, sans-serif);
-  font-size: clamp(2.6rem, 5.8vw, 4.25rem);
+  font-size: clamp(2.5rem, 5.2vw, 3.85rem);
   font-weight: 500;
   letter-spacing: -0.035em;
-  line-height: 1.03;
+  line-height: 1.05;
   margin: 0 0 22px;
   color: var(--lp-text);
+  text-wrap: balance;
 }
 
 .lp-h2 {
@@ -149,9 +150,9 @@
   color: var(--lp-accent);
 }
 
-/* Second line of the hero headline — softened ink, editorial two-tone */
+/* Headline stays single-color ink — the reference brand never two-tones */
 .lp-gradient-text {
-  color: var(--lp-dim);
+  color: inherit;
 }
 
 /* Section head — ElevenLabs editorial split: heading left, lead right */
@@ -513,12 +514,11 @@
 .lp-call-wrap::before {
   content: '';
   position: absolute;
-  inset: -18%;
+  inset: -12%;
   background:
-    radial-gradient(ellipse at 30% 35%, color-mix(in srgb, var(--orb-mint, #a7e5d3) 30%, transparent), transparent 62%),
-    radial-gradient(ellipse at 72% 68%, color-mix(in srgb, var(--orb-peach, #f4c5a8) 26%, transparent), transparent 65%),
-    radial-gradient(ellipse at 55% 20%, color-mix(in srgb, var(--orb-lavender, #c8b8e0) 20%, transparent), transparent 60%);
-  filter: blur(40px);
+    radial-gradient(ellipse at 30% 35%, color-mix(in srgb, var(--orb-mint, #a7e5d3) 14%, transparent), transparent 62%),
+    radial-gradient(ellipse at 72% 68%, color-mix(in srgb, var(--orb-peach, #f4c5a8) 12%, transparent), transparent 65%);
+  filter: blur(44px);
   pointer-events: none;
   z-index: 0;
 }
@@ -546,6 +546,38 @@
 .lp-call-card:focus-visible {
   outline: 2px solid var(--lp-accent);
   outline-offset: 3px;
+}
+
+/* ── Simple hero variant — label, padded transcript, footer CTA ── */
+.lp-call-card--simple {
+  display: flex;
+  flex-direction: column;
+  max-width: 420px;
+  margin-left: auto;
+  box-shadow: 0 4px 24px rgba(12, 10, 9, 0.06);
+}
+
+.lp-call-card-label {
+  margin: 0;
+  padding: 16px 20px 12px;
+  font-family: var(--font-ui, 'Inter', sans-serif);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--lp-dim);
+  border-bottom: 1px solid var(--lp-border);
+}
+
+.lp-call-card--simple .lp-transcript {
+  padding: 18px 20px 20px;
+  gap: 16px;
+}
+
+.lp-call-card--simple .lp-msg {
+  max-width: 88%;
+}
+
+.lp-call-card--simple .lp-call-cta {
+  margin-top: auto;
 }
 
 .lp-call-header {
@@ -3161,6 +3193,13 @@
   z-index: 1;
 }
 
+/* Simple variant — single centered column (markup has no aside) */
+.lp-faq-layout--simple {
+  display: block;
+  max-width: 760px;
+  margin-inline: auto;
+}
+
 .lp-faq-aside {
   position: sticky;
   top: 96px;
@@ -3265,9 +3304,9 @@
 }
 
 .lp-faq-item.is-open {
-  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
-  background: color-mix(in srgb, var(--color-accent) 4%, transparent);
-  box-shadow: 0 8px 24px rgba(12, 10, 9, 0.12);
+  border-color: var(--lp-border-strong);
+  background: var(--lp-surface);
+  box-shadow: 0 4px 16px rgba(12, 10, 9, 0.05);
 }
 
 .lp-faq-trigger {
@@ -3828,6 +3867,11 @@
   .lp-hero-grid,
   .lp-sandbox-layout {
     grid-template-columns: 1fr;
+  }
+
+  .lp-call-card--simple {
+    margin-inline: auto;
+    max-width: 480px;
   }
 
   .lp-sandbox-stats {

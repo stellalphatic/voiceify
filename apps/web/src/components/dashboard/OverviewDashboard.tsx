@@ -161,7 +161,7 @@ export default function OverviewDashboard({
     <div ref={containerRef} className="vfy-overview">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// overview · live workspace</p>
+          <p className="vfy-page-eyebrow">Overview · Live workspace</p>
           <h1 className="vfy-page-title">Welcome, {greeting}</h1>
           <p className="vfy-page-sub">
             Real usage for your workspace. Credits are deducted as voice traffic runs.

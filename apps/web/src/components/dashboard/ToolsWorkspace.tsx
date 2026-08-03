@@ -223,7 +223,7 @@ export default function ToolsWorkspace() {
     <div className="max-w-6xl space-y-6">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// configure · tools</p>
+          <p className="vfy-page-eyebrow">Configure · Tools</p>
           <h1 className="vfy-page-title">Tools & integrations</h1>
           <p className="vfy-page-sub">
             One-click connectors for Google Sheets, Calendar, WhatsApp, and Email, plus developer

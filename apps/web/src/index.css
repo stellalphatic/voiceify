@@ -204,9 +204,9 @@
 
   /* ── Atmospheric hero (pastel orbs, never saturated) ── */
   --gradient-hero:
-    radial-gradient(ellipse 42% 55% at 18% 30%, rgba(167, 229, 211, 0.35) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 52% at 82% 26%, rgba(200, 184, 224, 0.30) 0%, transparent 70%),
-    radial-gradient(ellipse 46% 58% at 55% 78%, rgba(244, 197, 168, 0.28) 0%, transparent 70%);
+    radial-gradient(ellipse 42% 55% at 18% 30%, rgba(167, 229, 211, 0.16) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 52% at 82% 26%, rgba(200, 184, 224, 0.13) 0%, transparent 70%),
+    radial-gradient(ellipse 46% 58% at 55% 78%, rgba(244, 197, 168, 0.12) 0%, transparent 70%);
   --gradient-brand: linear-gradient(135deg, #292524 0%, #0c0a09 100%);
   --gradient-text:  none;
   --hero-gradient:  var(--gradient-hero);

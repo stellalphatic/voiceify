@@ -122,7 +122,7 @@ export default function IntegrationsWorkspace() {
     <div className="max-w-5xl space-y-6">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// manage · integrations</p>
+          <p className="vfy-page-eyebrow">Manage · Integrations</p>
           <h1 className="vfy-page-title">Integrations</h1>
           <p className="vfy-page-sub">
             Connect Google Sheets, WhatsApp, Calendar, and Email in one click. Platform voice

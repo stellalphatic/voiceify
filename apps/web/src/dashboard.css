@@ -74,15 +74,9 @@
 .vfy-dash *::before,
 .vfy-dash *::after { box-sizing: border-box; }
 
+/* Product UI stays flat — no atmospheric orbs inside the app */
 .vfy-dash::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 50% 40% at 18% 0%, color-mix(in srgb, var(--orb-mint, #a7e5d3) 14%, transparent) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 60% at 100% 100%, color-mix(in srgb, var(--orb-lavender, #c8b8e0) 10%, transparent) 0%, transparent 60%);
-  pointer-events: none;
-  z-index: 0;
+  content: none;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -265,9 +259,8 @@
   justify-content: center;
   width: 30px; height: 30px;
   border-radius: 7px;
-  background: linear-gradient(135deg, #34e0b0 0%, var(--color-accent) 48%, #00c985 100%);
+  background: var(--color-brand-primary, #292524);
   color: #ffffff;
-  box-shadow: 0 6px 18px -6px rgba(12, 10, 9, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0);
   flex-shrink: 0;
 }
 .vfy-side-brand-orb svg {
@@ -331,11 +324,11 @@
 
 /* Section header — base typography (visibility handled in expand/collapse rules above) */
 .vfy-side-section-title {
-  font-family: var(--d-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-family: var(--d-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
   color: var(--d-dim);
   line-height: 1;
   display: flex;
@@ -748,25 +741,23 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
-  background: linear-gradient(135deg, #34e0b0 0%, var(--color-accent) 48%, #00c985 100%);
+  padding: 7px 16px;
+  background: var(--color-brand-primary, #292524);
   color: #ffffff;
   font-family: var(--d-sans);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   border: none;
-  border-radius: var(--d-radius-sm);
+  border-radius: 9999px;
   cursor: pointer;
   letter-spacing: -0.005em;
   white-space: nowrap;
-  height: 32px;
-  box-shadow: 0 6px 16px -6px rgba(12, 10, 9, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0);
-  transition: transform 0.12s ease, box-shadow 0.18s ease, filter 0.15s ease;
+  height: 34px;
+  transition: background 0.15s ease;
 }
 .vfy-top-cta:hover {
-  transform: translateY(-1px);
+  background: var(--color-brand-hover, #0c0a09);
   color: #ffffff;
-  filter: brightness(1.04);
   box-shadow: 0 10px 24px -6px rgba(12, 10, 9, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0);
 }
 
@@ -803,19 +794,19 @@
 }
 .vfy-page-head-titles { min-width: 0; flex: 1 1 200px; }
 .vfy-page-eyebrow {
-  font-family: var(--d-mono);
-  font-size: 10.5px;
+  font-family: var(--d-sans);
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--d-accent);
+  color: var(--d-muted);
   margin: 0 0 6px;
   line-height: 1;
 }
 .vfy-page-title {
   font-family: var(--d-sans);
   font-size: clamp(20px, 1.6vw + 8px, 24px);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--d-text);
   letter-spacing: -0.025em;
   margin: 0 0 4px;
@@ -890,11 +881,11 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--d-mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: var(--d-sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
   color: var(--d-muted);
 }
 .vfy-stat-label svg {
@@ -920,11 +911,12 @@
   background: var(--d-danger-soft);
 }
 .vfy-stat-value {
-  font-family: var(--d-mono);
+  font-family: var(--d-sans);
+  font-variant-numeric: tabular-nums;
   font-size: clamp(22px, 1.6vw + 12px, 28px);
   font-weight: 600;
   color: var(--d-text);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   margin: 0;
   line-height: 1;
   position: relative;
@@ -936,11 +928,11 @@
   position: relative;
 }
 .vfy-stat-sub {
-  font-family: var(--d-mono);
-  font-size: 10.5px;
+  font-family: var(--d-sans);
+  font-size: 12px;
   color: var(--d-muted);
   margin: 6px 0 0;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 /* ── stat card variants ── */
@@ -993,22 +985,20 @@
   align-items: center;
   gap: 5px;
   padding: 6px 14px;
-  background: linear-gradient(135deg, #34e0b0 0%, var(--color-accent) 48%, #00c985 100%);
+  background: var(--color-brand-primary, #292524);
   color: #ffffff;
   font-family: var(--d-sans);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   border: none;
-  border-radius: var(--d-radius-sm);
+  border-radius: 9999px;
   cursor: pointer;
   letter-spacing: -0.005em;
-  box-shadow: 0 4px 12px -4px rgba(12, 10, 9, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0);
-  transition: transform 0.12s ease, filter 0.15s ease;
+  transition: background 0.15s ease;
 }
 .vfy-stat-cta-btn:hover {
-  transform: translateY(-1px);
+  background: var(--color-brand-hover, #0c0a09);
   color: #ffffff;
-  filter: brightness(1.04);
 }
 .vfy-stat-cta-sub {
   font-family: var(--d-mono);
@@ -1054,7 +1044,7 @@
 .vfy-chart-card-title {
   font-family: var(--d-sans);
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--d-text);
   letter-spacing: -0.005em;
   margin: 0;
@@ -1284,7 +1274,7 @@
   gap: 8px;
   font-family: var(--d-sans);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--d-text);
   letter-spacing: -0.005em;
   margin: 0;
@@ -1303,19 +1293,20 @@
   padding: 10px 16px;
   border-top: 1px solid var(--d-border);
   background: var(--d-bg-2);
-  font-family: var(--d-mono);
-  font-size: 11px;
+  font-family: var(--d-sans);
+  font-size: 12px;
   color: var(--d-muted);
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 
 .vfy-panel-link {
-  font-family: var(--d-mono);
-  font-size: 11px;
+  font-family: var(--d-sans);
+  font-size: 12px;
+  font-weight: 500;
   color: var(--d-muted);
   text-decoration: none;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1714,14 +1705,13 @@
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
 }
 .vfy-btn-primary {
-  background: linear-gradient(135deg, #34e0b0 0%, var(--color-accent) 48%, #00c985 100%);
+  background: var(--color-brand-primary, #292524);
   color: #ffffff;
-  box-shadow: 0 6px 16px -6px rgba(12, 10, 9, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0);
+  border-radius: 9999px;
 }
 .vfy-btn-primary:hover {
-  transform: translateY(-1px);
+  background: var(--color-brand-hover, #0c0a09);
   color: #ffffff;
-  filter: brightness(1.04);
 }
 .vfy-btn-primary:disabled {
   opacity: 0.55;
@@ -2451,15 +2441,17 @@
 
 .vfy-side-credits-label {
   margin: 0;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
   color: var(--d-muted);
 }
 
 .vfy-side-credits-value {
   margin: 6px 0 10px;
-  font-family: var(--d-mono);
+  font-family: var(--d-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 18px;
   font-weight: 600;
   color: var(--d-text);

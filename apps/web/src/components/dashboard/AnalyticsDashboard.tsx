@@ -120,7 +120,7 @@ export default function AnalyticsDashboard() {
     <div className="space-y-8">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">// analytics · workspace</p>
+          <p className="vfy-page-eyebrow">Monitor · Analytics</p>
           <h1 className="vfy-page-title">Analytics</h1>
           <p className="vfy-page-sub">
             Plain-English business outcomes first, then technical latency for operators.
