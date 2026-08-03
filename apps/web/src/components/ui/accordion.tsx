@@ -33,7 +33,7 @@ type AccordionItemProps = React.HTMLAttributes<HTMLDivElement> & {
 function AccordionItem({ value, className, children, ...props }: AccordionItemProps) {
   return (
     <AccordionItemContext.Provider value={value}>
-      <div className={cn('border-b border-[#374151]', className)} {...props}>
+      <div className={cn('border-b border-[var(--color-border)]', className)} {...props}>
         {children}
       </div>
     </AccordionItemContext.Provider>
@@ -54,7 +54,7 @@ function AccordionTrigger({
     <button
       type="button"
       className={cn(
-        'flex w-full items-center justify-between py-4 text-left text-[#F9FAFB] font-medium',
+        'flex w-full items-center justify-between py-4 text-left text-[var(--color-text-primary)] font-medium',
         className,
       )}
       onClick={() => accordion.setValue(isOpen ? null : itemValue)}
@@ -74,7 +74,7 @@ function AccordionContent({ className, children, ...props }: React.HTMLAttribute
   if (!isOpen) return null;
 
   return (
-    <div className={cn('pb-4 text-sm text-[#9CA3AF]', className)} {...props}>
+    <div className={cn('pb-4 text-sm text-[var(--color-text-muted)]', className)} {...props}>
       {children}
     </div>
   );

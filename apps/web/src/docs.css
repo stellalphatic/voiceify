@@ -58,7 +58,7 @@ body:has(.docs-page) .techy-ambient::after {
 }
 
 .docs-sidebar__logo {
-  font-family: var(--font-sans, 'Geist', system-ui, sans-serif);
+  font-family: var(--font-ui, system-ui, sans-serif);
   font-weight: 700;
   font-size: 15px;
   letter-spacing: -0.02em;
@@ -118,7 +118,7 @@ body:has(.docs-page) .techy-ambient::after {
 }
 
 .docs-sidebar__title {
-  font-family: var(--font-sans, 'Geist', system-ui, sans-serif);
+  font-family: var(--font-ui, system-ui, sans-serif);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.06em;
@@ -204,7 +204,7 @@ body:has(.docs-page) .techy-ambient::after {
 }
 
 .docs-hero__eyebrow {
-  font-family: var(--font-sans, 'Geist', system-ui, sans-serif);
+  font-family: var(--font-ui, system-ui, sans-serif);
   font-size: 12px;
   font-weight: 650;
   letter-spacing: 0.06em;
@@ -248,15 +248,18 @@ body:has(.docs-page) .techy-ambient::after {
 .docs-hero__btn {
   display: inline-flex;
   align-items: center;
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 650;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 500;
   text-decoration: none;
-  color: #ffffff;
-  background: linear-gradient(135deg, #34e0b0 0%, #00d992 48%, #00c985 100%);
-  box-shadow: 0 6px 16px -6px rgba(0, 217, 146, 0.45);
+  color: var(--color-voice-on-accent, #ffffff);
+  background: var(--color-brand-primary);
+  transition: background 0.15s ease;
+}
+.docs-hero__btn:hover {
+  background: var(--color-brand-hover);
 }
 
 .docs-hero__btn--ghost {
@@ -281,7 +284,7 @@ body:has(.docs-page) .techy-ambient::after {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--font-sans, 'Geist', system-ui, sans-serif);
+  font-family: var(--font-ui, system-ui, sans-serif);
   font-size: 12px;
   font-weight: 650;
   letter-spacing: 0.06em;
@@ -434,7 +437,7 @@ body:has(.docs-page) .techy-ambient::after {
 }
 
 .docs-badge {
-  font-family: var(--font-pixel-mono, 'VT323', monospace);
+  font-family: var(--font-mono, monospace);
   font-size: 11px;
   padding: 3px 8px;
   border: 1px solid var(--color-border);

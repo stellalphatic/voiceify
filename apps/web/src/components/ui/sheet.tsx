@@ -58,12 +58,12 @@ function SheetContent({
     <div className="fixed inset-0 z-[100]">
       <button
         aria-label="Close menu overlay"
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-[var(--color-bg-overlay)]"
         onClick={() => ctx.setOpen(false)}
       />
       <div
         className={cn(
-          'absolute top-0 h-full w-[280px] bg-[#131619] border-[rgba(255,255,255,0.08)] p-4 transition-transform duration-200',
+          'absolute top-0 h-full w-[280px] bg-[var(--color-bg-card)] border-[var(--color-border)] p-4 transition-transform duration-200',
           side === 'left' ? 'left-0 border-r' : 'right-0 border-l',
           className,
         )}

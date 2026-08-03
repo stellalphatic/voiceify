@@ -50,11 +50,11 @@ function DialogContent({ className, children }: { className?: string; children: 
     <div className="fixed inset-0 z-[110]">
       <button
         aria-label="Close dialog overlay"
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 bg-[var(--color-bg-overlay)]"
         onClick={() => ctx.setOpen(false)}
       />
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className={cn('w-full max-w-xl rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#131619] p-6', className)}>{children}</div>
+        <div className={cn('w-full max-w-xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6', className)}>{children}</div>
       </div>
     </div>
   );
@@ -65,11 +65,11 @@ function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 }
 
 function DialogTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 className={cn('text-lg font-semibold text-[#F9FAFB]', className)} {...props} />;
+  return <h2 className={cn('text-lg font-semibold text-[var(--color-text-primary)]', className)} {...props} />;
 }
 
 function DialogDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn('text-sm text-[#9CA3AF]', className)} {...props} />;
+  return <p className={cn('text-sm text-[var(--color-text-muted)]', className)} {...props} />;
 }
 
 export { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription };

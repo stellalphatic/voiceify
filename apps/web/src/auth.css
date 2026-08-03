@@ -3,26 +3,26 @@
  */
 
 .ap {
-  --ap-bg: #050507;
-  --ap-surface: #101010;
-  --ap-elevated: #161a1f;
-  --ap-border: rgba(255, 255, 255, 0.08);
-  --ap-border-strong: rgba(255, 255, 255, 0.14);
-  --ap-text: #f2f2f2;
-  --ap-muted: #b8b3b0;
-  --ap-dim: #8b949e;
-  --ap-accent: #00d992;
-  --ap-accent-hover: #00c182;
-  --ap-accent-dim: rgba(0, 217, 146, 0.1);
-  --ap-info: #4cb3d4;
-  --ap-danger: #fb565b;
+  --ap-bg: var(--color-bg-primary);
+  --ap-surface: var(--color-bg-card);
+  --ap-elevated: var(--color-bg-tertiary);
+  --ap-border: var(--color-border);
+  --ap-border-strong: var(--color-border-strong);
+  --ap-text: var(--color-text-primary);
+  --ap-muted: var(--color-text-secondary);
+  --ap-dim: var(--color-text-muted);
+  --ap-accent: var(--color-brand-primary);
+  --ap-accent-hover: var(--color-brand-hover);
+  --ap-accent-dim: var(--color-brand-light);
+  --ap-info: var(--color-status-info);
+  --ap-danger: var(--color-status-error);
   --ap-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--ap-bg);
   color: var(--ap-text);
-  font-family: var(--font-primary, 'Geist', 'Inter', system-ui, sans-serif);
+  font-family: var(--font-primary, 'Inter', system-ui, sans-serif);
   position: relative;
   overflow-x: hidden;
 }
@@ -41,9 +41,9 @@
   width: 55%;
   height: 60%;
   background:
-    radial-gradient(ellipse at 30% 20%, rgba(0, 217, 146, 0.16), transparent 55%),
-    radial-gradient(ellipse at 70% 0%, rgba(76, 179, 212, 0.1), transparent 50%);
-  filter: blur(8px);
+    radial-gradient(ellipse at 30% 20%, color-mix(in srgb, var(--orb-mint, #a7e5d3) 40%, transparent), transparent 55%),
+    radial-gradient(ellipse at 70% 0%, color-mix(in srgb, var(--orb-sky, #a8c8e8) 30%, transparent), transparent 50%);
+  filter: blur(40px);
 }
 
 .ap-bg-glow--r {
@@ -53,8 +53,8 @@
   right: -10%;
   width: 48%;
   height: 55%;
-  background: radial-gradient(ellipse at 70% 80%, rgba(0, 217, 146, 0.08), transparent 60%);
-  filter: blur(12px);
+  background: radial-gradient(ellipse at 70% 80%, color-mix(in srgb, var(--orb-peach, #f4c5a8) 35%, transparent), transparent 60%);
+  filter: blur(40px);
 }
 
 .ap::before {
@@ -65,8 +65,8 @@
   z-index: 0;
   opacity: 0.35;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--color-text-primary) 3%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--color-text-primary) 3%, transparent) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
 }
@@ -155,7 +155,7 @@
 
 .ap-brand-kicker {
   margin: 0 0 14px;
-  font-family: var(--font-mono, 'DM Mono', monospace);
+  font-family: var(--font-mono, monospace);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.14em;
@@ -192,7 +192,7 @@
 
 .ap-brand-eyebrow {
   display: block;
-  font-family: var(--font-mono, 'DM Mono', monospace);
+  font-family: var(--font-mono, monospace);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.14em;
@@ -248,7 +248,7 @@
   height: 34px;
   border-radius: 9px;
   background: var(--ap-accent-dim);
-  border: 1px solid rgba(0, 217, 146, 0.15);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 15%, transparent);
   color: var(--ap-accent);
   flex-shrink: 0;
 }
@@ -279,7 +279,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: rgba(0, 0, 0, 0.2);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border-bottom: 1px solid var(--ap-border);
   font-family: var(--font-mono, monospace);
   font-size: 10px;
@@ -320,9 +320,9 @@
   color: var(--ap-dim);
 }
 
-.ap-preview-seg--stt { border-color: rgba(0, 217, 146, 0.2); color: var(--ap-accent); }
+.ap-preview-seg--stt { border-color: color-mix(in srgb, var(--color-accent) 20%, transparent); color: var(--ap-accent); }
 .ap-preview-seg--llm { border-color: rgba(76, 179, 212, 0.2); color: var(--ap-info); }
-.ap-preview-seg--tts { border-color: rgba(255, 186, 0, 0.2); color: var(--ap-warning, #ffba00); }
+.ap-preview-seg--tts { border-color: color-mix(in srgb, var(--color-status-warning) 20%, transparent); color: var(--ap-warning, #ffba00); }
 
 .ap-preview-msg {
   font-size: 12px;
@@ -333,7 +333,7 @@
 }
 
 .ap-preview-msg--user {
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border: 1px solid var(--ap-border);
   color: var(--ap-muted);
   margin-bottom: 8px;
@@ -342,7 +342,7 @@
 .ap-preview-msg--agent {
   margin-left: auto;
   background: var(--ap-accent-dim);
-  border: 1px solid rgba(0, 217, 146, 0.18);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
   color: var(--ap-text);
 }
 
@@ -372,7 +372,7 @@
   padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid var(--ap-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--color-text-primary) 2%, transparent);
   font-size: 13px;
   color: var(--ap-dim);
   line-height: 1.5;
@@ -406,7 +406,7 @@
   gap: 0;
   padding: 4px;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.3);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border: 1px solid var(--ap-border);
   margin-bottom: 28px;
 }
@@ -488,7 +488,7 @@
   padding: 5px 10px;
   border-radius: 999px;
   border: 1px solid var(--ap-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--color-text-primary) 2%, transparent);
   font-size: 11px;
   font-weight: 500;
   color: var(--ap-dim);
@@ -553,7 +553,7 @@
   padding: 12px 14px 12px 42px;
   border-radius: 10px;
   border: 1px solid var(--ap-border);
-  background: rgba(0, 0, 0, 0.25);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   color: var(--ap-text);
   font-size: 15px;
   font-family: inherit;
@@ -578,8 +578,8 @@
 
 .ap-input:focus {
   outline: none;
-  border-color: rgba(0, 217, 146, 0.4);
-  box-shadow: 0 0 0 3px rgba(0, 217, 146, 0.1);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  box-shadow: 0 0 0 3px rgba(12, 10, 9, 0.03);
 }
 
 .ap-input--error {
@@ -639,7 +639,7 @@
 
 .ap-input-toggle:hover {
   color: var(--ap-muted);
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
 }
 
 .ap-forgot {
@@ -675,7 +675,7 @@
   height: 18px;
   border-radius: 5px;
   border: 1px solid var(--ap-border-strong);
-  background: rgba(0, 0, 0, 0.2);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   flex-shrink: 0;
   margin-top: 1px;
   display: flex;
@@ -803,7 +803,7 @@
 
 .ap-oauth-btn:hover {
   border-color: var(--ap-border-strong);
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--color-text-primary) 3%, transparent);
 }
 
 .ap-switch {
@@ -832,7 +832,7 @@
   padding: 12px 16px;
   border-radius: 10px;
   border: 1px solid var(--ap-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--color-text-primary) 2%, transparent);
   color: var(--ap-muted);
   font-size: 13px;
   font-weight: 500;
@@ -841,7 +841,7 @@
 }
 
 .ap-demo-link:hover {
-  border-color: rgba(0, 217, 146, 0.25);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
   color: var(--ap-accent);
 }
 
@@ -928,17 +928,17 @@
   }
 }
 
-/* -- Vapi-inspired auth layout --------------------------------- */
+/* -- Split auth layout ------------------------------------------ */
 .ap--vapi {
-  --ap-bg: #0a0a0b;
-  --ap-surface: #121214;
-  --ap-input: #1a1a1d;
-  --ap-border: rgba(255, 255, 255, 0.1);
-  --ap-text: #f4f4f5;
-  --ap-muted: #a1a1aa;
-  --ap-dim: #71717a;
-  --ap-accent: #00d992;
-  --ap-accent-hover: #00c182;
+  --ap-bg: var(--color-bg-primary);
+  --ap-surface: var(--color-bg-card);
+  --ap-input: var(--color-bg-input);
+  --ap-border: var(--color-border);
+  --ap-text: var(--color-text-primary);
+  --ap-muted: var(--color-text-secondary);
+  --ap-dim: var(--color-text-muted);
+  --ap-accent: var(--color-brand-primary);
+  --ap-accent-hover: var(--color-brand-hover);
 }
 
 .ap-layout--vapi {
@@ -991,9 +991,10 @@
 }
 
 .ap-header--vapi .ap-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
+  font-family: var(--font-display, serif);
+  font-size: 1.75rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
   margin: 0 0 8px;
 }
 
@@ -1026,11 +1027,11 @@
 .ap--vapi .ap-submit {
   width: 100%;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 9999px;
   min-height: 44px;
-  font-weight: 600;
+  font-weight: 500;
   background: var(--ap-accent);
-  color: #04140f;
+  color: var(--color-voice-on-accent, #ffffff);
   border: none;
   margin-top: 8px;
 }
@@ -1090,7 +1091,7 @@
   position: relative;
   display: grid;
   place-items: center;
-  background: #0c0c0e;
+  background: var(--color-bg-elevated);
   overflow: hidden;
   padding: 48px;
 }
@@ -1099,21 +1100,23 @@
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(circle at center, rgba(0, 217, 146, 0.35) 0.8px, transparent 1.2px);
+    radial-gradient(circle at center, color-mix(in srgb, var(--color-text-primary) 30%, transparent) 0.8px, transparent 1.2px);
   background-size: 18px 18px;
-  opacity: 0.22;
+  opacity: 0.16;
   mask-image: radial-gradient(ellipse at 50% 45%, black 20%, transparent 70%);
   animation: ap-grid-drift 28s linear infinite;
 }
 
 .ap-showcase-glow {
   position: absolute;
-  width: 60%;
-  height: 50%;
-  left: 20%;
-  top: 20%;
-  background: radial-gradient(ellipse, rgba(0, 217, 146, 0.12), transparent 65%);
-  filter: blur(40px);
+  width: 70%;
+  height: 60%;
+  left: 15%;
+  top: 16%;
+  background:
+    radial-gradient(ellipse at 35% 40%, color-mix(in srgb, var(--orb-lavender, #c8b8e0) 45%, transparent), transparent 62%),
+    radial-gradient(ellipse at 70% 65%, color-mix(in srgb, var(--orb-mint, #a7e5d3) 40%, transparent), transparent 65%);
+  filter: blur(48px);
   pointer-events: none;
 }
 
@@ -1126,11 +1129,11 @@
   position: relative;
   z-index: 1;
   width: min(440px, 100%);
-  background: rgba(18, 18, 20, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
   padding: 28px 28px 24px;
-  box-shadow: 0 24px 64px -24px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 24px 64px -24px rgba(12, 10, 9, 0.10);
   animation: ap-proof-in 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1186,7 +1189,7 @@
   height: 8px;
   border-radius: 50%;
   border: none;
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--color-text-primary) 18%, transparent);
   cursor: pointer;
   padding: 0;
 }
@@ -1215,72 +1218,7 @@
   }
 }
 
-/* Light theme — showcase and form follow theme tokens */
-[data-theme="light"] .ap--vapi {
-  --ap-bg: #fafafa;
-  --ap-surface: #ffffff;
-  --ap-input: #f4f4f5;
-  --ap-border: rgba(0, 0, 0, 0.1);
-  --ap-text: #18181b;
-  --ap-muted: #52525b;
-  --ap-dim: #71717a;
-  --ap-accent: #00a870;
-  --ap-accent-hover: #009660;
-}
-
-[data-theme="light"] .ap--vapi::before {
-  opacity: 0.4;
-  background-image:
-    linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
-}
-
-[data-theme="light"] .ap-form-side--vapi {
-  border-right-color: var(--ap-border);
-  background: var(--ap-bg);
-}
-
-[data-theme="light"] .ap-showcase {
-  background: linear-gradient(155deg, #f0fdf6 0%, #ecfeff 42%, #f8fafc 100%);
-}
-
-[data-theme="light"] .ap-showcase-grid {
-  background-image:
-    radial-gradient(circle at center, rgba(0, 168, 112, 0.28) 0.8px, transparent 1.2px);
-  opacity: 0.35;
-}
-
-[data-theme="light"] .ap-showcase-glow {
-  background: radial-gradient(ellipse, rgba(0, 168, 112, 0.14), transparent 65%);
-}
-
-[data-theme="light"] .ap-proof-card {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow:
-    0 24px 48px -20px rgba(15, 23, 42, 0.12),
-    0 0 0 1px rgba(255, 255, 255, 0.8) inset;
-}
-
-[data-theme="light"] .ap-proof-quote {
-  color: var(--ap-text);
-}
-
-[data-theme="light"] .ap-proof-meta strong {
-  color: var(--ap-text);
-}
-
-[data-theme="light"] .ap-proof-meta span {
-  color: var(--ap-muted);
-}
-
-[data-theme="light"] .ap-proof-dot {
-  background: rgba(0, 0, 0, 0.14);
-}
-
-[data-theme="light"] .ap-proof-dot.is-active {
-  background: var(--ap-accent);
-}
+/* Theme-adaptive: all auth surfaces resolve from canonical tokens. */
 
 @media (prefers-reduced-motion: reduce) {
   .ap-showcase-grid,

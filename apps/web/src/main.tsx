@@ -30,7 +30,7 @@ class RootErrorBoundary extends Component<EBProps, EBState> {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          fontFamily: "'Geist', 'Inter', sans-serif",
+          fontFamily: "var(--font-ui, 'Inter', sans-serif)",
           gap: '16px',
           padding: '32px',
         }}>
@@ -40,8 +40,8 @@ class RootErrorBoundary extends Component<EBProps, EBState> {
           </p>
           <pre style={{
             background: 'var(--color-bg-secondary)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '0',
+            border: '1px solid var(--color-border)',
+            borderRadius: '12px',
             padding: '16px 24px',
             color: 'var(--color-voice-danger)',
             fontSize: '0.8rem',
@@ -54,12 +54,12 @@ class RootErrorBoundary extends Component<EBProps, EBState> {
           <button
             onClick={() => window.location.reload()}
             style={{
-              background: 'var(--color-accent)',
-              color: 'var(--color-text-primary)',
+              background: 'var(--color-brand-primary)',
+              color: 'var(--color-voice-on-accent, #ffffff)',
               border: 'none',
-              borderRadius: '0',
+              borderRadius: '9999px',
               padding: '10px 24px',
-              fontWeight: 700,
+              fontWeight: 500,
               cursor: 'pointer',
             }}
           >

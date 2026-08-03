@@ -76,7 +76,7 @@ export default function AboutPage() {
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-px rounded-2xl overflow-hidden border border-voice-frost-border bg-voice-frost-border">
           {STATS.map(({ value, label }) => (
             <div key={label} className="bg-voice-surface px-6 py-8 text-center">
-              <div className="text-3xl md:text-4xl font-bold mb-2 tracking-tight" style={{ fontFamily: "'DM Mono', monospace" }}>{value}</div>
+              <div className="text-3xl md:text-4xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-mono, monospace)" }}>{value}</div>
               <div className="text-xs uppercase tracking-wider text-voice-muted">{label}</div>
             </div>
           ))}

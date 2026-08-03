@@ -5,7 +5,6 @@ import RequireAuth from './components/RequireAuth';
 import PageLoader from './components/PageLoader';
 import { ThemeProvider } from './context/ThemeContext';
 import { AgentStoreProvider } from './lib/agents/AgentStoreContext';
-import { usePixelUi } from './hooks/usePixelUi';
 
 // ── Lazy-loaded routes ─────────────────────────────────────────────
 const LandingPage   = lazy(() => import('./pages/LandingPage'));
@@ -28,8 +27,6 @@ const SecurityPage  = lazy(() => import('./pages/SecurityPage'));
 const CookiesPage   = lazy(() => import('./pages/CookiesPage'));
 
 function AppRoutes() {
-  usePixelUi();
-
   return (
     <BrowserRouter>
       <a href="#main-content" className="skip-to-content">

@@ -13,8 +13,8 @@ export default function PageLoader() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'var(--color-bg-primary, #08090c)',
-        color: 'var(--color-text-secondary, #9aa0aa)',
+        background: 'var(--color-bg-primary, #f5f5f4)',
+        color: 'var(--color-text-secondary, #4e4a46)',
         fontFamily: 'Inter, system-ui, sans-serif',
         gap: 14,
       }}

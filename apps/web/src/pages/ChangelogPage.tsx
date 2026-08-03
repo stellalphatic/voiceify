@@ -119,7 +119,7 @@ export default function ChangelogPage() {
                     style={{
                       background: i === 0 ? 'color-mix(in srgb, var(--color-accent) 15%, transparent)' : 'var(--color-bg-tertiary)',
                       color: i === 0 ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-                      fontFamily: "'DM Mono', monospace",
+                      fontFamily: "var(--font-mono, monospace)",
                     }}
                   >
                     v{release.version}

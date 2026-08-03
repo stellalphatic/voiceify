@@ -4,9 +4,9 @@ export const THEME_STORAGE_KEY = 'ag-theme';
 const LEGACY_KEYS = ['voiceify-theme', 'theme'] as const;
 
 export function readTheme(): Theme {
-  if (typeof document === 'undefined') return 'dark';
+  if (typeof document === 'undefined') return 'light';
   const raw = document.documentElement.getAttribute('data-theme');
-  return raw === 'light' ? 'light' : 'dark';
+  return raw === 'dark' ? 'dark' : 'light';
 }
 
 export function applyTheme(theme: Theme) {
@@ -21,7 +21,7 @@ export function applyTheme(theme: Theme) {
 
 /** Run once at boot — migrates legacy keys into ag-theme. */
 export function bootstrapTheme(): Theme {
-  if (typeof window === 'undefined') return 'dark';
+  if (typeof window === 'undefined') return 'light';
 
   let theme: Theme | null = null;
   try {
@@ -45,7 +45,7 @@ export function bootstrapTheme(): Theme {
     }
   }
 
-  const resolved: Theme = theme === 'light' ? 'light' : 'dark';
+  const resolved: Theme = theme === 'dark' ? 'dark' : 'light';
   applyTheme(resolved);
 
   try {
@@ -55,9 +55,4 @@ export function bootstrapTheme(): Theme {
   }
 
   return resolved;
-}
-
-export function enablePixelUi() {
-  if (typeof document === 'undefined') return;
-  document.documentElement.setAttribute('data-pixel', 'on');
 }

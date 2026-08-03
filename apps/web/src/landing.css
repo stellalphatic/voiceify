@@ -1,32 +1,32 @@
 /*
- * landing.css — Voiceify landing page (v4 redesign)
- * Emerald + abyss theme. All classes prefixed with lp-
+ * landing.css — Voiceify landing page (editorial redesign)
+ * Off-white canvas, warm ink, hairlines, pastel orbs. Classes prefixed lp-
  */
 
 /* ── Page shell ─────────────────────────────────────────────── */
 .lp {
-  --lp-bg: #050507;
-  --lp-surface: #101010;
-  --lp-elevated: #1a1e23;
-  --lp-border: rgba(255, 255, 255, 0.08);
-  --lp-border-strong: rgba(255, 255, 255, 0.14);
-  --lp-text: #f5f5f5;
-  --lp-muted: #c4c0bc;
-  --lp-dim: #9aa3ad;
-  --lp-accent: #00d992;
-  --lp-accent-hover: #00c182;
-  --lp-accent-dim: rgba(0, 217, 146, 0.12);
-  --lp-info: #4cb3d4;
-  --lp-warning: #ffba00;
-  --lp-container: 1080px;
-  --lp-section-y: clamp(4rem, 7vw, 6rem);
+  --lp-bg: var(--color-bg-primary);
+  --lp-surface: var(--color-bg-card);
+  --lp-elevated: var(--color-bg-tertiary);
+  --lp-border: var(--color-border);
+  --lp-border-strong: var(--color-border-strong);
+  --lp-text: var(--color-text-primary);
+  --lp-muted: var(--color-text-secondary);
+  --lp-dim: var(--color-text-muted);
+  --lp-accent: var(--color-brand-primary);
+  --lp-accent-hover: var(--color-brand-hover);
+  --lp-accent-dim: var(--color-brand-light);
+  --lp-info: var(--color-status-info);
+  --lp-warning: var(--color-status-warning);
+  --lp-container: 1160px;
+  --lp-section-y: clamp(4.5rem, 8vw, 6.5rem);
   --lp-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --lp-ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
   --lp-duration: 0.32s;
 
   background: var(--lp-bg);
   color: var(--lp-text);
-  font-family: var(--font-primary, 'Geist', 'Inter', system-ui, sans-serif);
+  font-family: var(--font-primary, 'Inter', system-ui, sans-serif);
   overflow-x: hidden;
 }
 
@@ -94,10 +94,10 @@
   padding: 0;
   border: none;
   background: none;
-  font-family: var(--font-mono, 'DM Mono', monospace);
-  font-size: 11px;
+  font-family: var(--font-ui, 'Inter', sans-serif);
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--lp-dim);
   margin-bottom: 14px;
@@ -113,19 +113,21 @@
 }
 
 .lp-h1 {
-  font-size: clamp(2.1rem, 4.5vw, 3.25rem);
-  font-weight: 600;
+  font-family: var(--font-display, serif);
+  font-size: clamp(2.5rem, 5.5vw, 4rem);
+  font-weight: 400;
   letter-spacing: -0.03em;
-  line-height: 1.12;
-  margin: 0 0 18px;
+  line-height: 1.05;
+  margin: 0 0 20px;
   color: var(--lp-text);
 }
 
 .lp-h2 {
-  font-size: clamp(1.6rem, 3vw, 2.15rem);
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  line-height: 1.2;
+  font-family: var(--font-display, serif);
+  font-size: clamp(1.75rem, 3.2vw, 2.25rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.17;
   margin: 0 0 12px;
   color: var(--lp-text);
 }
@@ -178,10 +180,10 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 22px;
-  border-radius: 10px;
+  padding: 11px 22px;
+  border-radius: 9999px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   text-decoration: none;
   border: none;
   cursor: pointer;
@@ -213,8 +215,8 @@
 }
 
 .lp-btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(0, 217, 146, 0.35);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
+  border-color: var(--lp-text);
 }
 
 .lp-btn--sm {
@@ -242,11 +244,9 @@
 
 .lp-hero-glow {
   position: absolute;
-  top: -10%;
-  right: -5%;
-  width: min(50%, 520px);
-  height: 60%;
+  inset: -10% -5%;
   background: var(--gradient-hero, none);
+  filter: blur(48px);
 }
 
 .lp-hero-glow::after {
@@ -299,7 +299,7 @@
 .lp-hero-prompt-label {
   display: block;
   margin-bottom: 8px;
-  font-family: var(--font-mono, 'DM Mono', monospace);
+  font-family: var(--font-mono, monospace);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -314,16 +314,16 @@
   padding: 6px 6px 6px 14px;
   border: 1px solid var(--lp-border-strong);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-text-primary) 3%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .lp-hero-prompt-row:focus-within {
-  border-color: rgba(0, 217, 146, 0.4);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 0 3px rgba(0, 217, 146, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0),
+    0 0 0 3px rgba(12, 10, 9, 0.02);
 }
 
 .lp-hero-prompt-icon {
@@ -382,7 +382,7 @@
   padding: 6px 11px;
   border: 1px solid var(--lp-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--color-text-primary) 2%, transparent);
   color: var(--lp-muted);
   font-size: 12px;
   font-weight: 500;
@@ -395,13 +395,13 @@
 }
 
 .lp-hero-chip:hover {
-  border-color: rgba(0, 217, 146, 0.3);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
   color: var(--lp-text);
 }
 
 .lp-hero-chip.is-active {
-  border-color: rgba(0, 217, 146, 0.45);
-  background: rgba(0, 217, 146, 0.1);
+  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   color: var(--lp-accent);
 }
 
@@ -423,23 +423,23 @@
   padding: 14px 14px 12px;
   border-radius: 12px;
   border: 1px solid var(--lp-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--color-text-primary) 2%, transparent);
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .lp-stat-card:hover {
   border-color: var(--lp-border-strong);
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
 }
 
 .lp-stat-card--accent {
-  border-color: rgba(0, 217, 146, 0.22);
-  background: rgba(0, 217, 146, 0.06);
+  border-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
 }
 
 .lp-stat-card--accent:hover {
-  border-color: rgba(0, 217, 146, 0.35);
-  background: rgba(0, 217, 146, 0.09);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 9%, transparent);
 }
 
 .lp-stat-card--accent strong {
@@ -453,19 +453,19 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--color-text-primary) 5%, transparent);
   color: var(--lp-dim);
   flex-shrink: 0;
 }
 
 .lp-stat-card--accent .lp-stat-icon {
-  background: rgba(0, 217, 146, 0.15);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
   color: var(--lp-accent);
 }
 
 .lp-stat-card strong {
   display: block;
-  font-family: var(--font-mono, 'DM Mono', monospace);
+  font-family: var(--font-mono, monospace);
   font-size: 1.2rem;
   font-weight: 600;
   color: var(--lp-text);
@@ -489,8 +489,11 @@
 .lp-call-wrap::before {
   content: '';
   position: absolute;
-  inset: -12%;
-  background: radial-gradient(ellipse at 50% 50%, rgba(0, 217, 146, 0.12), transparent 65%);
+  inset: -14%;
+  background:
+    radial-gradient(ellipse at 30% 35%, color-mix(in srgb, var(--orb-mint, #a7e5d3) 45%, transparent), transparent 62%),
+    radial-gradient(ellipse at 72% 68%, color-mix(in srgb, var(--orb-peach, #f4c5a8) 38%, transparent), transparent 65%);
+  filter: blur(32px);
   pointer-events: none;
   z-index: 0;
 }
@@ -526,7 +529,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px 18px;
-  background: rgba(0, 0, 0, 0.25);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border-bottom: 1px solid var(--lp-border);
   font-family: var(--font-mono, monospace);
   font-size: 11px;
@@ -572,8 +575,8 @@
   gap: 5px;
   padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(0, 217, 146, 0.1);
-  border: 1px solid rgba(0, 217, 146, 0.2);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
   color: var(--lp-accent);
   font-weight: 600;
   white-space: nowrap;
@@ -602,7 +605,7 @@
   height: 36px;
   border-radius: 10px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.35);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border: 1px solid var(--lp-border);
 }
 
@@ -636,7 +639,7 @@
 }
 
 .lp-pipe-seg--stt {
-  background: linear-gradient(180deg, rgba(0, 217, 146, 0.35), rgba(0, 217, 146, 0.18));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 35%, transparent), color-mix(in srgb, var(--color-accent) 18%, transparent));
   color: var(--lp-accent);
 }
 
@@ -646,7 +649,7 @@
 }
 
 .lp-pipe-seg--tts {
-  background: linear-gradient(180deg, rgba(255, 186, 0, 0.35), rgba(255, 186, 0, 0.16));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-status-warning) 35%, transparent), color-mix(in srgb, var(--color-status-warning) 16%, transparent));
   color: var(--lp-warning);
 }
 
@@ -677,7 +680,7 @@
 }
 
 .lp-msg-group--agent .lp-msg-label {
-  color: rgba(0, 217, 146, 0.65);
+  color: color-mix(in srgb, var(--color-accent) 65%, transparent);
 }
 
 .lp-msg {
@@ -689,15 +692,15 @@
 }
 
 .lp-msg--user {
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--color-text-primary) 5%, transparent);
   border: 1px solid var(--lp-border);
   color: var(--lp-muted);
   border-bottom-left-radius: 4px;
 }
 
 .lp-msg--agent {
-  background: rgba(0, 217, 146, 0.12);
-  border: 1px solid rgba(0, 217, 146, 0.22);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
   color: var(--lp-text);
   border-bottom-right-radius: 4px;
 }
@@ -731,8 +734,8 @@
   min-width: 0;
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(0, 217, 146, 0.06);
-  border: 1px solid rgba(0, 217, 146, 0.12);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 
 .lp-wave {
@@ -748,7 +751,7 @@
   max-width: 3px;
   min-height: 3px;
   border-radius: 2px;
-  background: linear-gradient(180deg, var(--lp-accent), rgba(0, 217, 146, 0.45));
+  background: linear-gradient(180deg, var(--lp-accent), color-mix(in srgb, var(--color-accent) 45%, transparent));
   animation: lp-wave 1.1s ease-in-out infinite;
 }
 
@@ -770,13 +773,13 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--lp-accent);
-  background: rgba(0, 217, 146, 0.06);
-  border-top: 1px solid rgba(0, 217, 146, 0.12);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--color-accent) 12%, transparent);
   transition: background 0.2s ease, color 0.2s ease;
 }
 
 .lp-call-card:hover .lp-call-cta {
-  background: rgba(0, 217, 146, 0.12);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 
 .lp-call-cta svg {
@@ -839,7 +842,7 @@
   padding: 9px 16px;
   border-radius: 8px;
   border: 1px solid var(--lp-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--color-text-primary) 2%, transparent);
   font-size: 13px;
   font-weight: 600;
   color: color-mix(in srgb, var(--lp-dim) 88%, var(--lp-text));
@@ -882,7 +885,7 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(0, 217, 146, 0.07), transparent 65%),
+    radial-gradient(ellipse 70% 50% at 50% 0%, color-mix(in srgb, var(--color-accent) 7%, transparent), transparent 65%),
     radial-gradient(ellipse 40% 40% at 90% 80%, rgba(76, 179, 212, 0.05), transparent 70%);
 }
 
@@ -916,7 +919,7 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-text-primary) 8%, transparent), transparent);
   opacity: 0;
   transition: opacity 0.25s ease;
 }
@@ -937,13 +940,13 @@
 }
 
 .lp-path-card--featured {
-  border-color: rgba(0, 217, 146, 0.22);
+  border-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
   background: var(--lp-surface);
   box-shadow: none;
 }
 
 .lp-path-card--featured:hover {
-  border-color: rgba(0, 217, 146, 0.35);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
   box-shadow: none;
 }
 
@@ -958,8 +961,8 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--lp-accent);
-  background: rgba(0, 217, 146, 0.12);
-  border: 1px solid rgba(0, 217, 146, 0.28);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
 }
 
 .lp-path-card-head {
@@ -970,7 +973,7 @@
 }
 
 .lp-path-index {
-  font-family: var(--font-mono, 'DM Mono', monospace);
+  font-family: var(--font-mono, monospace);
   font-size: 11px;
   font-weight: 600;
   color: var(--lp-dim);
@@ -985,19 +988,19 @@
   height: 48px;
   border-radius: 14px;
   background: var(--lp-accent-dim);
-  border: 1px solid rgba(0, 217, 146, 0.22);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
   color: var(--lp-accent);
   transition: background 0.25s ease, transform 0.25s ease;
 }
 
 .lp-path-card:hover .lp-path-icon {
-  background: rgba(0, 217, 146, 0.18);
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
   transform: scale(1.04);
 }
 
 .lp-path-card--featured .lp-path-icon {
-  background: rgba(0, 217, 146, 0.2);
-  border-color: rgba(0, 217, 146, 0.35);
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
 
 .lp-path-audience {
@@ -1066,14 +1069,14 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--lp-dim);
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border: 1px solid var(--lp-border);
 }
 
 .lp-path-card--featured .lp-path-tag {
-  color: rgba(0, 217, 146, 0.85);
-  background: rgba(0, 217, 146, 0.08);
-  border-color: rgba(0, 217, 146, 0.18);
+  color: color-mix(in srgb, var(--color-accent) 85%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 .lp-path-cta {
@@ -1146,15 +1149,15 @@
 }
 
 .lp-card:hover {
-  border-color: rgba(0, 217, 146, 0.3);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px -16px rgba(0, 217, 146, 0.2);
+  box-shadow: 0 12px 40px -16px rgba(12, 10, 9, 0.05);
 }
 
 .lp-card--featured {
-  border-color: rgba(0, 217, 146, 0.35);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
   background:
-    linear-gradient(180deg, rgba(0, 217, 146, 0.08) 0%, var(--lp-surface) 40%);
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 8%, transparent) 0%, var(--lp-surface) 40%);
 }
 
 .lp-card-icon {
@@ -1165,7 +1168,7 @@
   align-items: center;
   justify-content: center;
   background: var(--lp-accent-dim);
-  border: 1px solid rgba(0, 217, 146, 0.2);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
   color: var(--lp-accent);
   margin-bottom: 16px;
 }
@@ -1210,7 +1213,7 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--lp-dim);
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border: 1px solid var(--lp-border);
 }
 
@@ -1224,7 +1227,7 @@
   text-transform: uppercase;
   color: var(--lp-accent);
   background: var(--lp-accent-dim);
-  border: 1px solid rgba(0, 217, 146, 0.25);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
   margin-bottom: 12px;
 }
 
@@ -1244,7 +1247,7 @@
   max-width: 720px;
   border-radius: 14px;
   border: 1px solid var(--lp-border);
-  background: rgba(0, 0, 0, 0.25);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
 }
 
 .lp-feat-pipe-step {
@@ -1253,7 +1256,7 @@
   gap: 7px;
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border: 1px solid var(--lp-border);
   font-size: 12px;
   font-weight: 600;
@@ -1282,7 +1285,7 @@
   font-weight: 600;
   color: var(--lp-accent);
   background: var(--lp-accent-dim);
-  border: 1px solid rgba(0, 217, 146, 0.25);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
 .lp-feat-layout {
@@ -1316,11 +1319,11 @@
 .lp-feat-card--hero {
   padding: 28px 24px;
   background: var(--lp-bg);
-  border-color: rgba(0, 217, 146, 0.18);
+  border-color: color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 .lp-feat-card--hero:hover {
-  border-color: rgba(0, 217, 146, 0.3);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
   box-shadow: none;
 }
 
@@ -1352,8 +1355,8 @@
   font-size: 11px;
   font-weight: 700;
   color: var(--lp-accent);
-  background: rgba(0, 217, 146, 0.1);
-  border: 1px solid rgba(0, 217, 146, 0.2);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
   white-space: nowrap;
 }
 
@@ -1371,14 +1374,14 @@
   margin-bottom: 16px;
   border-radius: 14px;
   background: var(--lp-accent-dim);
-  border: 1px solid rgba(0, 217, 146, 0.22);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
   color: var(--lp-accent);
 }
 
 .lp-feat-card--hero .lp-feat-icon {
   width: 56px;
   height: 56px;
-  background: rgba(0, 217, 146, 0.15);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
 }
 
 .lp-feat-icon--sm {
@@ -1432,14 +1435,14 @@
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
-  box-shadow: 0 4px 24px -6px rgba(0, 217, 146, 0.5);
+  box-shadow: 0 4px 24px -6px rgba(12, 10, 9, 0.10);
   transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
 }
 
 .lp-feat-footer-cta:hover {
   background: var(--lp-accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 8px 32px -8px rgba(0, 217, 146, 0.6);
+  box-shadow: 0 8px 32px -8px rgba(12, 10, 9, 0.10);
 }
 
 .lp-feat-footer-cta svg:last-child {
@@ -1486,7 +1489,7 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 55% 45% at 15% 60%, rgba(0, 217, 146, 0.06), transparent 70%),
+    radial-gradient(ellipse 55% 45% at 15% 60%, color-mix(in srgb, var(--color-accent) 6%, transparent), transparent 70%),
     radial-gradient(ellipse 45% 40% at 85% 30%, rgba(76, 179, 212, 0.05), transparent 70%);
 }
 
@@ -1515,13 +1518,13 @@
 }
 
 .lp-persona-card--featured {
-  border-color: rgba(0, 217, 146, 0.22);
+  border-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
   background: var(--lp-surface);
   box-shadow: none;
 }
 
 .lp-persona-card--featured:hover {
-  border-color: rgba(0, 217, 146, 0.35);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
   box-shadow: none;
 }
 
@@ -1564,14 +1567,14 @@
   height: 52px;
   border-radius: 16px;
   background: var(--lp-accent-dim);
-  border: 1px solid rgba(0, 217, 146, 0.22);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
   color: var(--lp-accent);
   flex-shrink: 0;
 }
 
 .lp-persona-card--featured .lp-persona-avatar {
-  background: rgba(0, 217, 146, 0.18);
-  border-color: rgba(0, 217, 146, 0.35);
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
 
 .lp-persona-name {
@@ -1603,7 +1606,7 @@
   margin-bottom: 14px;
   padding: 12px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.28);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border: 1px solid var(--lp-border);
 }
 
@@ -1617,7 +1620,7 @@
 
 .lp-persona-bubble--user {
   align-self: flex-start;
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--color-text-primary) 5%, transparent);
   border: 1px solid var(--lp-border);
   color: var(--lp-muted);
   border-bottom-left-radius: 3px;
@@ -1625,8 +1628,8 @@
 
 .lp-persona-bubble--agent {
   align-self: flex-end;
-  background: rgba(0, 217, 146, 0.12);
-  border: 1px solid rgba(0, 217, 146, 0.2);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
   color: var(--lp-text);
   border-bottom-right-radius: 3px;
 }
@@ -1666,14 +1669,14 @@
   font-size: 10px;
   font-weight: 600;
   color: var(--lp-dim);
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border: 1px solid var(--lp-border);
 }
 
 .lp-persona-card--featured .lp-persona-tag {
-  color: rgba(0, 217, 146, 0.85);
-  background: rgba(0, 217, 146, 0.08);
-  border-color: rgba(0, 217, 146, 0.18);
+  color: color-mix(in srgb, var(--color-accent) 85%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 .lp-persona-wave {
@@ -1691,7 +1694,7 @@
   max-width: 3px;
   min-height: 3px;
   border-radius: 2px;
-  background: linear-gradient(180deg, var(--lp-accent), rgba(0, 217, 146, 0.4));
+  background: linear-gradient(180deg, var(--lp-accent), color-mix(in srgb, var(--color-accent) 40%, transparent));
   animation: lp-wave 1.1s ease-in-out infinite;
 }
 
@@ -1720,7 +1723,7 @@
 .lp-persona-cta--primary {
   background: var(--lp-accent);
   color: var(--lp-bg);
-  box-shadow: 0 4px 20px -6px rgba(0, 217, 146, 0.5);
+  box-shadow: 0 4px 20px -6px rgba(12, 10, 9, 0.10);
 }
 
 .lp-persona-cta--primary:hover {
@@ -1735,8 +1738,8 @@
 }
 
 .lp-persona-cta--ghost:hover {
-  border-color: rgba(0, 217, 146, 0.35);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
 }
 
 .lp-persona-cta--ghost svg {
@@ -1833,7 +1836,7 @@
   padding: 12px 12px 10px;
   border-radius: 12px;
   border: 1px solid var(--lp-border);
-  background: rgba(0, 0, 0, 0.2);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
 }
 
 .lp-sandbox-stat-icon {
@@ -1903,12 +1906,12 @@
   border-radius: 20px;
   border: 1px solid var(--lp-border);
   background:
-    linear-gradient(165deg, rgba(255, 255, 255, 0.04) 0%, transparent 42%),
+    linear-gradient(165deg, color-mix(in srgb, var(--color-text-primary) 4%, transparent) 0%, transparent 42%),
     var(--lp-elevated);
   overflow: hidden;
   box-shadow:
-    0 0 0 1px rgba(0, 217, 146, 0.06),
-    0 28px 72px -32px rgba(0, 0, 0, 0.85);
+    0 0 0 1px rgba(12, 10, 9, 0.01),
+    0 28px 72px -32px rgba(12, 10, 9, 0.08);
   transition:
     border-color 0.35s var(--lp-ease-out),
     transform 0.35s var(--lp-ease-out),
@@ -1916,11 +1919,11 @@
 }
 
 .lp-sandbox-mock:hover {
-  border-color: rgba(0, 217, 146, 0.35);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
   transform: translateY(-4px);
   box-shadow:
-    0 0 0 1px rgba(0, 217, 146, 0.12),
-    0 32px 80px -24px rgba(0, 217, 146, 0.2);
+    0 0 0 1px rgba(12, 10, 9, 0.03),
+    0 32px 80px -24px rgba(12, 10, 9, 0.05);
 }
 
 .lp-sandbox-mock:focus-visible {
@@ -1933,7 +1936,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  background: rgba(0, 0, 0, 0.3);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border-bottom: 1px solid var(--lp-border);
 }
 
@@ -1991,9 +1994,9 @@
   letter-spacing: 0.05em;
 }
 
-.lp-sandbox-mock-seg--stt { flex: 120; background: rgba(0, 217, 146, 0.25); color: var(--lp-accent); }
+.lp-sandbox-mock-seg--stt { flex: 120; background: color-mix(in srgb, var(--color-accent) 25%, transparent); color: var(--lp-accent); }
 .lp-sandbox-mock-seg--llm { flex: 210; background: rgba(76, 179, 212, 0.22); color: var(--lp-info); }
-.lp-sandbox-mock-seg--tts { flex: 157; background: rgba(255, 186, 0, 0.22); color: var(--lp-warning); }
+.lp-sandbox-mock-seg--tts { flex: 157; background: color-mix(in srgb, var(--color-status-warning) 22%, transparent); color: var(--lp-warning); }
 
 .lp-sandbox-mock-chat {
   display: flex;
@@ -2002,7 +2005,7 @@
   margin: 14px 18px;
   padding: 12px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.28);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border: 1px solid var(--lp-border);
   min-height: 88px;
 }
@@ -2017,15 +2020,15 @@
 
 .lp-sandbox-mock-msg--user {
   align-self: flex-start;
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--color-text-primary) 5%, transparent);
   border: 1px solid var(--lp-border);
   color: var(--lp-muted);
 }
 
 .lp-sandbox-mock-msg--agent {
   align-self: flex-end;
-  background: rgba(0, 217, 146, 0.12);
-  border: 1px solid rgba(0, 217, 146, 0.2);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
   color: var(--lp-text);
 }
 
@@ -2038,8 +2041,8 @@
   margin: 0 18px 12px;
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(0, 217, 146, 0.06);
-  border: 1px solid rgba(0, 217, 146, 0.12);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 
 .lp-sandbox-mock-wave span {
@@ -2047,7 +2050,7 @@
   max-width: 3px;
   min-height: 3px;
   border-radius: 2px;
-  background: linear-gradient(180deg, var(--lp-accent), rgba(0, 217, 146, 0.4));
+  background: linear-gradient(180deg, var(--lp-accent), color-mix(in srgb, var(--color-accent) 40%, transparent));
   animation: lp-wave 1.1s ease-in-out infinite;
 }
 
@@ -2058,7 +2061,7 @@
   gap: 12px;
   padding: 16px 18px 20px;
   border-top: 1px solid var(--lp-border);
-  background: rgba(0, 0, 0, 0.2);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
 }
 
 .lp-sandbox-mock-latency {
@@ -2071,8 +2074,8 @@
   font-size: 11px;
   font-weight: 700;
   color: var(--lp-accent);
-  background: rgba(0, 217, 146, 0.1);
-  border: 1px solid rgba(0, 217, 146, 0.2);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
 }
 
 .lp-sandbox-mock-mic {
@@ -2084,13 +2087,13 @@
   border-radius: 50%;
   background: var(--lp-accent);
   color: var(--lp-bg);
-  box-shadow: 0 4px 24px -4px rgba(0, 217, 146, 0.55);
+  box-shadow: 0 4px 24px -4px rgba(12, 10, 9, 0.10);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .lp-sandbox-mock:hover .lp-sandbox-mock-mic {
   transform: scale(1.06);
-  box-shadow: 0 8px 32px -4px rgba(0, 217, 146, 0.65);
+  box-shadow: 0 8px 32px -4px rgba(12, 10, 9, 0.10);
 }
 
 .lp-sandbox-mock-hint {
@@ -2115,13 +2118,13 @@
   padding: 20px 18px 18px;
   border-radius: 14px;
   border: 1px solid var(--lp-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--color-text-primary) 2%, transparent);
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .lp-sandbox-flow-item:hover {
   border-color: var(--lp-border-strong);
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
 }
 
 .lp-sandbox-flow-icon {
@@ -2133,7 +2136,7 @@
   margin-bottom: 12px;
   border-radius: 11px;
   background: var(--lp-accent-dim);
-  border: 1px solid rgba(0, 217, 146, 0.2);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
   color: var(--lp-accent);
 }
 
@@ -2221,7 +2224,7 @@
   pointer-events: none;
   background:
     radial-gradient(ellipse 60% 50% at 50% 0%, rgba(76, 179, 212, 0.06), transparent 68%),
-    radial-gradient(ellipse 40% 35% at 10% 80%, rgba(0, 217, 146, 0.05), transparent 70%);
+    radial-gradient(ellipse 40% 35% at 10% 80%, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent 70%);
 }
 
 .lp-integ-grid {
@@ -2240,7 +2243,7 @@
   border-radius: 18px;
   border: 1px solid var(--lp-border);
   background:
-    linear-gradient(165deg, rgba(255, 255, 255, 0.03) 0%, transparent 42%),
+    linear-gradient(165deg, color-mix(in srgb, var(--color-text-primary) 3%, transparent) 0%, transparent 42%),
     var(--lp-surface);
   transition:
     border-color 0.35s var(--lp-ease-out),
@@ -2249,27 +2252,27 @@
 }
 
 .lp-integ-card:hover {
-  border-color: rgba(0, 217, 146, 0.28);
+  border-color: color-mix(in srgb, var(--color-accent) 28%, transparent);
   transform: translateY(-3px);
-  box-shadow: 0 18px 52px -28px rgba(0, 217, 146, 0.18);
+  box-shadow: 0 18px 52px -28px rgba(12, 10, 9, 0.04);
 }
 
 .lp-integ-card--featured {
-  border-color: rgba(0, 217, 146, 0.38);
+  border-color: color-mix(in srgb, var(--color-accent) 38%, transparent);
   background:
-    linear-gradient(165deg, rgba(0, 217, 146, 0.1) 0%, rgba(0, 217, 146, 0.02) 38%, var(--lp-surface) 72%);
+    linear-gradient(165deg, color-mix(in srgb, var(--color-accent) 10%, transparent) 0%, color-mix(in srgb, var(--color-accent) 2%, transparent) 38%, var(--lp-surface) 72%);
   box-shadow:
-    0 0 0 1px rgba(0, 217, 146, 0.1),
-    0 20px 56px -28px rgba(0, 217, 146, 0.28);
+    0 0 0 1px rgba(12, 10, 9, 0.03),
+    0 20px 56px -28px rgba(12, 10, 9, 0.07);
   transform: scale(1.02);
 }
 
 .lp-integ-card--featured:hover {
-  border-color: rgba(0, 217, 146, 0.5);
+  border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
   transform: scale(1.02) translateY(-3px);
   box-shadow:
-    0 0 0 1px rgba(0, 217, 146, 0.15),
-    0 28px 72px -24px rgba(0, 217, 146, 0.35);
+    0 0 0 1px rgba(12, 10, 9, 0.04),
+    0 28px 72px -24px rgba(12, 10, 9, 0.09);
 }
 
 .lp-integ-card-top {
@@ -2288,14 +2291,14 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--lp-dim);
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--color-text-primary) 5%, transparent);
   border: 1px solid var(--lp-border);
 }
 
 .lp-integ-badge--accent {
   color: var(--lp-accent);
-  background: rgba(0, 217, 146, 0.12);
-  border-color: rgba(0, 217, 146, 0.28);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 28%, transparent);
 }
 
 .lp-integ-tier-name {
@@ -2339,13 +2342,13 @@
   margin-bottom: 14px;
   border-radius: 13px;
   background: var(--lp-accent-dim);
-  border: 1px solid rgba(0, 217, 146, 0.2);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
   color: var(--lp-accent);
 }
 
 .lp-integ-card--featured .lp-integ-icon {
-  background: rgba(0, 217, 146, 0.18);
-  border-color: rgba(0, 217, 146, 0.35);
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
 
 .lp-integ-title {
@@ -2409,7 +2412,7 @@
   padding: 11px 16px;
   border-radius: 10px;
   border: 1px solid var(--lp-border-strong);
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--color-text-primary) 3%, transparent);
   color: var(--lp-text);
   font-size: 13px;
   font-weight: 600;
@@ -2418,8 +2421,8 @@
 }
 
 .lp-integ-cta:hover {
-  border-color: rgba(0, 217, 146, 0.35);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--color-text-primary) 6%, transparent);
 }
 
 .lp-integ-cta svg {
@@ -2434,7 +2437,7 @@
   background: var(--lp-accent);
   border-color: var(--lp-accent);
   color: var(--lp-bg);
-  box-shadow: 0 4px 20px -6px rgba(0, 217, 146, 0.5);
+  box-shadow: 0 4px 20px -6px rgba(12, 10, 9, 0.10);
 }
 
 .lp-integ-cta--primary:hover {
@@ -2451,7 +2454,7 @@
   padding: 16px 18px;
   border-radius: 14px;
   border: 1px solid var(--lp-border);
-  background: rgba(0, 0, 0, 0.22);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   position: relative;
   z-index: 1;
 }
@@ -2525,7 +2528,7 @@
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--lp-dim);
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   border: 1px solid var(--lp-border);
 }
 
@@ -2543,7 +2546,7 @@
   padding: 12px 14px;
   border-radius: 12px;
   border: 1px solid var(--lp-border);
-  background: rgba(0, 0, 0, 0.2);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
 }
 
 .lp-dev-perk-icon {
@@ -2603,15 +2606,21 @@
   align-items: center;
 }
 
-/* Code window */
+/* Code window — deliberate dark "canvas-deep" panel, self-contained colors */
 .lp-dev-code-window {
+  --code-bg: #0c0a09;
+  --code-surface: #1c1917;
+  --code-border: rgba(250, 250, 249, 0.08);
+  --code-text: #d6d3d1;
+  --code-muted: #a8a29e;
+  --code-dim: #78716c;
+  --code-accent: #a7e5d3;
+
   border-radius: 16px;
   border: 1px solid var(--lp-border);
-  background: #0a0c10;
+  background: var(--code-bg);
   overflow: hidden;
-  box-shadow:
-    0 0 0 1px rgba(0, 217, 146, 0.05),
-    0 28px 72px -32px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 24px 64px -32px rgba(12, 10, 9, 0.35);
 }
 
 .lp-dev-code-titlebar {
@@ -2619,8 +2628,8 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid var(--lp-border);
+  background: var(--code-surface);
+  border-bottom: 1px solid var(--code-border);
 }
 
 .lp-dev-code-dots {
@@ -2632,7 +2641,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(250, 250, 249, 0.12);
 }
 
 .lp-dev-code-dots span:nth-child(1) { background: #ff5f57; }
@@ -2646,12 +2655,12 @@
   flex: 1;
   font-family: var(--font-mono, monospace);
   font-size: 11px;
-  color: var(--lp-muted);
+  color: var(--code-muted);
   min-width: 0;
 }
 
 .lp-dev-code-filename svg {
-  color: var(--lp-dim);
+  color: var(--code-dim);
   flex-shrink: 0;
 }
 
@@ -2663,17 +2672,17 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--lp-accent);
-  background: rgba(0, 217, 146, 0.1);
-  border: 1px solid rgba(0, 217, 146, 0.2);
+  color: var(--code-accent);
+  background: color-mix(in srgb, var(--code-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--code-accent) 20%, transparent);
 }
 
 .lp-dev-code-tabs {
   display: flex;
   gap: 4px;
   padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.35);
-  border-bottom: 1px solid var(--lp-border);
+  background: var(--code-surface);
+  border-bottom: 1px solid var(--code-border);
 }
 
 .lp-dev-code-tab {
@@ -2684,18 +2693,18 @@
   font-family: var(--font-mono, monospace);
   font-size: 11px;
   font-weight: 600;
-  color: var(--lp-dim);
+  color: var(--code-dim);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 
 .lp-dev-code-tab:hover {
-  color: var(--lp-muted);
+  color: var(--code-muted);
 }
 
 .lp-dev-code-tab.is-active {
-  background: rgba(0, 217, 146, 0.14);
-  color: var(--lp-accent);
+  background: color-mix(in srgb, var(--code-accent) 14%, transparent);
+  color: var(--code-accent);
 }
 
 .lp-dev-code-pre {
@@ -2705,7 +2714,7 @@
   font-family: var(--font-mono, monospace);
   font-size: 12px;
   line-height: 1.7;
-  color: #c9d1d9;
+  color: var(--code-text);
   overflow-x: auto;
   white-space: pre-wrap;
   background: transparent;
@@ -2721,8 +2730,8 @@
   justify-content: space-between;
   gap: 10px;
   padding: 10px 14px;
-  border-top: 1px solid var(--lp-border);
-  background: rgba(0, 0, 0, 0.4);
+  border-top: 1px solid var(--code-border);
+  background: var(--code-surface);
   flex-wrap: wrap;
 }
 
@@ -2732,7 +2741,7 @@
   gap: 8px;
   font-family: var(--font-mono, monospace);
   font-size: 11px;
-  color: var(--lp-muted);
+  color: var(--code-muted);
 }
 
 .lp-dev-code-method {
@@ -2740,15 +2749,15 @@
   border-radius: 4px;
   font-size: 10px;
   font-weight: 700;
-  color: var(--lp-accent);
-  background: rgba(0, 217, 146, 0.12);
-  border: 1px solid rgba(0, 217, 146, 0.2);
+  color: var(--code-accent);
+  background: color-mix(in srgb, var(--code-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--code-accent) 20%, transparent);
 }
 
 .lp-dev-code-hint {
   font-family: var(--font-mono, monospace);
   font-size: 10px;
-  color: var(--lp-dim);
+  color: var(--code-dim);
 }
 
 .lp-dev-endpoints {
@@ -2765,13 +2774,13 @@
   padding: 12px 14px;
   border-radius: 12px;
   border: 1px solid var(--lp-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--color-text-primary) 2%, transparent);
   transition: border-color 0.2s, background 0.2s;
 }
 
 .lp-dev-endpoint:hover {
   border-color: var(--lp-border-strong);
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
 }
 
 .lp-dev-endpoint-method {
@@ -2805,10 +2814,10 @@
   overflow: hidden;
 }
 
-.lp-code-kw { color: #60a5fa; }
-.lp-code-fn { color: #7dd3fc; }
-.lp-code-str { color: #fde68a; }
-.lp-code-cm { color: var(--lp-dim); }
+.lp-code-kw { color: #a8c8e8; }
+.lp-code-fn { color: #a7e5d3; }
+.lp-code-str { color: #f4c5a8; }
+.lp-code-cm { color: #78716c; }
 
 /* ── Pricing section ──────────────────────────────────────────── */
 .lp-pricing {
@@ -2821,7 +2830,7 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 65% 50% at 50% 100%, rgba(0, 217, 146, 0.08), transparent 68%),
+    radial-gradient(ellipse 65% 50% at 50% 100%, color-mix(in srgb, var(--color-accent) 8%, transparent), transparent 68%),
     radial-gradient(ellipse 35% 30% at 15% 20%, rgba(76, 179, 212, 0.05), transparent 70%);
 }
 
@@ -2841,7 +2850,7 @@
   border-radius: 18px;
   border: 1px solid var(--lp-border);
   background:
-    linear-gradient(165deg, rgba(255, 255, 255, 0.03) 0%, transparent 42%),
+    linear-gradient(165deg, color-mix(in srgb, var(--color-text-primary) 3%, transparent) 0%, transparent 42%),
     var(--lp-surface);
   transition:
     border-color 0.35s var(--lp-ease-out),
@@ -2850,27 +2859,27 @@
 }
 
 .lp-pricing-card:hover {
-  border-color: rgba(0, 217, 146, 0.28);
+  border-color: color-mix(in srgb, var(--color-accent) 28%, transparent);
   transform: translateY(-3px);
-  box-shadow: 0 18px 52px -28px rgba(0, 217, 146, 0.18);
+  box-shadow: 0 18px 52px -28px rgba(12, 10, 9, 0.04);
 }
 
 .lp-pricing-card--featured {
-  border-color: rgba(0, 217, 146, 0.38);
+  border-color: color-mix(in srgb, var(--color-accent) 38%, transparent);
   background:
-    linear-gradient(165deg, rgba(0, 217, 146, 0.1) 0%, rgba(0, 217, 146, 0.02) 38%, var(--lp-surface) 72%);
+    linear-gradient(165deg, color-mix(in srgb, var(--color-accent) 10%, transparent) 0%, color-mix(in srgb, var(--color-accent) 2%, transparent) 38%, var(--lp-surface) 72%);
   box-shadow:
-    0 0 0 1px rgba(0, 217, 146, 0.1),
-    0 20px 56px -28px rgba(0, 217, 146, 0.28);
+    0 0 0 1px rgba(12, 10, 9, 0.03),
+    0 20px 56px -28px rgba(12, 10, 9, 0.07);
   transform: scale(1.03);
 }
 
 .lp-pricing-card--featured:hover {
-  border-color: rgba(0, 217, 146, 0.5);
+  border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
   transform: scale(1.03) translateY(-3px);
   box-shadow:
-    0 0 0 1px rgba(0, 217, 146, 0.15),
-    0 28px 72px -24px rgba(0, 217, 146, 0.35);
+    0 0 0 1px rgba(12, 10, 9, 0.04),
+    0 28px 72px -24px rgba(12, 10, 9, 0.09);
 }
 
 .lp-pricing-card-top {
@@ -2889,14 +2898,14 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--lp-dim);
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--color-text-primary) 5%, transparent);
   border: 1px solid var(--lp-border);
 }
 
 .lp-pricing-badge--accent {
   color: var(--lp-accent);
-  background: rgba(0, 217, 146, 0.12);
-  border-color: rgba(0, 217, 146, 0.28);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 28%, transparent);
 }
 
 .lp-pricing-name {
@@ -2980,7 +2989,7 @@
   padding: 12px 16px;
   border-radius: 10px;
   border: 1px solid var(--lp-border-strong);
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--color-text-primary) 3%, transparent);
   color: var(--lp-text);
   font-size: 14px;
   font-weight: 600;
@@ -2989,8 +2998,8 @@
 }
 
 .lp-pricing-cta:hover {
-  border-color: rgba(0, 217, 146, 0.35);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--color-text-primary) 6%, transparent);
 }
 
 .lp-pricing-cta svg {
@@ -3005,7 +3014,7 @@
   background: var(--lp-accent);
   border-color: var(--lp-accent);
   color: var(--lp-bg);
-  box-shadow: 0 4px 24px -6px rgba(0, 217, 146, 0.55);
+  box-shadow: 0 4px 24px -6px rgba(12, 10, 9, 0.10);
 }
 
 .lp-pricing-cta--primary:hover {
@@ -3067,7 +3076,7 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 55% 45% at 12% 50%, rgba(0, 217, 146, 0.06), transparent),
+    radial-gradient(ellipse 55% 45% at 12% 50%, color-mix(in srgb, var(--color-accent) 6%, transparent), transparent),
     radial-gradient(ellipse 45% 40% at 88% 30%, rgba(99, 102, 241, 0.05), transparent),
     var(--lp-bg-alt, var(--lp-bg));
 }
@@ -3099,13 +3108,13 @@
 }
 
 .lp-faq-topic:hover {
-  border-color: rgba(0, 217, 146, 0.35);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
   color: var(--lp-text);
 }
 
 .lp-faq-topic.is-active {
-  border-color: rgba(0, 217, 146, 0.45);
-  background: rgba(0, 217, 146, 0.08);
+  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
   color: var(--lp-accent);
 }
 
@@ -3125,7 +3134,7 @@
   border: 1px solid var(--lp-border);
   border-radius: 16px;
   background:
-    linear-gradient(160deg, rgba(0, 217, 146, 0.06), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--color-accent) 6%, transparent), transparent 55%),
     var(--lp-surface);
 }
 
@@ -3137,7 +3146,7 @@
   height: 40px;
   margin-bottom: 14px;
   border-radius: 10px;
-  background: rgba(0, 217, 146, 0.1);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   color: var(--lp-accent);
 }
 
@@ -3168,7 +3177,7 @@
   padding: 10px 12px;
   border: 1px solid var(--lp-border);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--color-text-primary) 2%, transparent);
   color: var(--lp-text);
   font-size: 0.875rem;
   font-weight: 600;
@@ -3185,8 +3194,8 @@
 }
 
 .lp-faq-aside-link:hover {
-  border-color: rgba(0, 217, 146, 0.35);
-  background: rgba(0, 217, 146, 0.05);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 5%, transparent);
 }
 
 .lp-faq-aside-link:hover svg:last-child {
@@ -3218,13 +3227,13 @@
 }
 
 .lp-faq-item:hover {
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: color-mix(in srgb, var(--color-text-primary) 12%, transparent);
 }
 
 .lp-faq-item.is-open {
-  border-color: rgba(0, 217, 146, 0.35);
-  background: rgba(0, 217, 146, 0.04);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 4%, transparent);
+  box-shadow: 0 8px 24px rgba(12, 10, 9, 0.12);
 }
 
 .lp-faq-trigger {
@@ -3243,7 +3252,7 @@
 }
 
 .lp-faq-trigger:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--color-text-primary) 2%, transparent);
 }
 
 .lp-faq-trigger-inner {
@@ -3330,7 +3339,7 @@
   padding: clamp(2.5rem, 5vw, 3.5rem) 0;
   border-top: 1px solid var(--lp-border);
   background:
-    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(0, 217, 146, 0.05), transparent),
+    radial-gradient(ellipse 60% 50% at 50% 0%, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent),
     var(--lp-bg);
 }
 
@@ -3398,7 +3407,7 @@
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.14);
+  background: color-mix(in srgb, var(--color-text-primary) 14%, transparent);
   cursor: pointer;
   transition: background 0.2s ease, transform 0.2s ease;
 }
@@ -3427,7 +3436,7 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 70% 55% at 50% 100%, rgba(0, 217, 146, 0.12), transparent),
+    radial-gradient(ellipse 70% 55% at 50% 100%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent),
     radial-gradient(ellipse 40% 35% at 15% 40%, rgba(99, 102, 241, 0.06), transparent),
     var(--lp-bg);
 }
@@ -3439,12 +3448,12 @@
   grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
   gap: clamp(1.5rem, 3vw, 2.5rem);
   padding: clamp(1.5rem, 3vw, 2.25rem);
-  border: 1px solid rgba(0, 217, 146, 0.22);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
   border-radius: 22px;
   background:
-    linear-gradient(145deg, rgba(0, 217, 146, 0.07), transparent 42%),
+    linear-gradient(145deg, color-mix(in srgb, var(--color-accent) 7%, transparent), transparent 42%),
     var(--lp-surface);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 24px 60px rgba(12, 10, 9, 0.08);
   overflow: hidden;
 }
 
@@ -3455,7 +3464,7 @@
   width: 280px;
   height: 280px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 217, 146, 0.14), transparent 68%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 68%);
   pointer-events: none;
 }
 
@@ -3485,8 +3494,8 @@
   margin-bottom: 22px;
   padding: 16px 18px;
   border-radius: 14px;
-  background: rgba(0, 217, 146, 0.06);
-  border: 1px solid rgba(0, 217, 146, 0.18);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 .lp-final-pain__stat {
@@ -3583,7 +3592,7 @@
   padding: 10px 12px;
   border: 1px solid var(--lp-border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--color-text-primary) 2%, transparent);
 }
 
 .lp-final-step-num {
@@ -3601,7 +3610,7 @@
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: rgba(0, 217, 146, 0.1);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   color: var(--lp-accent);
 }
 
@@ -3626,7 +3635,7 @@
   border: 1px solid var(--lp-border);
   border-radius: 14px;
   background:
-    linear-gradient(180deg, rgba(0, 217, 146, 0.05), transparent 55%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent 55%),
     rgba(0, 0, 0, 0.15);
 }
 
@@ -3652,7 +3661,7 @@
   height: 7px;
   border-radius: 50%;
   background: var(--lp-accent);
-  box-shadow: 0 0 0 3px rgba(0, 217, 146, 0.2);
+  box-shadow: 0 0 0 3px rgba(12, 10, 9, 0.05);
   animation: lp-pulse 2s ease-in-out infinite;
 }
 
@@ -3690,8 +3699,8 @@
   margin-bottom: 12px;
   padding: 5px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 217, 146, 0.25);
-  background: rgba(0, 217, 146, 0.08);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
   font-size: 12px;
   font-weight: 600;
   color: var(--lp-accent);
@@ -3705,8 +3714,8 @@
   width: 100%;
   padding: 10px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(0, 217, 146, 0.35);
-  background: rgba(0, 217, 146, 0.1);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   color: var(--lp-text);
   font-size: 0.875rem;
   font-weight: 600;
@@ -3718,8 +3727,8 @@
 }
 
 .lp-final-mock-cta:hover {
-  background: rgba(0, 217, 146, 0.16);
-  border-color: rgba(0, 217, 146, 0.5);
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
   transform: translateY(-1px);
 }
 

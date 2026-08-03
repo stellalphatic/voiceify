@@ -16,7 +16,9 @@ function Switch({ checked = false, onCheckedChange, className }: SwitchProps) {
       onClick={() => onCheckedChange?.(!checked)}
       className={cn(
         'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors',
-        checked ? 'bg-[#2563EB] border-[#2563EB]' : 'bg-[#1F2937] border-[#374151]',
+        checked
+          ? 'bg-[var(--color-brand-primary)] border-[var(--color-brand-primary)]'
+          : 'bg-[var(--color-bg-tertiary)] border-[var(--color-border-strong)]',
         className,
       )}
     >

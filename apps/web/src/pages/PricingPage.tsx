@@ -83,10 +83,10 @@ const CtaButton: React.FC<{
     background: isPrimary
       ? (hovered ? TOKEN.accentHover : TOKEN.accent)
       : (hovered ? TOKEN.bgCardHover : 'transparent'),
-    color: isPrimary ? '#0a0a0a' : TOKEN.textPrimary,
-    fontFamily: "'Geist', 'Inter', sans-serif",
-    fontSize: 15, fontWeight: 600, textAlign: 'center',
-    borderRadius: 10,
+    color: isPrimary ? 'var(--color-voice-on-accent, #ffffff)' : TOKEN.textPrimary,
+    fontFamily: "var(--font-ui, 'Inter', sans-serif)",
+    fontSize: 15, fontWeight: 500, textAlign: 'center',
+    borderRadius: 9999,
     border: isPrimary ? 'none' : `1px solid ${TOKEN.borderStrong}`,
     cursor: 'pointer', textDecoration: 'none',
     transition: 'background 0.18s ease, transform 0.15s ease, border-color 0.18s ease',
@@ -146,11 +146,9 @@ const PricingCard: React.FC<CardProps> = ({
     borderRadius: 16,
     padding: '36px 28px 32px',
     display: 'flex', flexDirection: 'column',
-    boxShadow: isPopular
-      ? `0 0 40px color-mix(in srgb, ${TOKEN.accent} 8%, transparent), 0 1px 3px rgba(0,0,0,0.6)`
-      : isCustom
-      ? `0 0 40px color-mix(in srgb, ${TOKEN.amber} 6%, transparent), 0 1px 3px rgba(0,0,0,0.6)`
-      : '0 1px 3px rgba(0,0,0,0.5)',
+    boxShadow: isPopular || isCustom
+      ? '0 4px 16px rgba(12, 10, 9, 0.06)'
+      : '0 1px 2px rgba(12, 10, 9, 0.03)',
   };
 
   return (
@@ -160,11 +158,11 @@ const PricingCard: React.FC<CardProps> = ({
         <div style={{
           position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
           background: isPopular ? TOKEN.accent : TOKEN.amber,
-          color: '#0a0a0a',
+          color: 'var(--color-voice-on-accent, #ffffff)',
           fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em',
           textTransform: 'uppercase',
           padding: '4px 12px', borderRadius: 20, whiteSpace: 'nowrap',
-          fontFamily: "'Geist', 'Inter', sans-serif",
+          fontFamily: "var(--font-ui, 'Inter', sans-serif)",
         }}>
           {badge}
         </div>
@@ -172,7 +170,7 @@ const PricingCard: React.FC<CardProps> = ({
 
       {/* Tier name */}
       <p style={{
-        fontFamily: "'Geist', 'Inter', sans-serif",
+        fontFamily: "var(--font-ui, 'Inter', sans-serif)",
         fontSize: 12, fontWeight: 600, letterSpacing: '0.1em',
         textTransform: 'uppercase',
         color: isPopular ? TOKEN.accent : isCustom ? TOKEN.amber : TOKEN.textSec,
@@ -183,7 +181,7 @@ const PricingCard: React.FC<CardProps> = ({
 
       {/* Tagline */}
       <p style={{
-        fontFamily: "'Geist', 'Inter', sans-serif",
+        fontFamily: "var(--font-ui, 'Inter', sans-serif)",
         fontSize: 13.5, color: TOKEN.textSec,
         margin: '0 0 20px', lineHeight: 1.5, minHeight: 38,
       }}>
@@ -193,7 +191,7 @@ const PricingCard: React.FC<CardProps> = ({
       {/* Price */}
       <div style={{ marginBottom: 6, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 4 }}>
         <span style={{
-          fontFamily: "'DM Mono', 'Courier New', monospace",
+          fontFamily: "var(--font-mono, monospace)",
           fontSize: price.length > 6 ? 28 : 42, fontWeight: 500,
           color: TOKEN.textPrimary, lineHeight: 1,
         }}>
@@ -201,7 +199,7 @@ const PricingCard: React.FC<CardProps> = ({
         </span>
         {priceUnit && (
           <span style={{
-            fontFamily: "'Geist', 'Inter', sans-serif",
+            fontFamily: "var(--font-ui, 'Inter', sans-serif)",
             fontSize: 14, color: TOKEN.textSec,
           }}>
             {priceUnit}
@@ -211,7 +209,7 @@ const PricingCard: React.FC<CardProps> = ({
 
       {/* Year sub-label or contact note */}
       <p style={{
-        fontFamily: "'Geist', 'Inter', sans-serif",
+        fontFamily: "var(--font-ui, 'Inter', sans-serif)",
         fontSize: 12.5, color: TOKEN.textMuted,
         marginBottom: 24, minHeight: 18,
       }}>
@@ -249,7 +247,7 @@ const TrustBadge: React.FC<{ label: string }> = ({ label }) => (
       background: 'color-mix(in srgb, var(--color-text-primary) 4%, transparent)',
       border: `1px solid ${TOKEN.border}`,
       borderRadius: 20, fontSize: 13, color: TOKEN.textSec,
-      fontFamily: "'Geist', 'Inter', sans-serif", whiteSpace: 'nowrap',
+      fontFamily: "var(--font-ui, 'Inter', sans-serif)", whiteSpace: 'nowrap',
     }}
   >
     <BadgeCheckIcon />
@@ -412,7 +410,7 @@ export default function PricingPage() {
           min-height: 100vh;
           background: var(--color-bg-primary);
           color: var(--color-text-primary);
-          font-family: 'Geist', 'Inter', sans-serif;
+          font-family: var(--font-ui, 'Inter', sans-serif);
         }
         .pricing-page-inner {
           max-width: 1280px;
@@ -425,24 +423,25 @@ export default function PricingPage() {
         }
         .pricing-page-eyebrow {
           display: inline-block;
-          padding: 5px 14px;
-          border-radius: 9999px;
-          background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-          border: 1px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
-          color: var(--color-accent);
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.08em;
+          padding: 0;
+          border-radius: 0;
+          background: transparent;
+          border: none;
+          color: var(--color-text-muted);
+          font-size: 12px;
+          font-weight: 500;
+          letter-spacing: 0.14em;
           text-transform: uppercase;
           margin-bottom: 20px;
         }
         .pricing-page-title {
-          font-size: clamp(1.85rem, 4.5vw, 2.75rem);
-          font-weight: 700;
+          font-family: var(--font-display, 'EB Garamond', serif);
+          font-size: clamp(2.2rem, 5vw, 3.4rem);
+          font-weight: 500;
           color: var(--color-text-primary);
           margin: 0 0 16px;
-          line-height: 1.15;
-          letter-spacing: -0.025em;
+          line-height: 1.1;
+          letter-spacing: -0.01em;
         }
         .pricing-page-sub {
           font-size: 1rem;

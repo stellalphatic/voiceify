@@ -246,7 +246,7 @@ export default function FeaturesPage() {
               style={{
                 background: 'var(--color-bg)',
                 border: '1px solid var(--color-frost-border)',
-                fontFamily: "var(--font-mono, 'DM Mono', monospace)",
+                fontFamily: "var(--font-mono, monospace)",
                 fontSize: 13,
                 lineHeight: 1.9,
               }}
