@@ -435,13 +435,13 @@ export default function PricingPage() {
           margin-bottom: 20px;
         }
         .pricing-page-title {
-          font-family: var(--font-display, 'EB Garamond', serif);
-          font-size: clamp(2.2rem, 5vw, 3.4rem);
+          font-family: var(--font-display, 'Inter Tight', sans-serif);
+          font-size: clamp(2.1rem, 4.5vw, 3.1rem);
           font-weight: 500;
           color: var(--color-text-primary);
           margin: 0 0 16px;
-          line-height: 1.1;
-          letter-spacing: -0.01em;
+          line-height: 1.08;
+          letter-spacing: -0.03em;
         }
         .pricing-page-sub {
           font-size: 1rem;

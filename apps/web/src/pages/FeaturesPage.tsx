@@ -121,15 +121,17 @@ export default function FeaturesPage() {
 
         {/* ── Header ── */}
         <div className="feature-header text-center max-w-2xl mx-auto mb-16 sm:mb-20">
-          <span className="inline-block px-3.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-5"
+          <span className="inline-block text-xs font-semibold uppercase mb-5"
             style={{
-              background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
-              border: '1px solid color-mix(in srgb, var(--color-accent) 28%, transparent)',
-              color: 'var(--color-accent)',
+              letterSpacing: '0.08em',
+              color: 'var(--color-text-muted)',
             }}>
             How it works
           </span>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 tracking-tight leading-tight">
+          <h1
+            className="text-3xl sm:text-4xl md:text-5xl font-medium mb-4 leading-[1.06]"
+            style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.03em' }}
+          >
             A sub-500ms voice pipeline,<br className="hidden sm:block" /> end to end.
           </h1>
           <p className="text-base sm:text-lg text-voice-muted leading-relaxed">

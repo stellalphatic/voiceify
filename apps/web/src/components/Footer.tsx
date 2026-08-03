@@ -43,6 +43,22 @@ export default function Footer() {
 
   return (
     <footer className="footer-techy footer-techy--minimal">
+      <div className="footer-cta-band" aria-labelledby="footer-cta-heading">
+        <div className="max-w-7xl mx-auto px-6 footer-cta-band-inner">
+          <h2 id="footer-cta-heading" className="footer-cta-heading">
+            Voice AI for real businesses
+          </h2>
+          <div className="footer-cta-actions">
+            <Link to="/contact" className="footer-cta-btn footer-cta-btn--outline">
+              Talk to sales
+            </Link>
+            <Link to="/auth?mode=signup" className="footer-cta-btn footer-cta-btn--primary">
+              Create an AI agent
+            </Link>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-6 relative z-[1]">
         <div className="footer-main-grid footer-main-grid--minimal">
           <div className="footer-brand-block">

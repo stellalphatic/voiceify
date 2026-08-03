@@ -67,40 +67,40 @@ export default function Navbar() {
         role="navigation"
         aria-label="Main navigation"
       >
-        {/* ── Logo + version chip ── */}
-        <Link to="/" className="navbar-logo" aria-label="Voiceify home" id="nav-logo">
-          <span className="navbar-logo-orb" aria-hidden>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M2 8h1.5M5 4v8M8 2v12M11 4v8M14 8h-1.5"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-          <span className="navbar-logo-text">Voiceify</span>
-        </Link>
+        {/* ── Left group: wordmark + primary links ── */}
+        <div className="navbar-left">
+          <Link to="/" className="navbar-logo" aria-label="Voiceify home" id="nav-logo">
+            <span className="navbar-logo-orb" aria-hidden>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M2 8h1.5M5 4v8M8 2v12M11 4v8M14 8h-1.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+            <span className="navbar-logo-text">Voiceify</span>
+          </Link>
 
-        {/* ── Center pill nav ── */}
-        <ul className="navbar-links" role="list">
-          {NAV_LINKS.map(link => {
-            const active = isActive(link.href);
-            return (
-              <li key={link.href}>
-                <Link
-                  to={link.href}
-                  className={active ? 'active' : ''}
-                  id={`nav-link-${link.label.toLowerCase()}`}
-                  aria-current={active ? 'page' : undefined}
-                >
-                  {link.label}
-                  {active && <span className="navbar-active-dot" aria-hidden />}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+          <ul className="navbar-links" role="list">
+            {NAV_LINKS.map(link => {
+              const active = isActive(link.href);
+              return (
+                <li key={link.href}>
+                  <Link
+                    to={link.href}
+                    className={active ? 'active' : ''}
+                    id={`nav-link-${link.label.toLowerCase()}`}
+                    aria-current={active ? 'page' : undefined}
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
 
         {/* ── Right actions ── */}
         <div className="navbar-actions">

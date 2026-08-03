@@ -10,7 +10,7 @@
  * ─────────────────────────────────────────────────────────────
  */
 
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────
@@ -155,7 +155,7 @@
 
   /* ── Typography ── */
   --font-ui:      'Inter', -apple-system, system-ui, sans-serif;
-  --font-display: 'EB Garamond', 'Times New Roman', Georgia, serif;
+  --font-display: 'Inter Tight', 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono:    'JetBrains Mono', 'Courier New', monospace;
 
   /* ── Canonical aliases (consumed by all surfaces) ── */
@@ -601,11 +601,11 @@ nav, footer, main, aside, header,
 
 /* ═════════════════════════════════════════════════════════════
    TYPOGRAPHY SYSTEM — Voiceify editorial
-   EB Garamond (light serif) → display headlines.
+   Inter Tight (grotesque sans, medium) → display headlines.
    Inter → UI, body, captions. JetBrains Mono → data/code.
    ═════════════════════════════════════════════════════════════ */
 
-/* Editorial display voice — headings never go heavier than 500 */
+/* Editorial display voice — grotesque sans, medium weight, tight tracking */
 .display-serif,
 .lp h1, .lp h2,
 .lp-h1, .lp-h2,
@@ -613,8 +613,18 @@ nav, footer, main, aside, header,
 .docs-hero h1,
 .demo-intro__title {
   font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-style: normal;
+}
+
+/* Marketing prose pages (About, Blog, Security, Careers, Changelog…) —
+   headings adopt the display voice; never bolder than 500 */
+.min-h-screen.bg-voice-bg h1,
+.min-h-screen.bg-voice-bg h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.025em;
 }
 
 /* Override Tailwind's font-mono to use our mono stack */
@@ -879,34 +889,39 @@ nav, footer, main, aside, header,
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 0 32px;
-  background: color-mix(in srgb, var(--color-bg-primary) 88%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid transparent;
-  transition: background-color 0.25s ease, border-color 0.25s ease;
+  padding: 0 clamp(20px, 4vw, 40px);
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--color-border);
+  transition: box-shadow 0.25s ease;
 }
 
 .navbar--scrolled {
-  background: color-mix(in srgb, var(--color-bg-primary) 96%, transparent);
-  border-bottom-color: var(--color-border);
+  box-shadow: 0 1px 8px rgba(12, 10, 9, 0.04);
+}
+
+/* ── Left group: wordmark + links sit together, ElevenLabs-style ── */
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  min-width: 0;
 }
 
 /* ── Logo ── */
 .navbar-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   text-decoration: none;
   flex-shrink: 0;
   transition: opacity 0.15s ease;
 }
-.navbar-logo:hover { opacity: 0.8; }
+.navbar-logo:hover { opacity: 0.75; }
 
 .navbar-logo-orb {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -917,18 +932,18 @@ nav, footer, main, aside, header,
 .navbar-logo-icon { display: none; }
 
 .navbar-logo-text {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 500;
+  font-family: var(--font-ui);
+  font-size: 17px;
+  font-weight: 600;
   color: var(--color-text-primary);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 /* ── Desktop nav links ── */
 .navbar-links {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -936,11 +951,11 @@ nav, footer, main, aside, header,
 
 .navbar-links a {
   position: relative;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-text-primary);
   text-decoration: none;
-  padding: 7px 14px;
+  padding: 7px 11px;
   border-radius: var(--radius-pill);
   transition: background 0.15s ease, color 0.15s ease;
   white-space: nowrap;
@@ -948,62 +963,53 @@ nav, footer, main, aside, header,
 
 .navbar-links a:hover {
   background: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
 }
 
 .navbar-links a.active {
-  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
   font-weight: 500;
 }
 
-.navbar-active-dot {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--color-text-primary);
-}
+.navbar-active-dot { display: none; }
 
 /* ── Right actions ── */
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .navbar-actions .navbar-signin {
   display: inline-flex;
   align-items: center;
-  min-height: 38px;
+  min-height: 36px;
   padding: 0 16px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
-  background: transparent;
-  font-size: 15px;
+  background: var(--color-bg-card);
+  font-size: 14px;
   font-weight: 500;
   color: var(--color-text-primary);
   text-decoration: none;
+  box-shadow: 0 1px 2px rgba(12, 10, 9, 0.04);
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .navbar-actions .navbar-signin:hover {
-  border-color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
   background: var(--color-bg-secondary);
 }
 
 .navbar-actions .navbar-cta {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 0 10px 0 18px;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px 0 18px;
   border-radius: var(--radius-pill);
   background: var(--color-brand-primary);
   color: var(--color-voice-on-accent);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   text-decoration: none;
   transition: background 0.15s ease;
