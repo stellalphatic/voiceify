@@ -21,6 +21,16 @@ import {
 } from '@voiceify/shared';
 
 const BASE = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
+const DOCS_ENDPOINT_IDS = new Set([
+  'health',
+  'voice-voices',
+  'org-agent-turn',
+  'embed-session',
+  'voice-respond',
+  'voice-transcribe',
+  'voice-warmup',
+  'openapi',
+]);
 
 const NAV_GROUPS: Array<{ title: string; ids: string[] }> = [
   { title: 'Getting started', ids: ['overview', 'authentication'] },
@@ -81,6 +91,12 @@ function useActiveSection() {
   return active;
 }
 
+function normalizeExampleUrls(code: string): string {
+  return code
+    .replaceAll('http://localhost:5173', BASE)
+    .replaceAll('https://voiceify.metapresence.co', BASE);
+}
+
 export default function DocsPage() {
   const active = useActiveSection();
   const [query, setQuery] = useState('');
@@ -109,8 +125,9 @@ export default function DocsPage() {
 
   const filteredEndpoints = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return API_ENDPOINTS;
-    return API_ENDPOINTS.filter(
+    const supportedEndpoints = API_ENDPOINTS.filter((ep) => DOCS_ENDPOINT_IDS.has(ep.id));
+    if (!q) return supportedEndpoints;
+    return supportedEndpoints.filter(
       (ep) =>
         ep.title.toLowerCase().includes(q) ||
         ep.path.toLowerCase().includes(q) ||
@@ -169,8 +186,8 @@ export default function DocsPage() {
           <Link to="/demo" className="docs-sidebar__link">
             <ExternalLink size={14} /> Live demo
           </Link>
-          <Link to="/dashboard" className="docs-sidebar__link">
-            Dashboard
+          <Link to="/auth?mode=signin" className="docs-sidebar__link">
+            Sign in
           </Link>
         </div>
       </aside>
@@ -324,7 +341,7 @@ x-voiceify-key: vfk_YOUR_KEY`}
           </p>
           <h2>Demo personas</h2>
           <p>
-            Pass <code>personaId</code> on demo chat and streaming endpoints:
+            Pass <code>personaId</code> on supported demo and voice endpoints:
           </p>
           <div className="docs-persona-grid">
             {API_PERSONAS.map((p) => (
@@ -382,7 +399,7 @@ x-voiceify-key: vfk_YOUR_KEY`}
               ) : null}
               {ep.requestExample ? (
                 <div className="docs-code-gap">
-                  <CodeBlock language="bash" filename="request" code={ep.requestExample} />
+                  <CodeBlock language="bash" filename="request" code={normalizeExampleUrls(ep.requestExample)} />
                 </div>
               ) : null}
               {ep.responseExample ? (

@@ -28,6 +28,12 @@ function slugify(name: string) {
   );
 }
 
+function toolTypeLabel(type: string): string {
+  if (type === 'http') return 'HTTP';
+  if (type === 'pack' || type === 'automation') return 'Pack tool';
+  return type.replace(/[_-]+/g, ' ');
+}
+
 export default function ToolsWorkspace() {
   const orgId = getActiveOrgId();
   const [tools, setTools] = useState<ToolRow[]>([]);
@@ -363,6 +369,10 @@ export default function ToolsWorkspace() {
             <h3 className="vfy-settings-card-title">
               <Settings2 size={16} /> Installed tools
             </h3>
+            <p className="vfy-settings-help" style={{ marginBottom: 10 }}>
+              HTTP tools can be configured and tested here. Pack tools are managed by automation packs;
+              you can still remove them from this workspace.
+            </p>
             <ul className="vfy-settings-list">
               {tools.length === 0 && (
                 <li className="vfy-settings-empty">
@@ -372,21 +382,22 @@ export default function ToolsWorkspace() {
               {tools.map((tool) => {
                 const brand =
                   ALL_CONNECTORS.find((c) => c.template.slug === tool.slug)?.brand ?? 'http';
+                const isHttp = tool.type === 'http';
                 return (
-                  <li key={tool.id} className="vfy-settings-list-item">
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
+                  <li key={tool.id} className="vfy-settings-list-item vfy-tools-installed-row">
+                    <div className="vfy-tools-installed-meta">
                       <span className="vfy-connector-icon vfy-connector-icon--sm">
                         <BrandIcon brand={brand} size={18} />
                       </span>
                       <div style={{ minWidth: 0 }}>
                         <p className="vfy-settings-item-title">{tool.name}</p>
                         <p className="vfy-settings-item-meta">
-                          {tool.slug} · {tool.type}
+                          {tool.slug} · {toolTypeLabel(tool.type)}
                         </p>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {tool.type === 'http' && (
+                    <div className="vfy-tools-row-actions">
+                      {isHttp ? (
                         <>
                           <button
                             type="button"
@@ -405,15 +416,20 @@ export default function ToolsWorkspace() {
                             Test
                           </button>
                         </>
+                      ) : (
+                        <span className="vfy-tools-managed" title="Managed by an automation pack">
+                          Pack-managed
+                        </span>
                       )}
                       <button
                         type="button"
-                        className="vfy-btn vfy-btn-ghost"
+                        className="vfy-btn vfy-btn-ghost vfy-tools-remove"
                         disabled={busy}
                         onClick={() => void removeTool(tool.id)}
                         aria-label={`Remove ${tool.name}`}
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={14} aria-hidden />
+                        Remove
                       </button>
                     </div>
                   </li>

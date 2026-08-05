@@ -287,7 +287,7 @@ const PRICING_PLANS = [
     name: 'Enterprise',
     badge: 'Scale',
     price: 'Custom',
-    period: 'pricing',
+    period: ' pricing',
     sub: 'Volume discounts + SLA',
     tagline: 'For orgs with compliance & scale needs.',
     features: ['99.99% uptime SLA', 'SSO / SAML', 'VPC deployment', 'Dedicated manager'],

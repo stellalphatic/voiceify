@@ -145,6 +145,25 @@ function AgentScopePicker({
   );
 }
 
+function formatDocDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'Unknown date';
+  return d.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function statusLabel(status: string): string {
+  const key = status.trim().toLowerCase();
+  if (key === 'ready' || key === 'indexed' || key === 'completed') return 'Ready';
+  if (key === 'processing' || key === 'pending') return 'Processing';
+  if (key === 'failed' || key === 'error') return 'Failed';
+  if (!key) return 'Unknown';
+  return status.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export default function KnowledgeWorkspace() {
   const orgId = getActiveOrgId();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -153,8 +172,9 @@ export default function KnowledgeWorkspace() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadScope, setUploadScope] = useState<AgentScope>(EMPTY_SCOPE);
-  const [pasteScope, setPasteScope] = useState<AgentScope>(EMPTY_SCOPE);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  /** Shared access scope for both upload and paste ingest flows. */
+  const [ingestScope, setIngestScope] = useState<AgentScope>(EMPTY_SCOPE);
   /** Holds in-flight edits so switching to "Selected agents" does not snap back before a pick. */
   const [docScopes, setDocScopes] = useState<Record<string, AgentScope>>({});
   const [query, setQuery] = useState('');
@@ -186,7 +206,7 @@ export default function KnowledgeWorkspace() {
 
   const createDoc = async () => {
     if (!orgId || !title.trim() || !content.trim()) return;
-    if (scopeIsIncomplete(pasteScope)) {
+    if (scopeIsIncomplete(ingestScope)) {
       setError('Select which agents should use this document.');
       return;
     }
@@ -199,13 +219,12 @@ export default function KnowledgeWorkspace() {
         body: JSON.stringify({
           title: title.trim(),
           content: content.trim(),
-          agentIds: scopeToAgentIds(pasteScope),
+          agentIds: scopeToAgentIds(ingestScope),
         }),
       });
       setTitle('');
       setContent('');
-      setPasteScope(EMPTY_SCOPE);
-      setMessage(describeScope(pasteScope, agents, 'Text ingested, chunked, and embedded.'));
+      setMessage(describeScope(ingestScope, agents, 'Text ingested, chunked, and embedded.'));
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to ingest document');
@@ -216,9 +235,10 @@ export default function KnowledgeWorkspace() {
 
   const uploadFile = async (file: File) => {
     if (!orgId) return;
-    if (scopeIsIncomplete(uploadScope)) {
+    if (scopeIsIncomplete(ingestScope)) {
       setError('Select which agents should use this document before uploading.');
       if (fileRef.current) fileRef.current.value = '';
+      setSelectedFileName(null);
       return;
     }
     setBusy(true);
@@ -228,7 +248,7 @@ export default function KnowledgeWorkspace() {
       const form = new FormData();
       form.append('file', file);
       if (uploadTitle.trim()) form.append('title', uploadTitle.trim());
-      const scopedIds = scopeToAgentIds(uploadScope);
+      const scopedIds = scopeToAgentIds(ingestScope);
       if (scopedIds.length) form.append('agentIds', scopedIds.join(','));
       const data = await apiJson<{
         chunks: number;
@@ -239,16 +259,16 @@ export default function KnowledgeWorkspace() {
         body: form,
       });
       setUploadTitle('');
+      setSelectedFileName(null);
       if (fileRef.current) fileRef.current.value = '';
       setMessage(
         describeScope(
-          uploadScope,
+          ingestScope,
           agents,
           data.note ??
             `Extracted and indexed ${data.chunks} chunks. Original file discarded after embedding.`,
         ),
       );
-      setUploadScope(EMPTY_SCOPE);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
@@ -322,8 +342,8 @@ export default function KnowledgeWorkspace() {
           <h1 className="vfy-page-title">Knowledge base</h1>
           <p className="vfy-page-sub">
             Paste text or upload PDF/DOCX. We extract text, chunk it, embed it for retrieval, then
-            discard the original file. Choose exactly which agents can use each document — nothing
-            is shared workspace-wide unless you say so.
+            discard the original file. Set agent access once below — it applies to every new
+            document you add.
           </p>
         </div>
       </div>
@@ -359,6 +379,23 @@ export default function KnowledgeWorkspace() {
 
       <section className="vfy-settings-card">
         <h3 className="vfy-settings-card-title">
+          <Users size={18} />
+          Agent access for new documents
+        </h3>
+        <p className="vfy-settings-help" style={{ marginBottom: 12 }}>
+          Choose once for uploads and pasted text. You can still change access per document later.
+        </p>
+        <AgentScopePicker
+          idPrefix="kb-ingest"
+          agents={agents}
+          value={ingestScope}
+          onChange={setIngestScope}
+          disabled={busy}
+        />
+      </section>
+
+      <section className="vfy-settings-card">
+        <h3 className="vfy-settings-card-title">
           <Upload size={18} />
           Upload document
         </h3>
@@ -370,26 +407,39 @@ export default function KnowledgeWorkspace() {
             placeholder="Optional title override"
             aria-label="Upload title"
           />
-          <AgentScopePicker
-            idPrefix="kb-upload"
-            agents={agents}
-            value={uploadScope}
-            onChange={setUploadScope}
-            disabled={busy}
-          />
           <input
             ref={fileRef}
             type="file"
+            className="vfy-kb-file-input"
             accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
             aria-label="Choose PDF or DOCX"
-            disabled={busy || scopeIsIncomplete(uploadScope)}
+            disabled={busy || scopeIsIncomplete(ingestScope)}
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) void uploadFile(file);
+              if (!file) {
+                setSelectedFileName(null);
+                return;
+              }
+              setSelectedFileName(file.name);
+              void uploadFile(file);
             }}
           />
+          <div className="vfy-kb-file-row">
+            <button
+              type="button"
+              className="vfy-btn vfy-btn-primary"
+              disabled={busy || !orgId || scopeIsIncomplete(ingestScope)}
+              onClick={() => fileRef.current?.click()}
+            >
+              <Upload size={14} />
+              Choose file
+            </button>
+            <span className="vfy-kb-file-name">
+              {selectedFileName ?? 'No file chosen · PDF, DOCX, or TXT · max 8MB'}
+            </span>
+          </div>
           <p className="vfy-settings-help">
-            Max 8MB. Supported: PDF, DOCX, TXT. Original bytes are deleted after indexing.
+            Original bytes are deleted after indexing. Set agent access above before choosing a file.
           </p>
         </div>
       </section>
@@ -415,13 +465,6 @@ export default function KnowledgeWorkspace() {
             placeholder="Paste knowledge content here…"
             aria-label="Document content"
           />
-          <AgentScopePicker
-            idPrefix="kb-paste"
-            agents={agents}
-            value={pasteScope}
-            onChange={setPasteScope}
-            disabled={busy}
-          />
           <button
             type="button"
             className="vfy-btn vfy-btn-primary"
@@ -430,11 +473,11 @@ export default function KnowledgeWorkspace() {
               !orgId ||
               !title.trim() ||
               !content.trim() ||
-              scopeIsIncomplete(pasteScope)
+              scopeIsIncomplete(ingestScope)
             }
             onClick={() => void createDoc()}
           >
-            Upload to knowledge base
+            Add to knowledge base
           </button>
         </div>
       </section>
@@ -483,40 +526,47 @@ export default function KnowledgeWorkspace() {
           {docs.length === 0 && (
             <li className="vfy-settings-empty">No documents yet. Upload your first source above.</li>
           )}
-          {docs.map((d) => (
-            <li key={d.id} className="vfy-settings-list-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, width: '100%' }}>
-                <div>
-                  <p className="vfy-settings-item-title">{d.title}</p>
-                  <p className="vfy-settings-item-meta">
-                    {d.filename} · {d.status} · {new Date(d.createdAt).toLocaleDateString()}
-                  </p>
+          {docs.map((d) => {
+            const label = statusLabel(d.status);
+            return (
+              <li key={d.id} className="vfy-settings-list-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, width: '100%' }}>
+                  <div>
+                    <p className="vfy-settings-item-title">{d.title}</p>
+                    <p className="vfy-settings-item-meta">
+                      {d.filename}
+                      {' · '}
+                      Added {formatDocDate(d.createdAt)}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span className="vfy-tag" title={d.status}>
+                      {label}
+                    </span>
+                    <button
+                      type="button"
+                      className="vfy-btn vfy-btn-ghost"
+                      disabled={busy}
+                      onClick={() => void removeDoc(d.id)}
+                      aria-label={`Delete ${d.title}`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span className="vfy-tag">{d.status}</span>
-                  <button
-                    type="button"
-                    className="vfy-btn vfy-btn-ghost"
-                    disabled={busy}
-                    onClick={() => void removeDoc(d.id)}
-                    aria-label={`Delete ${d.title}`}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-              <AgentScopePicker
-                idPrefix={`kb-doc-${d.id}`}
-                agents={agents}
-                value={docScopes[d.id] ?? docToScope(d)}
-                onChange={(next) => {
-                  setDocScopes((prev) => ({ ...prev, [d.id]: next }));
-                  if (!scopeIsIncomplete(next)) void assignAgents(d.id, scopeToAgentIds(next));
-                }}
-                disabled={busy}
-              />
-            </li>
-          ))}
+                <AgentScopePicker
+                  idPrefix={`kb-doc-${d.id}`}
+                  agents={agents}
+                  value={docScopes[d.id] ?? docToScope(d)}
+                  onChange={(next) => {
+                    setDocScopes((prev) => ({ ...prev, [d.id]: next }));
+                    if (!scopeIsIncomplete(next)) void assignAgents(d.id, scopeToAgentIds(next));
+                  }}
+                  disabled={busy}
+                />
+              </li>
+            );
+          })}
         </ul>
       </section>
     </div>

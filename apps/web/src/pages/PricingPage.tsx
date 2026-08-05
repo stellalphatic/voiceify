@@ -60,8 +60,8 @@ const BadgeCheckIcon: React.FC = () => (
 const Feature: React.FC<{ text: string; accent?: string }> = ({ text, accent }) => (
   <li
     style={{
-      display: 'flex', alignItems: 'flex-start', gap: 10,
-      color: TOKEN.textPrimary, fontSize: 14, lineHeight: 1.6,
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+      color: TOKEN.textPrimary, fontSize: 14.5, lineHeight: 1.7,
     }}
   >
     <CheckIcon accent={accent} />
@@ -144,7 +144,7 @@ const PricingCard: React.FC<CardProps> = ({
       ? `1px solid color-mix(in srgb, ${TOKEN.amber} 28%, ${TOKEN.borderStrong})`
       : `1px solid ${TOKEN.border}`,
     borderRadius: 16,
-    padding: '36px 28px 32px',
+    padding: '40px 30px 34px',
     display: 'flex', flexDirection: 'column',
     boxShadow: isPopular || isCustom
       ? '0 4px 16px rgba(12, 10, 9, 0.06)'
@@ -183,13 +183,13 @@ const PricingCard: React.FC<CardProps> = ({
       <p style={{
         fontFamily: "var(--font-ui, 'Inter', sans-serif)",
         fontSize: 13.5, color: TOKEN.textSec,
-        margin: '0 0 20px', lineHeight: 1.5, minHeight: 38,
+        margin: '0 0 24px', lineHeight: 1.6, minHeight: 44,
       }}>
         {tagline}
       </p>
 
       {/* Price */}
-      <div style={{ marginBottom: 6, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 4 }}>
+      <div style={{ marginBottom: 10, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 6 }}>
         <span style={{
           fontFamily: "var(--font-mono, monospace)",
           fontSize: price.length > 6 ? 28 : 42, fontWeight: 500,
@@ -211,19 +211,20 @@ const PricingCard: React.FC<CardProps> = ({
       <p style={{
         fontFamily: "var(--font-ui, 'Inter', sans-serif)",
         fontSize: 12.5, color: TOKEN.textMuted,
-        marginBottom: 24, minHeight: 18,
+        lineHeight: 1.5,
+        marginBottom: 28, minHeight: 36,
       }}>
         {yearLabel || ' '}
       </p>
 
       {/* Divider */}
-      <div style={{ height: 1, background: TOKEN.border, marginBottom: 22 }} />
+      <div style={{ height: 1, background: TOKEN.border, marginBottom: 26 }} />
 
       {/* Feature list */}
       <ul style={{
         listStyle: 'none', padding: 0, margin: 0,
         display: 'flex', flexDirection: 'column',
-        gap: 11, flexGrow: 1, marginBottom: 28,
+        gap: 13, flexGrow: 1, marginBottom: 32,
       }}>
         {features.map((f) => (
           <Feature key={f} text={f} accent={accentColor} />
@@ -419,7 +420,7 @@ export default function PricingPage() {
         }
         .pricing-page-header {
           text-align: center;
-          margin-bottom: 56px;
+          margin-bottom: 64px;
         }
         .pricing-page-eyebrow {
           display: inline-block;
@@ -453,12 +454,12 @@ export default function PricingPage() {
         .pricing-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 18px;
+          gap: 24px;
           align-items: stretch;
-          margin-bottom: 48px;
+          margin-bottom: 52px;
         }
         @media (max-width: 1100px) {
-          .pricing-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+          .pricing-grid { grid-template-columns: repeat(2, 1fr); gap: 22px; }
         }
         @media (max-width: 600px) {
           .pricing-grid { grid-template-columns: 1fr; }

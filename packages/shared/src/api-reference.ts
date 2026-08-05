@@ -287,7 +287,7 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
   {
     id: 'openapi',
     method: 'GET',
-    path: '/api/openapi',
+    path: '/api/openapi.json',
     title: 'OpenAPI specification',
     description: 'Machine-readable OpenAPI 3.1 JSON for codegen, Postman, and API clients.',
     auth: false,

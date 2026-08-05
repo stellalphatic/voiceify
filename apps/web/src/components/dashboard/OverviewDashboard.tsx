@@ -68,6 +68,42 @@ function statusTone(status: string): "success" | "warn" | "neutral" {
   return "neutral";
 }
 
+function titleCase(value: string): string {
+  if (!value) return "Unknown";
+  return value
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function channelLabel(channel: string): string {
+  const key = channel.trim().toLowerCase();
+  if (key === "sandbox") return "Sandbox test";
+  if (key === "widget") return "Widget call";
+  if (key === "api") return "API session";
+  if (key === "phone" || key === "voice") return "Voice call";
+  return titleCase(channel || "Session");
+}
+
+function statusLabel(status: string): string {
+  const key = status.trim().toLowerCase();
+  if (key === "completed" || key === "ended") return "Completed";
+  if (key === "active" || key === "in_progress" || key === "running") return "In progress";
+  if (key === "failed" || key === "error") return "Failed";
+  return titleCase(status || "Unknown");
+}
+
+function startedClock(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function OverviewDashboard({
   onCreateAgent,
 }: {
@@ -164,7 +200,7 @@ export default function OverviewDashboard({
           <p className="vfy-page-eyebrow">Overview · Live workspace</p>
           <h1 className="vfy-page-title">Welcome, {greeting}</h1>
           <p className="vfy-page-sub">
-            Real usage for your workspace. Credits are deducted as voice traffic runs.
+            Live metrics for this workspace. Credits update as voice traffic runs.
           </p>
         </div>
         <div className="vfy-page-actions">
@@ -258,17 +294,26 @@ export default function OverviewDashboard({
           </div>
           <div className="vfy-chart-card-body" style={{ padding: 20 }}>
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 14 }}>
-              <li style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+              <li style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13.5 }}>
                 <span style={{ color: "var(--d-muted)" }}>Signed in as</span>
-                <span style={{ color: "var(--d-text)" }}>{account?.user.email ?? "—"}</span>
-              </li>
-              <li style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                <span style={{ color: "var(--d-muted)" }}>Org id</span>
-                <span style={{ color: "var(--d-text)", fontFamily: "monospace", fontSize: 11 }}>
-                  {orgId ? `${orgId.slice(0, 8)}…` : "—"}
+                <span style={{ color: "var(--d-text)", textAlign: "right", wordBreak: "break-all" }}>
+                  {account?.user.email ?? "—"}
                 </span>
               </li>
-              <li style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+              <li style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13.5 }}>
+                <span style={{ color: "var(--d-muted)" }}>Org id</span>
+                <span
+                  style={{
+                    color: "var(--d-text-2)",
+                    fontFamily: "var(--d-mono)",
+                    fontSize: 12.5,
+                  }}
+                  title={orgId ?? undefined}
+                >
+                  {orgId ? `${orgId.slice(0, 10)}…` : "—"}
+                </span>
+              </li>
+              <li style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13.5 }}>
                 <span style={{ color: "var(--d-muted)" }}>Credits</span>
                 <span style={{ color: "var(--d-text)" }}>${(credits / 100).toFixed(2)}</span>
               </li>
@@ -305,29 +350,38 @@ export default function OverviewDashboard({
           )}
           {(analytics?.recent ?? []).slice(0, 8).map((row) => {
             const tone = statusTone(row.status);
+            const label = statusLabel(row.status);
+            const clock = startedClock(row.startedAt);
             return (
               <div key={row.id} className="vfy-row">
                 <span className="vfy-row-avatar">
                   <CalendarDays size={14} />
                 </span>
                 <div className="vfy-row-meta">
-                  <p className="vfy-row-name">{row.channel} · {row.status}</p>
+                  <p className="vfy-row-name">{channelLabel(row.channel)}</p>
                   <p className="vfy-row-sub">
-                    {row.id.slice(0, 8)}… · {formatRelative(row.startedAt)}
+                    {formatRelative(row.startedAt)}
+                    {clock ? ` · ${clock}` : ""}
                     {row.latencyMs != null ? ` · ${row.latencyMs} ms` : ""}
+                    {" · "}
+                    <span className="vfy-row-sub-id" title={row.id}>
+                      {row.id.slice(0, 8)}…
+                    </span>
                   </p>
                 </div>
-                <span className="vfy-row-duration">{durationLabel(row)}</span>
+                <span className="vfy-row-duration" title="Session duration">
+                  {durationLabel(row)}
+                </span>
                 <span
                   className={`vfy-pill ${
                     tone === "success"
                       ? "vfy-pill-success"
                       : tone === "warn"
                         ? "vfy-pill-warn"
-                        : "vfy-pill-success"
+                        : "vfy-pill-neutral"
                   }`}
                 >
-                  {row.status}
+                  {label}
                 </span>
               </div>
             );

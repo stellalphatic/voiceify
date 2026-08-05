@@ -78,7 +78,7 @@ const steps = [
     iconBg:     'rgba(245,166,35,0.10)',
     iconBorder: 'rgba(245,166,35,0.25)',
     heading: 'Response spoken naturally',
-    body: 'Azure Neural TTS delivers a human-sounding Urdu-PK or en-US voice before the caller notices any pause.',
+    body: 'ElevenLabs Flash TTS streams a natural-sounding reply fast enough to keep the call flowing without an awkward pause.',
     latency: '< 170ms',
   },
 ];
@@ -87,11 +87,16 @@ const benefits = [
   { icon: <Zap className="w-5 h-5" />,      label: 'Sub-500ms total latency',    sub: 'End to end, including network hop' },
   { icon: <Languages className="w-5 h-5" />, label: 'English + Urdu + code-mix',   sub: 'Detect & respond in the same call' },
   { icon: <Shield className="w-5 h-5" />,    label: 'Encrypted & compliant',      sub: 'TLS 1.3, AES-256, GDPR-ready' },
-  { icon: <Plug className="w-5 h-5" />,      label: 'Integrates with your stack', sub: 'Twilio, n8n, Google Sheets, more' },
+  { icon: <Plug className="w-5 h-5" />,      label: 'Connectors for your workflow', sub: 'Sheets, Calendar, webhooks, and custom HTTP tools' },
 ];
 
 export default function FeaturesPage() {
   const containerRef = useRef(null);
+  const primaryCtaStyle = {
+    background: 'var(--color-accent)',
+    color: 'var(--color-voice-on-accent)',
+    border: '1px solid color-mix(in srgb, var(--color-accent) 76%, var(--color-border))',
+  } as const;
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -214,15 +219,15 @@ export default function FeaturesPage() {
                 Plug into your existing stack
               </h2>
               <p className="text-base text-voice-muted leading-relaxed mb-6">
-                Connect Voiceify to the tools you already use. REST + WebSocket API, n8n webhooks, and Google Sheets out of the box.
+                Connect Voiceify to the tools you already use. REST APIs, custom HTTP tools, webhooks, and workspace-ready connectors help teams go live without rebuilding their stack.
               </p>
               <ul className="space-y-2.5 mb-7">
                 {[
-                  'Twilio & Vonage SIP Trunking',
-                  'Salesforce & HubSpot CRM',
-                  'Google Calendar & Outlook',
-                  'Credit Wallet',
-                  'Custom n8n workflows (Custom plan)',
+                  'Google Sheets lead logging',
+                  'Google Calendar event creation',
+                  'WhatsApp Business follow-ups',
+                  'Slack and generic webhook notifications',
+                  'Custom HTTP tools and MCP bridge setup',
                 ].map(item => (
                   <li key={item} className="flex items-start gap-2.5 text-sm text-voice-muted">
                     <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" style={{ color: 'var(--color-accent)' }} />
@@ -233,10 +238,7 @@ export default function FeaturesPage() {
               <Link
                 to="/auth?mode=signup"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-colors"
-                style={{
-                  background: 'var(--color-accent)',
-                  color: 'var(--color-on-accent)',
-                }}
+                style={primaryCtaStyle}
               >
                 Start building <ArrowRight className="w-4 h-4" />
               </Link>
@@ -288,7 +290,7 @@ export default function FeaturesPage() {
             <Link
               to="/auth?mode=signup"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm transition-colors"
-              style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
+              style={primaryCtaStyle}
             >
               Start free <ArrowRight className="w-4 h-4" />
             </Link>

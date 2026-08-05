@@ -469,7 +469,7 @@
 
 .ap-sub {
   font-size: 14px;
-  color: var(--ap-dim);
+  color: var(--ap-muted);
   margin: 0;
   line-height: 1.55;
 }
@@ -519,8 +519,8 @@
 
 .ap-label {
   font-size: 13px;
-  font-weight: 500;
-  color: var(--ap-muted);
+  font-weight: 600;
+  color: var(--ap-text);
 }
 
 .ap-label-row {
@@ -539,7 +539,7 @@
 .ap-input-icon {
   position: absolute;
   left: 14px;
-  color: var(--ap-dim);
+  color: var(--ap-muted);
   pointer-events: none;
   transition: color 0.2s;
 }
@@ -569,7 +569,7 @@
 }
 
 .ap-input::placeholder {
-  color: color-mix(in srgb, var(--ap-dim) 75%, transparent);
+  color: color-mix(in srgb, var(--ap-muted) 82%, transparent);
 }
 
 .ap-input:hover {
@@ -615,9 +615,16 @@
 .ap-pw-strength-bar.is-2 { background: var(--ap-warning, #ffba00); }
 .ap-pw-strength-bar.is-3 { background: var(--ap-accent); }
 
+.ap-forgot {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ap-accent);
+  text-decoration: none;
+}
+
 .ap-pw-hint {
-  font-size: 11px;
-  color: var(--ap-dim);
+  font-size: 12px;
+  color: var(--ap-muted);
   margin: 2px 0 0;
 }
 
@@ -640,13 +647,6 @@
 .ap-input-toggle:hover {
   color: var(--ap-muted);
   background: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
-}
-
-.ap-forgot {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ap-accent);
-  text-decoration: none;
 }
 
 .ap-forgot:hover {
@@ -999,9 +999,9 @@
 }
 
 .ap-header--vapi .ap-sub {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--ap-muted);
-  line-height: 1.45;
+  line-height: 1.55;
   margin: 0;
 }
 
@@ -1015,7 +1015,7 @@
 }
 
 .ap--vapi .ap-input::placeholder {
-  color: var(--ap-dim);
+  color: color-mix(in srgb, var(--ap-muted) 88%, transparent);
 }
 
 .ap--vapi .ap-input:focus {
@@ -1047,12 +1047,13 @@
   justify-content: center;
   gap: 8px;
   margin-top: 20px;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   color: var(--ap-muted);
 }
 
 .ap-footer-links a {
-  color: var(--ap-text);
+  color: var(--ap-accent);
+  font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -1067,17 +1068,17 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  font-size: 0.75rem;
-  color: var(--ap-dim);
+  font-size: 0.8rem;
+  color: var(--ap-muted);
 }
 
 .ap-legal a {
-  color: var(--ap-dim);
+  color: var(--ap-muted);
   text-decoration: none;
 }
 
 .ap-legal a:hover {
-  color: var(--ap-muted);
+  color: var(--ap-text);
 }
 
 .ap-banner {

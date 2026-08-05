@@ -671,7 +671,7 @@
 .lp-livecall-turn--agent .lp-livecall-bubble {
   background: var(--color-brand-primary, #292524);
   border-color: var(--color-brand-primary, #292524);
-  color: #fafaf9;
+  color: var(--color-voice-on-accent);
   border-bottom-left-radius: 14px;
   border-bottom-right-radius: 4px;
 }
@@ -4066,14 +4066,19 @@
 
 .lp-final-footer-row p {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.5;
   color: var(--lp-dim);
 }
 
 .lp-final-footer-link {
   color: var(--lp-accent);
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
   text-decoration: none;
+  text-underline-offset: 0.18em;
 }
 
 .lp-final-footer-link:hover {

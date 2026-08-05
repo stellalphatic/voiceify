@@ -89,8 +89,6 @@ import {
 } from '@voiceify/shared';
 import { LATENCY_TARGET_MS } from '../lib/voice-agent/constants';
 import { 
-  LineChart, 
-  Line, 
   BarChart, 
   Bar, 
   XAxis, 
@@ -98,12 +96,6 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  AreaChart, 
-  Area,
-  Legend
 } from 'recharts';
 
 // Types
@@ -762,42 +754,37 @@ const DashboardView = ({ onCreateAgent }: { onCreateAgent: () => void }) => (
   <OverviewDashboard onCreateAgent={onCreateAgent} />
 );
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-voice-surface border border-voice-frost-border p-4 rounded-xl shadow-2xl backdrop-blur-md">
-        <p className="text-voice-muted text-[10px] uppercase tracking-wider font-bold mb-2">{label} Performance</p>
-        <div className="space-y-2">
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center justify-between gap-8">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }} />
-                <span className="text-xs text-voice-text/70">{entry.name}</span>
-              </div>
-              <span className="text-xs font-mono font-bold text-voice-text">{entry.value}{entry.dataKey === 'success' ? '%' : 's'}</span>
-            </div>
-          ))}
-          <div className="pt-2 mt-2 border-t border-voice-frost-border flex items-center justify-between gap-8">
-            <span className="text-[10px] text-voice-muted uppercase">Total Calls</span>
-            <span className="text-xs font-mono text-voice-accent">{payload[0].payload.calls}</span>
-          </div>
-          <div className="flex items-center justify-between gap-8">
-            <span className="text-[10px] text-voice-muted uppercase">Avg Latency</span>
-            <span className="text-xs font-mono text-voice-blue-bright">{payload[0].payload.latency}ms</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  return null;
+const LatencyTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-voice-surface border border-voice-frost-border p-3 rounded-xl shadow-2xl backdrop-blur-md">
+      <p className="text-voice-muted text-[10px] uppercase tracking-wider font-bold mb-1">
+        Turn {label}
+      </p>
+      <p className="text-xs font-mono font-bold text-voice-text">
+        {payload[0].value} ms
+      </p>
+    </div>
+  );
 };
 
 const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent: (agent: Agent) => void }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const greetingRef = useRef<HTMLTextAreaElement>(null);
+  const visualizerRef = useRef<HTMLDivElement>(null);
+  const syncedMessageCountRef = useRef(0);
+  const latencySampleCountRef = useRef(0);
+
   const [activeAgentId, setActiveAgentId] = useState<number | null>(
     location.state?.agentId || agents[0]?.id || null,
   );
+  const [logs, setLogs] = useState<{sender: 'user' | 'agent' | 'system', text: string, timestamp: string, isoTimestamp: string}[]>([]);
+  const [filterSender, setFilterSender] = useState<'All' | 'user' | 'agent' | 'system'>('All');
+  const [filterStartTime, setFilterStartTime] = useState('');
+  const [filterEndTime, setFilterEndTime] = useState('');
+  const [latencySamples, setLatencySamples] = useState<{ name: string; latency: number }[]>([]);
+
   const activeAgent = agents.find(a => a.id === activeAgentId) || agents[0];
   const orgId = getActiveOrgId();
 
@@ -823,36 +810,6 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
     orgId,
     agentServerId: activeAgent?.serverId ?? null,
   });
-
-  if (!agents.length || !activeAgent) {
-    return (
-      <div className="vfy-overview">
-        <div className="vfy-page-head">
-          <div className="vfy-page-head-titles">
-            <p className="vfy-page-eyebrow">Build · Sandbox</p>
-            <h1 className="vfy-page-title">Sandbox</h1>
-            <p className="vfy-page-sub">
-              Create an agent first, then talk to it here with your microphone.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="vfy-btn vfy-btn-primary"
-            onClick={() => navigate('/dashboard/agents')}
-          >
-            Go to agents
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const [logs, setLogs] = useState<{sender: 'user' | 'agent' | 'system', text: string, timestamp: string, isoTimestamp: string}[]>([]);
-  const [filterSender, setFilterSender] = useState<'All' | 'user' | 'agent' | 'system'>('All');
-  const [filterStartTime, setFilterStartTime] = useState('');
-  const [filterEndTime, setFilterEndTime] = useState('');
-  const visualizerRef = useRef<HTMLDivElement>(null);
-  const syncedMessageCountRef = useRef(0);
 
   const isLive = isActive && status !== 'idle' && status !== 'error';
   const langLabel = activeAgent ? resolveLanguageMode(activeAgent.language).toUpperCase() : 'AUTO';
@@ -895,7 +852,22 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
         isoTimestamp: iso,
       })),
     ]);
-  }, [messages]);
+
+    const newAssistant = fresh.filter((m) => m.role === 'assistant').length;
+    if (newAssistant > 0 && latencyMs != null) {
+      setLatencySamples((prev) => {
+        const next = [...prev];
+        for (let i = 0; i < newAssistant; i++) {
+          latencySampleCountRef.current += 1;
+          next.push({
+            name: String(latencySampleCountRef.current),
+            latency: latencyMs,
+          });
+        }
+        return next.slice(-12);
+      });
+    }
+  }, [messages, latencyMs]);
 
   useEffect(() => {
     if (error) addLog('system', error);
@@ -945,6 +917,8 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
   const handleAgentSwitch = (id: number) => {
     setActiveAgentId(id);
     syncedMessageCountRef.current = 0;
+    latencySampleCountRef.current = 0;
+    setLatencySamples([]);
     setLogs([]);
   };
 
@@ -955,6 +929,8 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
       syncedMessageCountRef.current = 0;
     } else {
       syncedMessageCountRef.current = 0;
+      latencySampleCountRef.current = 0;
+      setLatencySamples([]);
       setLogs([]);
       addLog('system', 'Connected to Voiceify voice pipeline (server-managed API keys)');
       await startSession();
@@ -963,12 +939,70 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
 
   const clearLogs = () => {
     syncedMessageCountRef.current = 0;
+    latencySampleCountRef.current = 0;
+    setLatencySamples([]);
     setLogs([]);
     resetConversation();
   };
 
+  const focusGreetingSettings = () => {
+    greetingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    greetingRef.current?.focus();
+  };
+
+  const filteredLogs = logs.filter(log => {
+    if (filterSender !== 'All' && log.sender !== filterSender) return false;
+    if (filterStartTime) {
+      const logTime = new Date(log.isoTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      if (logTime < filterStartTime) return false;
+    }
+    if (filterEndTime) {
+      const logTime = new Date(log.isoTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      if (logTime > filterEndTime) return false;
+    }
+    return true;
+  });
+
   const userTurns = messages.filter((m) => m.role === 'user').length;
   const latencyGood = latencyMs != null && latencyMs < LATENCY_TARGET_MS;
+  const statusLabel =
+    status === 'idle' ? 'Idle'
+    : status === 'connecting' ? 'Connecting'
+    : status === 'listening' ? 'Listening'
+    : status === 'thinking' ? 'Thinking'
+    : status === 'speaking' ? 'Speaking'
+    : status === 'error' ? 'Error'
+    : status;
+  const llmLabel = groqEnabled ? 'Groq' : geminiEnabled ? 'Gemini' : 'Fallback';
+  const llmHint = groqEnabled || geminiEnabled
+    ? 'Primary LLM connected for this session'
+    : 'Using the local fallback path until a cloud LLM key is available';
+  const latencyHint = latencyMs != null
+    ? `Last reply took ${latencyMs} ms`
+    : 'Latency appears after the first agent reply';
+
+  if (!agents.length || !activeAgent) {
+    return (
+      <div className="vfy-overview">
+        <div className="vfy-page-head">
+          <div className="vfy-page-head-titles">
+            <p className="vfy-page-eyebrow">Build · Sandbox</p>
+            <h1 className="vfy-page-title">Sandbox</h1>
+            <p className="vfy-page-sub">
+              Create an agent first, then talk to it here with your microphone.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="vfy-btn vfy-btn-primary"
+            onClick={() => navigate('/dashboard/agents')}
+          >
+            Go to agents
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="vfy-sandbox-page">
@@ -999,6 +1033,7 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
           </h3>
         </div>
         <textarea
+          ref={greetingRef}
           value={activeAgent?.greeting || ''}
           onChange={handleGreetingChange}
           placeholder={`Leave empty for optimized persona greeting (like /demo). Or enter a short custom line for ${activeAgent?.name}…`}
@@ -1020,28 +1055,42 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
             </span>
           </div>
           <div className="flex items-center gap-4 text-xs text-voice-muted font-mono flex-wrap justify-end">
-            <span className={cn(latencyGood && 'text-voice-success-bright')}>
-              LATENCY: {latencyMs != null ? `${latencyMs}ms` : '--'}
+            <span
+              className={cn(latencyGood && 'text-voice-success-bright')}
+              title={latencyHint}
+            >
+              Latency: {latencyMs != null ? `${latencyMs} ms` : 'Waiting'}
               {latencyGood ? ' ✓' : ''}
-              {latencyMs != null && !latencyGood ? ` / ${LATENCY_TARGET_MS}ms` : ''}
+              {latencyMs != null && !latencyGood ? ` / ${LATENCY_TARGET_MS} ms` : ''}
             </span>
-            <span>LID: {langLabel} ({activeLanguage.toUpperCase()})</span>
-            <span className={cn(
+            <span title="Detected language for this session">
+              Lang: {langLabel} ({activeLanguage.toUpperCase()})
+            </span>
+            <span
+              className={cn(
               "px-2 py-0.5 rounded-full border transition-colors duration-500",
               scribeSttEnabled ? "bg-voice-success-faint text-voice-success-bright border-voice-success-border" :
               "bg-voice-frost text-voice-muted border-voice-frost-border"
-            )}>
-              STT: {scribeRealtimeEnabled ? 'SCRIBE REALTIME V2' : scribeSttEnabled ? 'BROWSER + SCRIBE' : 'BROWSER'}
+              )}
+              title="Speech-to-text path for this browser session"
+            >
+              STT: {scribeRealtimeEnabled ? 'Scribe realtime' : scribeSttEnabled ? 'Browser + Scribe' : 'Browser'}
             </span>
-            <span className={cn(
+            <span
+              className={cn(
               "px-2 py-0.5 rounded-full border transition-colors duration-500",
-              geminiEnabled ? "bg-voice-success-faint text-voice-success-bright border-voice-success-border" :
+              geminiEnabled || groqEnabled ? "bg-voice-success-faint text-voice-success-bright border-voice-success-border" :
               "bg-voice-frost text-voice-muted border-voice-frost-border"
-            )}>
-              LLM: {groqEnabled ? 'GROQ' : geminiEnabled ? 'GEMINI' : 'FALLBACK'}
+              )}
+              title={llmHint}
+            >
+              LLM: {llmLabel}
             </span>
-            <span className="px-2 py-0.5 rounded-full border bg-voice-frost text-voice-muted border-voice-frost-border uppercase">
-              {status}
+            <span
+              className="px-2 py-0.5 rounded-full border bg-voice-frost text-voice-muted border-voice-frost-border"
+              title={isActive ? 'Live session status' : 'Tap the mic below to start a test call'}
+            >
+              {statusLabel}
             </span>
           </div>
         </div>
@@ -1093,35 +1142,25 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
 
       {/* Conversation Area */}
       <div className="flex-1 p-6 overflow-y-auto space-y-6 bg-gradient-to-b from-black/20 to-transparent scroll-smooth">
-        {logs.filter(log => {
-          if (filterSender !== 'All' && log.sender !== filterSender) return false;
-          if (filterStartTime) {
-            const logTime = new Date(log.isoTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-            if (logTime < filterStartTime) return false;
-          }
-          if (filterEndTime) {
-            const logTime = new Date(log.isoTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-            if (logTime > filterEndTime) return false;
-          }
-          return true;
-        }).length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-voice-muted opacity-50">
-            <Mic className="w-16 h-16 mb-4" />
-            <p>Start the call to begin testing</p>
+        {filteredLogs.length === 0 && (
+          <div className="vfy-sandbox-empty-guide">
+            <Mic className="vfy-sandbox-empty-icon" aria-hidden />
+            <p className="vfy-sandbox-empty-title">Ready to test {activeAgent.name}</p>
+            <p className="vfy-sandbox-empty-copy">
+              Tap the microphone below to start a live call. Speak naturally — transcripts and
+              latency appear here after each turn.
+            </p>
+            <ol className="vfy-sandbox-empty-steps">
+              <li>Optional: edit the custom greeting above</li>
+              <li>Allow microphone access when prompted</li>
+              <li>Ask a question, then wait for the agent reply</li>
+            </ol>
+            <p className="vfy-sandbox-empty-hint">
+              Status chips show latency, language, STT, and LLM once the session starts.
+            </p>
           </div>
         )}
-        {logs.filter(log => {
-          if (filterSender !== 'All' && log.sender !== filterSender) return false;
-          if (filterStartTime) {
-            const logTime = new Date(log.isoTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-            if (logTime < filterStartTime) return false;
-          }
-          if (filterEndTime) {
-            const logTime = new Date(log.isoTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-            if (logTime > filterEndTime) return false;
-          }
-          return true;
-        }).map((log, i) => (
+        {filteredLogs.map((log, i) => (
           <div key={i} className={cn(
             "flex w-full animate-in slide-in-from-bottom-2 duration-300",
             log.sender === 'user' ? "justify-end" : log.sender === 'system' ? "justify-center" : "justify-start"
@@ -1169,7 +1208,13 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
             </div>
 
             <div className="flex items-center gap-8">
-              <button className="p-4 rounded-full bg-voice-frost hover:bg-voice-frost-hover text-voice-text transition-colors group" title="Settings">
+              <button
+                type="button"
+                className="p-4 rounded-full bg-voice-frost hover:bg-voice-frost-hover text-voice-text transition-colors group"
+                title="Edit session greeting"
+                aria-label="Edit session greeting"
+                onClick={focusGreetingSettings}
+              >
                 <Settings className="w-6 h-6 group-hover:rotate-45 transition-transform" />
               </button>
               
@@ -1191,8 +1236,10 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
               </button>
 
               <button 
+                type="button"
                 className="p-4 rounded-full bg-voice-frost hover:bg-voice-frost-hover text-voice-text transition-colors group" 
-                title="Clear logs"
+                title="Clear transcript"
+                aria-label="Clear transcript"
                 onClick={clearLogs}
               >
                 <RefreshCw className="w-6 h-6 group-hover:rotate-180 transition-transform" />
@@ -1222,52 +1269,42 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
       <div className="vfy-sandbox-side">
         <div className="vfy-panel">
           <div className="vfy-panel-head">
-            <h3 className="vfy-panel-title">Performance metrics</h3>
+            <h3 className="vfy-panel-title">Session latency</h3>
           </div>
           <div className="vfy-panel-body--padded" style={{ paddingTop: 0 }}>
           <div style={{ height: 240 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={[
-                  { name: 'Mon', duration: 120, success: 85, calls: 45, latency: 124 },
-                  { name: 'Tue', duration: 150, success: 88, calls: 52, latency: 118 },
-                  { name: 'Wed', duration: 180, success: 92, calls: 68, latency: 132 },
-                  { name: 'Thu', duration: 140, success: 90, calls: 48, latency: 121 },
-                  { name: 'Fri', duration: 160, success: 95, calls: 74, latency: 115 },
-                ]}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                barGap={8}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-voice-chart-grid)" vertical={false} />
-                <XAxis 
-                  dataKey="name" 
-                  stroke="var(--color-voice-chart-axis)" 
-                  fontSize={11} 
-                  tickLine={false} 
-                  axisLine={false} 
-                  dy={10}
-                />
-                <YAxis 
-                  stroke="var(--color-voice-chart-axis)" 
-                  fontSize={11} 
-                  tickLine={false} 
-                  axisLine={false} 
-                />
-                <Tooltip 
-                  content={<CustomTooltip />}
-                  cursor={{fill: 'var(--color-voice-chart-cursor)'}}
-                />
-                <Legend 
-                  verticalAlign="top" 
-                  height={36} 
-                  iconType="circle" 
-                  iconSize={8}
-                  wrapperStyle={{ fontSize: '12px', color: 'var(--color-voice-chart-tooltip)' }}
-                />
-                <Bar dataKey="duration" name="Duration (s)" fill="var(--color-voice-chart-bar-a)" radius={[4, 4, 0, 0]} barSize={12} />
-                <Bar dataKey="success" name="Success Rate (%)" fill="var(--color-voice-chart-bar-b)" radius={[4, 4, 0, 0]} barSize={12} />
-              </BarChart>
-            </ResponsiveContainer>
+            {latencySamples.length === 0 ? (
+              <div className="vfy-sandbox-chart-empty">
+                <p>No live latency samples yet.</p>
+                <p>Start a call and complete a turn — reply latency will chart here for this session only.</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={latencySamples}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-voice-chart-grid)" vertical={false} />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="var(--color-voice-chart-axis)" 
+                    fontSize={11} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    dy={10}
+                  />
+                  <YAxis 
+                    stroke="var(--color-voice-chart-axis)" 
+                    fontSize={11} 
+                    tickLine={false} 
+                    axisLine={false}
+                    unit="ms"
+                  />
+                  <Tooltip content={<LatencyTooltip />} cursor={{fill: 'var(--color-voice-chart-cursor)'}} />
+                  <Bar dataKey="latency" name="Latency (ms)" fill="var(--color-voice-chart-bar-a)" radius={[4, 4, 0, 0]} barSize={16} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
           </div>
         </div>
@@ -1279,26 +1316,26 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
           <ul className="vfy-defs">
             <li>
               <span className="vfy-defs-key">Avg response</span>
-              <span className={cn('vfy-defs-val', latencyGood && 'text-voice-success-bright')}>
-                {latencyMs != null ? `${latencyMs}ms` : '--'}
+              <span className={cn('vfy-defs-val', latencyGood && 'text-voice-success-bright')} title={latencyHint}>
+                {latencyMs != null ? `${latencyMs}ms` : 'Waiting'}
                 {latencyGood ? ' ✓' : latencyMs != null ? ` / ${LATENCY_TARGET_MS}ms` : ''}
               </span>
             </li>
             <li>
               <span className="vfy-defs-key">User turns</span>
-              <span className="vfy-defs-val">{userTurns || '--'}</span>
+              <span className="vfy-defs-val">{userTurns || '0'}</span>
             </li>
             <li>
               <span className="vfy-defs-key">Interrupt rate</span>
-              <span className="vfy-defs-val">{isActive && userTurns > 0 ? `${Math.round((interruptCount / userTurns) * 100)}%` : '--'}</span>
+              <span className="vfy-defs-val">{isActive && userTurns > 0 ? `${Math.round((interruptCount / userTurns) * 100)}%` : '—'}</span>
             </li>
             <li>
               <span className="vfy-defs-key">Voice stack</span>
-              <span className="vfy-defs-val">{isActive ? 'Server-managed' : '--'}</span>
+              <span className="vfy-defs-val" title={llmHint}>{isActive ? llmLabel : 'Not started'}</span>
             </li>
             <li>
               <span className="vfy-defs-key">Status</span>
-              <span className="vfy-defs-val">{status}</span>
+              <span className="vfy-defs-val">{statusLabel}</span>
             </li>
           </ul>
         </div>
@@ -1368,12 +1405,6 @@ const AgentsView = ({
     }
   };
 
-  const perfData: Record<number, { calls: number; success: number; latency: number }> = {
-    1: { calls: 47,  success: 97.8, latency: 380 },
-    2: { calls: 12,  success: 94.2, latency: 420 },
-    3: { calls: 103, success: 98.9, latency: 290 },
-  };
-
   const getIconColor = (type: string) => {
     switch (type) {
       case 'Healthcare':       return 'var(--d-accent)';
@@ -1383,7 +1414,7 @@ const AgentsView = ({
     }
   };
 
-  const getIconBg = (type: string) => {
+  const getIconBg = (_type: string) => {
     return 'var(--d-accent-soft)';
   };
 
@@ -1416,9 +1447,15 @@ const AgentsView = ({
     <div className="vfy-agents-page">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">Agents · {agents.length} active</p>
+          <p className="vfy-page-eyebrow">Agents · {agents.length} in workspace</p>
           <h1 className="vfy-page-title">Agents</h1>
           <p className="vfy-page-sub">Manage AI personas, voices, and triggers across your organization.</p>
+        </div>
+        <div className="vfy-page-actions">
+          <button type="button" className="vfy-btn vfy-btn-primary" onClick={onCreateAgent}>
+            <Plus size={14} />
+            Create agent
+          </button>
         </div>
       </div>
 
@@ -1438,15 +1475,14 @@ const AgentsView = ({
             {packMessage}
           </p>
         )}
-        <div className="grid gap-3 md:grid-cols-3" style={{ marginTop: 12 }}>
+        <div className="vfy-agents-packs">
           {templates.map((t) => (
-            <article key={t.packId} className="vfy-settings-list-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+            <article key={t.packId} className="vfy-agents-pack">
               <p className="vfy-settings-item-title">{t.name}</p>
               <p className="vfy-settings-item-meta">{t.blurb}</p>
               <button
                 type="button"
-                className="vfy-btn vfy-btn-primary"
-                style={{ marginTop: 10 }}
+                className="vfy-btn vfy-btn-primary vfy-agents-pack-btn"
                 disabled={packBusy || !orgId}
                 onClick={() => void installTemplate(t.packId)}
               >
@@ -1459,41 +1495,41 @@ const AgentsView = ({
 
       <div className="vfy-agents-grid">
         {agents.map(agent => {
-          const perf = perfData[agent.id] ?? { calls: 0, success: 0, latency: 0 };
           const color = getIconColor(agent.type);
-          const isOnline = agent.status === 'Active';
+          const isActive = agent.status === 'Active';
           return (
             <div key={agent.id} className="agent-card">
               <div className="ac-top">
                 <div className="ac-icon" style={{ background: getIconBg(agent.type) }}>
                   {renderIcon(agent.type, color)}
                 </div>
-                <div className="ac-status">
-                  <span className={`status-dot ${isOnline ? 'active' : 'idle'}`} />
-                  <span className="status-txt">{isOnline ? 'Online' : 'Idle'}</span>
+                <div className={`ac-status ${isActive ? 'is-active' : 'is-idle'}`}>
+                  <span className={`status-dot ${isActive ? 'active' : 'idle'}`} aria-hidden />
+                  <span className="status-txt">{isActive ? 'Active' : 'Inactive'}</span>
                 </div>
               </div>
               <p className="ac-name">{agent.name}</p>
               <p className="ac-domain">{agent.type}</p>
-              <div className="ac-stats">
+              <div className="ac-stats" aria-label="Usage metrics unavailable until this agent has traffic">
                 <div className="ac-stat">
-                  <span className="as-val">{perf.calls}</span>
+                  <span className="as-val as-val--empty">—</span>
                   <span className="as-key">calls today</span>
                 </div>
                 <div className="ac-stat">
-                  <span className="as-val">{perf.success}%</span>
+                  <span className="as-val as-val--empty">—</span>
                   <span className="as-key">success</span>
                 </div>
                 <div className="ac-stat">
-                  <span className="as-val">{perf.latency}ms</span>
+                  <span className="as-val as-val--empty">—</span>
                   <span className="as-key">avg latency</span>
                 </div>
               </div>
+              <p className="ac-stats-note">Metrics appear after Sandbox or live traffic.</p>
               <div className="ac-footer">
-                <button className="btn-sandbox" onClick={() => navigate('/dashboard/sandbox', { state: { agentId: agent.id } })}>
+                <button type="button" className="btn-sandbox" onClick={() => navigate('/dashboard/sandbox', { state: { agentId: agent.id } })}>
                   Test in Sandbox
                 </button>
-                <button className="btn-cfg" onClick={() => onEditAgent(agent)}>
+                <button type="button" className="btn-cfg" onClick={() => onEditAgent(agent)}>
                   Configure ›
                 </button>
               </div>
@@ -1502,11 +1538,14 @@ const AgentsView = ({
         })}
 
         <button type="button" onClick={onCreateAgent} className="agent-card-create">
-          <svg className="create-icon" width="40" height="40" viewBox="0 0 40 40" fill="none" strokeWidth="1.5" strokeLinecap="round">
-            <circle cx="20" cy="20" r="16" />
-            <path d="M20 13v14M13 20h14" />
-          </svg>
+          <span className="create-icon-wrap" aria-hidden>
+            <svg className="create-icon" width="28" height="28" viewBox="0 0 40 40" fill="none" strokeWidth="1.75" strokeLinecap="round">
+              <circle cx="20" cy="20" r="16" />
+              <path d="M20 13v14M13 20h14" />
+            </svg>
+          </span>
           <span className="create-text">Create new agent</span>
+          <span className="create-sub">Start blank or install a pack above</span>
         </button>
       </div>
     </div>

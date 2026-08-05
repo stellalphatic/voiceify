@@ -439,11 +439,7 @@ export default function AuthPage() {
                     </>
                   ) : (
                     <>
-                      <Link to={tabHref('signup')}>Sign up</Link>
-                      <span className="ap-dot" aria-hidden>
-                        ·
-                      </span>
-                      <Link to={tabHref('forgot')}>Forgot your password?</Link>
+                      Don&apos;t have an account? <Link to={tabHref('signup')}>Sign up</Link>
                     </>
                   )}
                 </div>

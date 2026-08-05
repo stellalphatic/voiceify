@@ -17,6 +17,7 @@ import {
   Headphones,
   ChevronDown,
   Brain,
+  ArrowRight,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -419,7 +420,8 @@ export default function DemoPage() {
           </ul>
 
           <Link to="/auth?mode=signup" className="demo-intro__cta">
-            Deploy your own agent
+            Create your own agent
+            <ArrowRight size={14} aria-hidden />
           </Link>
         </div>
 
@@ -531,6 +533,7 @@ export default function DemoPage() {
 
 
           <div ref={chatContainerRef} className="demo-chat" aria-live="polite" aria-relevant="additions">
+            <div className="demo-chat__meta">Live transcript updates here during the call</div>
 
             {messages.length === 0 ? (
 
@@ -545,7 +548,7 @@ export default function DemoPage() {
                 <p className="demo-chat__empty-title">Ready to talk to {persona.name}</p>
 
                 <p className="demo-chat__empty-sub">
-                  Tap the mic below to start. {persona.name} will greet you, then listen for your voice.
+                  Tap the mic below to start. {persona.name} will greet you, then listen for your voice and the transcript will appear here live.
                 </p>
 
                 {activePersonaId === 'restaurant' ? (
