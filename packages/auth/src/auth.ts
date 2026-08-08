@@ -165,9 +165,18 @@ export function createAuth() {
               forbidden("User not found");
             }
             if (row.status === "pending") {
-              forbidden(
-                "This workspace reviews new accounts before sign in. An admin will approve yours shortly.",
-              );
+              // Accounts created while approvals were mandatory stay "pending"
+              // forever otherwise, locking real users out of an open workspace.
+              if (autoApprove) {
+                await db
+                  .update(user)
+                  .set({ status: "approved", updatedAt: new Date() })
+                  .where(eq(user.id, sessionData.userId));
+              } else {
+                forbidden(
+                  "This workspace reviews new accounts before sign in. An admin will approve yours shortly.",
+                );
+              }
             }
             if (row.status === "rejected") {
               forbidden("Your account request was rejected.");

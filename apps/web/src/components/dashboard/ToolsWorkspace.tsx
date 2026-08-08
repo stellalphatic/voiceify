@@ -232,8 +232,8 @@ export default function ToolsWorkspace() {
           <p className="vfy-page-eyebrow">Configure · Tools</p>
           <h1 className="vfy-page-title">Tools & integrations</h1>
           <p className="vfy-page-sub">
-            One-click connectors for Google Sheets, Calendar, WhatsApp, and Email, plus developer
-            HTTP tools. Connect once, then your agents call them live in Sandbox.
+            Guided templates for Google Sheets, Calendar, WhatsApp, and Email, plus custom HTTP
+            tools. Add your endpoint and credentials once, then your agents call them live in Sandbox.
           </p>
         </div>
       </div>

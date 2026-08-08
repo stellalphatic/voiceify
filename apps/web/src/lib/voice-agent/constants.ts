@@ -13,8 +13,11 @@ export const DUPLICATE_UTTERANCE_MS = 1200;
 /** Minimum user utterance length to process. */
 export const MIN_UTTERANCE_CHARS = 2;
 
-/** Ignore mic input right after agent greeting (prevents speaker echo loops). */
-export const POST_GREETING_GRACE_MS = 1800;
+/**
+ * Ignore mic input right after the agent greeting (prevents speaker echo loops).
+ * Kept short — this is dead time where a caller who answers promptly is not heard.
+ */
+export const POST_GREETING_GRACE_MS = 600;
 
 /** Industry guidance: diarization degrades on clips under ~0.5s — wait longer before cut. */
 export const MIN_DIARIZE_CLIP_MS = 800;

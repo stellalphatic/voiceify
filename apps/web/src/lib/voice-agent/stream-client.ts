@@ -49,6 +49,13 @@ export async function consumeVoiceStream(
     buffer = lines.pop() ?? '';
 
     for (const line of lines) {
+      // Re-check per line: a whole network chunk of already-buffered audio would
+      // otherwise still be dispatched after an abort, bleeding the cancelled
+      // utterance into the next one.
+      if (signal?.aborted) {
+        await reader.cancel().catch(() => undefined);
+        throw new DOMException('Aborted', 'AbortError');
+      }
       const event = parseStreamLine(line);
       if (!event) continue;
       await onEvent(event);

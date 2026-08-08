@@ -119,11 +119,20 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateAgent = useCallback((agent: AppAgent) => {
-    setAgents((prev) => prev.map((a) => (a.id === agent.id ? { ...a, ...agent } : a)));
+    // Callers may build a fresh object and drop serverId; recover it from the
+    // stored record so the edit still reaches the API.
+    let serverId = agent.serverId;
+    setAgents((prev) =>
+      prev.map((a) => {
+        if (a.id !== agent.id) return a;
+        serverId = serverId ?? a.serverId;
+        return { ...a, ...agent, serverId };
+      }),
+    );
 
     const activeOrg = getActiveOrgId();
-    if (activeOrg && agent.serverId) {
-      void apiJson(`/api/orgs/${activeOrg}/agents/${agent.serverId}`, {
+    if (activeOrg && serverId) {
+      void apiJson(`/api/orgs/${activeOrg}/agents/${serverId}`, {
         method: "PATCH",
         body: JSON.stringify({
           name: agent.name,

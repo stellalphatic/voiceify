@@ -52,7 +52,7 @@ const AUDIENCE_PATHS = [
     audience: 'Developers',
     title: 'Build your own stack',
     description: 'Full API access, streaming voice pipeline, and a sandbox you can hit in 30 seconds.',
-    bullets: ['REST + WebSocket APIs', 'Sub-500ms streaming TTS', 'TypeScript & Python SDKs'],
+    bullets: ['REST API with streaming responses', 'Sub-500ms streaming TTS', 'Copy-paste curl examples'],
     tags: ['API-first', 'Sandbox included'],
     cta: 'View API docs',
     featured: false,
@@ -103,9 +103,9 @@ const PLATFORM_FEATURES = [
   {
     icon: Shield,
     category: 'Security',
-    title: 'Enterprise security',
-    description: 'SOC 2 Type II aligned, E2E encryption, and optional data residency controls.',
-    stat: 'SOC 2',
+    title: 'Keys stay server-side',
+    description: 'Encrypted in transit and at rest, with speech and LLM credentials never exposed to the browser.',
+    stat: 'Encrypted',
     hero: false,
   },
   {
@@ -119,9 +119,9 @@ const PLATFORM_FEATURES = [
   {
     icon: Code2,
     category: 'Developers',
-    title: 'Full API surface',
-    description: 'REST, WebSocket, webhooks, and SDKs for Node and Python — ship in your stack.',
-    stat: 'REST + WS',
+    title: 'Streaming REST API',
+    description: 'Drive the whole voice pipeline over HTTP with streamed audio — ship it in any stack.',
+    stat: 'REST',
     hero: false,
   },
 ] as const;
@@ -212,7 +212,7 @@ const FAQ_ITEMS = [
     id: 'security',
     topic: 'security',
     q: 'How secure is my data?',
-    a: 'SOC 2 Type II aligned infrastructure with end-to-end encryption in transit and at rest. Optional PII redaction keeps transcripts clean before they reach your CRM or logs.',
+    a: 'Data is encrypted in transit and at rest, every record is scoped to your workspace, and speech and LLM keys stay on our servers rather than in the browser. We hold no security certifications yet — the security page lists exactly what ships today and what is still planned.',
   },
 ] as const;
 
@@ -289,8 +289,8 @@ const PRICING_PLANS = [
     price: 'Custom',
     period: ' pricing',
     sub: 'Volume discounts + SLA',
-    tagline: 'For orgs with compliance & scale needs.',
-    features: ['99.99% uptime SLA', 'SSO / SAML', 'VPC deployment', 'Dedicated manager'],
+    tagline: 'For orgs with volume and support needs.',
+    features: ['Volume discounts', 'Agreed support response times', 'Security review', 'Dedicated manager'],
     cta: 'Talk to sales',
     href: '/contact',
     featured: false,

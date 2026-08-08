@@ -6,12 +6,34 @@ function pickMimeType(): string {
 
 /** STT/diarization pipelines expect mono 16 kHz — industry standard for speech models. */
 const MIC_CONSTRAINTS: MediaTrackConstraints = {
+  // Echo cancellation is required, not preferred: without it the mic picks up
+  // agent TTS from the speakers and barges in on the agent mid-sentence.
+  echoCancellation: { exact: true },
+  noiseSuppression: { ideal: true },
+  autoGainControl: { ideal: true },
+  channelCount: { ideal: 1 },
+  sampleRate: { ideal: 16_000 },
+};
+
+/** Retried when a device cannot satisfy `exact` echo cancellation. */
+const MIC_CONSTRAINTS_FALLBACK: MediaTrackConstraints = {
   echoCancellation: { ideal: true },
   noiseSuppression: { ideal: true },
   autoGainControl: { ideal: true },
   channelCount: { ideal: 1 },
   sampleRate: { ideal: 16_000 },
 };
+
+export async function requestMicStream(): Promise<MediaStream> {
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: MIC_CONSTRAINTS });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'OverconstrainedError') {
+      return navigator.mediaDevices.getUserMedia({ audio: MIC_CONSTRAINTS_FALLBACK });
+    }
+    throw error;
+  }
+}
 
 const MIN_BLOB_BYTES = 1200;
 
@@ -31,9 +53,7 @@ export class UtteranceRecorder {
     }
     if (this.stream?.active) return this.stream;
 
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: MIC_CONSTRAINTS,
-    });
+    this.stream = await requestMicStream();
     this.ownsStream = true;
     return this.stream;
   }

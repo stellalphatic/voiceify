@@ -6,6 +6,7 @@ export * from "./restaurant.js";
 export * from "./receptionist.js";
 export * from "./appointments.js";
 export * from "./knowledge.js";
+export * from "./contact.js";
 export * from "./conversations.js";
 export * from "./usage.js";
 export * from "./webhooks.js";

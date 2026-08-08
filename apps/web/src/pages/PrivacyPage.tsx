@@ -47,8 +47,9 @@ const SECTIONS: LegalSection[] = [
       <>
         <p>
           We implement appropriate technical and organisational measures to protect your personal information,
-          including encryption in transit (TLS 1.3) and at rest (AES-256), access controls, audit logging, and
-          regular penetration testing.
+          including encryption in transit and at rest, role-based access controls, and workspace-level data
+          isolation. Independent penetration testing and immutable audit logging are on our roadmap and are
+          not in place today.
         </p>
         <p>
           For more details on our security practices, see our <Link to="/security">Security page</Link>.
@@ -63,7 +64,7 @@ const SECTIONS: LegalSection[] = [
       <>
         <p>
           We share information only with sub-processors strictly required to deliver the service (cloud hosting,
-          payment processing, email delivery, analytics). All sub-processors are bound by GDPR-compliant DPAs.
+          payment processing, email delivery, analytics, and speech and language model providers).
         </p>
         <p>
           A current list of sub-processors is available on request from <Link to="/contact">our contact page</Link>.

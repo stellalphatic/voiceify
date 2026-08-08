@@ -3,7 +3,8 @@
  * Modern split layout: contact details + form with success state.
  */
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, Check, Loader2 } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, Check, Loader2, AlertCircle } from 'lucide-react';
+import { apiJson } from '../lib/auth/client';
 
 const CONTACT_BLOCKS = [
   {
@@ -31,18 +32,28 @@ const CONTACT_BLOCKS = [
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({ name: '', email: '', company: '', message: '' });
+  const [website, setWebsite] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (status !== 'idle') return;
+
     setStatus('sending');
-    setTimeout(() => {
+    setError(null);
+    try {
+      await apiJson('/api/contact', {
+        method: 'POST',
+        body: JSON.stringify({ ...formData, website }),
+      });
       setStatus('sent');
-      setTimeout(() => {
-        setStatus('idle');
-        setFormData({ name: '', email: '', company: '', message: '' });
-      }, 3000);
-    }, 800);
+      setFormData({ name: '', email: '', company: '', message: '' });
+      window.setTimeout(() => setStatus('idle'), 4000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send your message.');
+      setStatus('idle');
+    }
   };
 
   return (
@@ -149,6 +160,23 @@ export default function ContactPage() {
                 placeholder="Tell us about your project, use case, or question..."
               />
             </div>
+            {/* Honeypot — hidden from humans, filled by bots. */}
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              className="hidden"
+            />
+            {error && (
+              <p role="alert" className="flex items-center gap-2 text-sm text-voice-danger">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {error}
+              </p>
+            )}
             <button
               type="submit"
               disabled={status !== 'idle'}
@@ -158,8 +186,10 @@ export default function ContactPage() {
               {status === 'sent'    && <><Check className="w-4 h-4" /> Message sent!</>}
               {status === 'idle'    && <>Send message <Send className="w-4 h-4" /></>}
             </button>
-            <p className="text-xs text-voice-muted text-center">
-              We typically reply within 1 business day.
+            <p aria-live="polite" className="text-xs text-voice-muted text-center">
+              {status === 'sent'
+                ? 'Thanks — your message is with our team. We typically reply within 1 business day.'
+                : 'We typically reply within 1 business day.'}
             </p>
           </form>
         </div>

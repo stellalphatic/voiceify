@@ -21,7 +21,7 @@ const VALUES = [
   {
     Icon: Shield,
     title: 'Trust over hype',
-    desc: 'SOC 2 audited, transparent pricing, no vendor lock-in. Your data and your customers come first.',
+    desc: 'Transparent pricing, no vendor lock-in, and a security page that says plainly what we have not built yet.',
   },
   {
     Icon: Heart,
@@ -31,10 +31,10 @@ const VALUES = [
 ];
 
 const STATS = [
-  { value: '10M+',     label: 'Minutes processed' },
-  { value: '99.9%',    label: 'Uptime SLA' },
-  { value: '< 500ms',  label: 'Average latency' },
+  { value: '< 500ms',  label: 'Target response latency' },
   { value: '40+',      label: 'Languages supported' },
+  { value: '3',        label: 'Ready-made agent packs' },
+  { value: '100', label: 'Free minutes to start' },
 ];
 
 export default function AboutPage() {

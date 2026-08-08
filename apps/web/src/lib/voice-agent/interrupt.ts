@@ -1,8 +1,11 @@
 /** Minimum interim/final length before treating speech as a barge-in. */
 export const INTERRUPT_MIN_CHARS = 2;
 
-/** Cooldown between consecutive barge-in triggers (ms). */
-export const BARGE_IN_COOLDOWN_MS = 100;
+/**
+ * Cooldown between consecutive barge-in triggers (ms). Long enough that a burst
+ * of speaker echo cannot chop the agent into repeated start/stop fragments.
+ */
+export const BARGE_IN_COOLDOWN_MS = 700;
 
 /** After VAD barge-in, wait briefly for STT final before forcing turn processing. */
 export const BARGE_IN_FINAL_WAIT_MS = 1500;
@@ -21,7 +24,13 @@ export function isInterruptKeyword(text: string): boolean {
   return first.length >= 2 && INTERRUPT_KEYWORD.test(first);
 }
 
-/** Reject mic input that likely echoes agent TTS from speakers. */
+/**
+ * Reject mic input that likely echoes agent TTS from speakers.
+ *
+ * Verbatim substrings are near-certain echo. Loose word overlap is deliberately
+ * strict, because callers naturally answer using the agent's own nouns
+ * ("a table for four") and those replies must not be discarded.
+ */
 export function isLikelyEcho(userText: string, agentText: string): boolean {
   const u = normalizeSpeech(userText);
   const a = normalizeSpeech(agentText);
@@ -30,10 +39,10 @@ export function isLikelyEcho(userText: string, agentText: string): boolean {
   if (a.includes(u) && u.length <= a.length * 0.6) return true;
 
   const words = u.split(/\s+/).filter((word) => word.length > 2);
-  if (words.length < 2) return false;
+  if (words.length < 4) return false;
 
   const overlap = words.filter((word) => a.includes(word)).length;
-  return overlap / words.length >= 0.55;
+  return overlap / words.length >= 0.8;
 }
 
 /** Lenient check for intentional user interrupts while the agent is talking. */

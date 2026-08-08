@@ -14,8 +14,15 @@ export { PCM_SAMPLE_RATE };
 
 /** Batch ~90ms before scheduling — fewer seams = less boundary noise. */
 const MIN_SCHEDULE_SAMPLES = Math.floor(PCM_SAMPLE_RATE * 0.09);
-const FIRST_FLUSH_SAMPLES = Math.floor(PCM_SAMPLE_RATE * 0.05);
+const FIRST_FLUSH_SAMPLES = Math.floor(PCM_SAMPLE_RATE * 0.12);
 const OUTPUT_GAIN = 0.9;
+
+/**
+ * Lead time given to the first buffer of a stream. Without it the playhead sits
+ * exactly on `currentTime`, so any network jitter starves the graph and the
+ * agent audibly drops out mid-sentence.
+ */
+const PREROLL_SEC = 0.18;
 
 export class PcmStreamPlayer {
   private ctx: AudioContext | null = null;
@@ -83,7 +90,16 @@ export class PcmStreamPlayer {
     const ctx = this.ctx;
     const output = this.output;
     if (!ctx || !output || this.stopped || samples.length === 0) return;
-    if (!isAudibleChunk(samples)) return;
+
+    const now = ctx.currentTime;
+    const isFirst = this.nextTime === 0;
+
+    // Silent chunks are not scheduled, but the playhead must still advance or
+    // the pause they represent collapses and later audio overlaps.
+    if (!isAudibleChunk(samples)) {
+      if (!isFirst) this.nextTime += samples.length / PCM_SAMPLE_RATE;
+      return;
+    }
 
     const polished = polishPcmChunk(samples);
     const buffer = ctx.createBuffer(1, polished.length, PCM_SAMPLE_RATE);
@@ -93,10 +109,14 @@ export class PcmStreamPlayer {
     source.buffer = buffer;
     source.connect(output);
 
-    const now = ctx.currentTime;
-    if (this.nextTime < now) this.nextTime = now;
+    if (isFirst) {
+      this.nextTime = now + PREROLL_SEC;
+    } else if (this.nextTime < now) {
+      // Underrun: rebuild a smaller cushion instead of clamping flat to `now`,
+      // which guaranteed the next chunk would starve again.
+      this.nextTime = now + PREROLL_SEC / 2;
+    }
 
-    const isFirst = this.nextTime <= now + 0.02;
     source.start(this.nextTime);
     this.nextTime += buffer.duration;
 

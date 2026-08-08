@@ -1,6 +1,7 @@
 export { auth, createAuth, type Auth, type Session } from "./auth.js";
 export {
   cleanEnvValue,
+  contactMessageEmail,
   getResendConfig,
   isEmailConfigured,
   passwordResetEmail,

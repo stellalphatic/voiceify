@@ -25,7 +25,11 @@ import { requireSession } from "../middleware/session.js";
 
 export const automationsRoutes = new Hono<AppEnv>();
 
-automationsRoutes.use("*", requireSession);
+// Scoped to this router's own paths. A bare "*" here mounts as "/api/*" and
+// forced a session onto every sibling router at /api, including public ones.
+automationsRoutes.use("/automations/*", requireSession);
+automationsRoutes.use("/orgs/:orgId/automations", requireSession);
+automationsRoutes.use("/orgs/:orgId/automations/*", requireSession);
 
 automationsRoutes.get("/automations/packs", async (c) => {
   return c.json({ packs: listPacks() });

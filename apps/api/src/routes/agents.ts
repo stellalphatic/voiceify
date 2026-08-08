@@ -216,7 +216,19 @@ agentsRoutes.patch(
       })
       .returning();
 
-    return c.json({ agent, version });
+    // Runtime reads the deployed version first, so an already-live agent would
+    // keep serving its old voice/greeting until this pointer moves forward.
+    let deployed = agent;
+    if (version && existing.deployedVersionId) {
+      const [redeployed] = await db
+        .update(agents)
+        .set({ deployedVersionId: version.id, updatedAt: new Date() })
+        .where(eq(agents.id, agentId))
+        .returning();
+      if (redeployed) deployed = redeployed;
+    }
+
+    return c.json({ agent: deployed, version });
   },
 );
 

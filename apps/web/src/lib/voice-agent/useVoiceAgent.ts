@@ -384,10 +384,12 @@ export function useVoiceAgent(
     return '';
   }, []);
 
+  // Only the utterance currently coming out of the speakers can echo. Matching
+  // against older turns rejects legitimate replies that reuse the agent's words.
   const getRecentAgentText = useCallback((): string => {
     return historyRef.current
       .filter((line) => line.role === 'assistant')
-      .slice(-2)
+      .slice(-1)
       .map((line) => line.text)
       .join(' ');
   }, []);
@@ -441,7 +443,10 @@ export function useVoiceAgent(
   const getVadOptions = useCallback((): VoiceActivityOptions => {
     const inGrace = Date.now() < postGreetingGraceUntilRef.current;
     if (speakingRef.current || thinkingRef.current) {
-      return { threshold: 0.026, framesRequired: 2 };
+      // Speakers are live, so residual echo survives imperfect AEC. Demand a
+      // loud, sustained signal (~250ms) before cutting the agent off, otherwise
+      // the agent's own voice barges in on itself.
+      return { threshold: 0.12, framesRequired: 15 };
     }
     return inGrace
       ? { threshold: 0.05, framesRequired: 5 }
@@ -790,7 +795,10 @@ export function useVoiceAgent(
         await consumeVoiceStream(
           res,
           async (event) => {
-            if (forTurnId !== turnIdRef.current) return;
+            // Turn id alone is not enough: cancelling the hold happens within
+            // the same turn, so without the abort check the hold phrase keeps
+            // appending into the shared player and cuts across the real reply.
+            if (forTurnId !== turnIdRef.current || holdController.signal.aborted) return;
             if (event.type === 'audio') {
               speakingRef.current = true;
               syncVadMonitor();
@@ -799,7 +807,7 @@ export function useVoiceAgent(
           },
           holdController.signal,
         );
-        if (forTurnId === turnIdRef.current) {
+        if (forTurnId === turnIdRef.current && !holdController.signal.aborted) {
           await player.drain().catch(() => undefined);
         }
       } catch {
@@ -1016,7 +1024,10 @@ export function useVoiceAgent(
     if (!fallback || fallback.length < MIN_UTTERANCE_CHARS || !activeRef.current) return;
     if (isLikelySttHallucination(fallback)) return;
 
-    pendingUtteranceRef.current = fallback;
+    // Browsers emit several final results per sentence. Accumulate them —
+    // overwriting kept only the last fragment and silently dropped the rest.
+    const pending = pendingUtteranceRef.current;
+    pendingUtteranceRef.current = pending ? `${pending} ${fallback}` : fallback;
     if (utteranceDebounceRef.current != null) {
       window.clearTimeout(utteranceDebounceRef.current);
     }
@@ -1035,6 +1046,10 @@ export function useVoiceAgent(
       }
       if (Date.now() < postGreetingGraceUntilRef.current && !bargeInAwaitingFinalRef.current) return;
       if (speakingRef.current || thinkingRef.current) return;
+      if (!isInterruptKeyword(text) && isLikelyEcho(text, getRecentAgentText())) {
+        clearBargeInAwaitingFinal();
+        return;
+      }
 
       if (
         lastFinalRef.current.text === text &&
@@ -1060,7 +1075,7 @@ export function useVoiceAgent(
         }
       })();
     }, UTTERANCE_DEBOUNCE_MS);
-  }, [clearBargeInAwaitingFinal]);
+  }, [clearBargeInAwaitingFinal, getRecentAgentText]);
 
   const submitUserSpeech = useCallback(
     (final: string) => {
@@ -1076,11 +1091,11 @@ export function useVoiceAgent(
         if (speakingRef.current || thinkingRef.current) return;
       }
       if (Date.now() < postGreetingGraceUntilRef.current && !bargeInAwaitingFinalRef.current) return;
-      if (
-        !bargeInAwaitingFinalRef.current &&
-        !isInterruptKeyword(fallback) &&
-        isLikelyEcho(fallback, agentText)
-      ) {
+      // Always echo-filter, including right after a barge-in. Exempting that
+      // window let the agent's own transcript be submitted as a user turn,
+      // which restarted the agent and produced an endless speak/mute loop.
+      if (!isInterruptKeyword(fallback) && isLikelyEcho(fallback, agentText)) {
+        clearBargeInAwaitingFinal();
         return;
       }
       if (processingRef.current) return;
@@ -1394,10 +1409,12 @@ export function useVoiceAgent(
       setMessages([agentLine]);
       setActiveSpeakers(['agent']);
 
-      postGreetingGraceUntilRef.current = 0;
-      await speakPipeline(greeting);
+      // Warm the recognizer up front. Starting it only after the greeting meant
+      // anyone who answered during or immediately after it was never heard.
       postGreetingGraceUntilRef.current = Date.now() + POST_GREETING_GRACE_MS;
       maintainRecognitionLoop();
+      await speakPipeline(greeting);
+      postGreetingGraceUntilRef.current = Date.now() + POST_GREETING_GRACE_MS;
       if (activeRef.current && !speakingRef.current && !thinkingRef.current) {
         setStatus('listening');
       }

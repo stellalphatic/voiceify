@@ -125,7 +125,7 @@ export default function IntegrationsWorkspace() {
           <p className="vfy-page-eyebrow">Manage · Integrations</p>
           <h1 className="vfy-page-title">Integrations</h1>
           <p className="vfy-page-sub">
-            Connect Google Sheets, WhatsApp, Calendar, and Email in one click. Platform voice
+            Step-by-step setup for Google Sheets, WhatsApp, Calendar, and Email. Platform voice
             providers stay on the server, never in the browser.
           </p>
         </div>
@@ -140,8 +140,8 @@ export default function IntegrationsWorkspace() {
       <section className="vfy-settings-card vfy-connector-hero">
         <h3 className="vfy-settings-card-title">Business connectors</h3>
         <p className="vfy-settings-help">
-          Built for non-technical teams. Log bookings to Sheets, ping WhatsApp, create Calendar
-          events, and email yourself when a lead comes in.
+          Log bookings to Sheets, ping WhatsApp, create Calendar events, and email yourself when a
+          lead comes in. Each one walks you through creating the endpoint on your side first.
         </p>
         <ConnectorGrid
           connectors={SMB_CONNECTORS}

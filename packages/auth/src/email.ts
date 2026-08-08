@@ -7,6 +7,8 @@ type SendEmailInput = {
   subject: string;
   html: string;
   text: string;
+  /** Lets staff reply straight to the person who submitted a form. */
+  replyTo?: string;
 };
 
 /** Strip wrapping quotes that break keys when .env uses RESEND_API_KEY="re_..." badly. */
@@ -66,6 +68,7 @@ export async function sendTransactionalEmail(
         subject: input.subject,
         html: input.html,
         text: input.text,
+        ...(input.replyTo ? { reply_to: [input.replyTo] } : {}),
       }),
     });
 
@@ -129,6 +132,29 @@ export function pendingSignupAdminEmail(params: {
       <p>New Voiceify signup is waiting for approval.</p>
       <p><strong>${escapeHtml(params.userName)}</strong><br/>${escapeHtml(params.userEmail)}</p>
       <p><a href="${escapeAttr(params.adminUrl)}">Open admin portal</a></p>
+    </div>
+  `;
+  return { subject, html, text };
+}
+
+export function contactMessageEmail(params: {
+  name: string;
+  email: string;
+  company?: string;
+  message: string;
+}): { subject: string; html: string; text: string } {
+  const company = params.company?.trim() || "—";
+  const subject = `Voiceify contact: ${params.name}`;
+  const text = `New contact form submission\nName: ${params.name}\nEmail: ${params.email}\nCompany: ${company}\n\n${params.message}\n`;
+  const html = `
+    <div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111">
+      <p>New Voiceify contact form submission.</p>
+      <p>
+        <strong>${escapeHtml(params.name)}</strong><br/>
+        ${escapeHtml(params.email)}<br/>
+        ${escapeHtml(company)}
+      </p>
+      <p style="white-space:pre-wrap">${escapeHtml(params.message)}</p>
     </div>
   `;
   return { subject, html, text };

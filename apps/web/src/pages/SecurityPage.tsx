@@ -4,48 +4,59 @@
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Key, FileText, Eye, Server, ArrowRight, Check } from 'lucide-react';
+import { Shield, Lock, Key, FileText, Eye, Server, ArrowRight, Check, Clock } from 'lucide-react';
 
+/** Shipped controls only. Anything not yet built belongs in ROADMAP below. */
 const COMPLIANCE = [
   {
-    Icon:  Shield,
-    title: 'SOC 2 Type II',
-    desc:  'Independently audited annually for security, availability, and confidentiality.',
-  },
-  {
     Icon:  Lock,
-    title: 'End-to-end encryption',
-    desc:  'TLS 1.3 in transit · AES-256 at rest. Keys rotated automatically every 90 days.',
+    title: 'Encrypted in transit and at rest',
+    desc:  'TLS for every request, AES-256 for stored data and recordings.',
   },
   {
     Icon:  Key,
-    title: 'RBAC + SSO',
-    desc:  'Role-based access control with SAML SSO support for enterprise teams.',
-  },
-  {
-    Icon:  FileText,
-    title: 'GDPR + CCPA ready',
-    desc:  'Data residency options, right-to-delete tooling, and DPA templates available on request.',
-  },
-  {
-    Icon:  Eye,
-    title: 'Continuous monitoring',
-    desc:  '24/7 SIEM, anomaly detection, and DDoS protection at the edge.',
+    title: 'Role-based access control',
+    desc:  'Owner, admin, and member roles enforced on every workspace API route.',
   },
   {
     Icon:  Server,
-    title: 'Isolated environments',
-    desc:  'Multi-tenant by default · single-tenant VPC and on-premise options for enterprise.',
+    title: 'Server-side provider keys',
+    desc:  'Speech and LLM credentials stay on our servers and are never exposed to the browser.',
+  },
+  {
+    Icon:  Shield,
+    title: 'Abuse and SSRF protection',
+    desc:  'Rate limiting on public endpoints, and outbound HTTP tools blocked from internal networks.',
+  },
+  {
+    Icon:  FileText,
+    title: 'Data export on demand',
+    desc:  'Download a machine-readable snapshot of your workspace data at any time.',
+  },
+  {
+    Icon:  Eye,
+    title: 'Tenant isolation',
+    desc:  'Every record is scoped to your organization and checked on each request.',
   },
 ];
 
 const PRACTICES = [
-  'Penetration tests run twice a year by independent auditors.',
-  'Annual security training for every employee, refresher quarterly.',
-  'Strict least-privilege access — engineers cannot read customer data without explicit, audited approval.',
-  'Bug bounty program with public disclosure timeline.',
-  'Incident response runbooks and customer notification within 24h of confirmed incidents.',
-  'PII redaction available at the transcript layer for sensitive deployments.',
+  'Provider API keys are held server-side and never shipped to the client.',
+  'Outbound tool requests are blocked from reaching internal or private network ranges.',
+  'Public endpoints are rate limited per IP.',
+  'Incident response runbooks are maintained in our operations documentation.',
+  'You can export or delete your workspace data from the dashboard.',
+];
+
+/** Named separately and explicitly so nothing here reads as already certified. */
+const ROADMAP = [
+  'SOC 2 Type II — control programme not yet started; we hold no report today.',
+  'HIPAA — no BAA available yet.',
+  'GDPR tooling — export ships today; automated erasure SLAs and a DPA register are planned.',
+  'SSO (SAML / OIDC) — planned, not available.',
+  'VPC and on-premise deployment — planned, not available.',
+  'Third-party penetration test and immutable audit log — planned.',
+  'Telephony (PSTN / SIP) — not supported; Voiceify runs in the browser today.',
 ];
 
 export default function SecurityPage() {
@@ -73,11 +84,11 @@ export default function SecurityPage() {
             Security
           </span>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-5 leading-[1.05] tracking-tight">
-            Security is the product.
+            What we protect, and what we haven&apos;t built yet.
           </h1>
           <p className="text-lg text-voice-muted max-w-2xl mx-auto leading-relaxed">
-            Voiceify is built with enterprise-grade controls from day one — because handling voice means handling
-            some of the most sensitive data your customers will ever share.
+            Voice is some of the most sensitive data your customers will ever share, so we would rather
+            be precise than impressive. Below is exactly what ships today and exactly what is still on the roadmap.
           </p>
         </div>
       </div>
@@ -104,8 +115,8 @@ export default function SecurityPage() {
       </div>
 
       {/* ── Practices list ── */}
-      <div className="max-w-3xl mx-auto px-6 mb-20">
-        <h2 className="text-2xl sm:text-3xl font-bold mb-8 tracking-tight">How we operate</h2>
+      <div className="max-w-3xl mx-auto px-6 mb-16">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-8 tracking-tight">How we operate today</h2>
         <ul className="space-y-3.5">
           {PRACTICES.map((p, i) => (
             <li key={i} className="flex items-start gap-3 text-base text-voice-muted leading-relaxed">
@@ -124,15 +135,35 @@ export default function SecurityPage() {
         </ul>
       </div>
 
+      {/* ── Roadmap: stated plainly so nothing above can be read as certified ── */}
+      <div className="max-w-3xl mx-auto px-6 mb-20">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight">Not available yet</h2>
+        <p className="text-voice-muted mb-8 leading-relaxed">
+          We hold no security certifications today. If your procurement process requires any of the
+          following, we are not a fit yet — and we would rather tell you now.
+        </p>
+        <ul className="space-y-3.5">
+          {ROADMAP.map((item) => (
+            <li key={item} className="flex items-start gap-3 text-base text-voice-muted leading-relaxed">
+              <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 border border-voice-frost-border bg-voice-surface">
+                <Clock className="w-3.5 h-3.5" aria-hidden />
+              </div>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       {/* ── CTA ── */}
       <div className="max-w-3xl mx-auto px-6">
         <div className="rounded-3xl border border-voice-frost-border p-8 md:p-10 text-center"
              style={{
                background: 'linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 5%, var(--color-bg-secondary)) 0%, var(--color-bg-secondary) 100%)',
              }}>
-          <h2 className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight">Need a SOC 2 report or DPA?</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight">Questions about our security posture?</h2>
           <p className="text-voice-muted mb-6 leading-relaxed">
-            Available on request for prospective and existing customers under NDA.
+            We are happy to walk through our architecture, our data handling, and where a control you
+            need sits on the roadmap.
           </p>
           <Link to="/contact" className="btn-primary-lg inline-flex items-center gap-2">
             Talk to security <ArrowRight className="w-4 h-4" />

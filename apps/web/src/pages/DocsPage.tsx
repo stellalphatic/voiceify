@@ -254,7 +254,8 @@ export default function DocsPage() {
               server
             </li>
             <li>
-              <strong>Website embed</strong> — public <code>vw_</code> tokens + <code>/widget.js</code>
+              <strong>Website embed</strong> — public <code>vw_</code> tokens + <code>/widget.js</code>{' '}
+              (preview: session bootstrap only, no in-widget voice yet)
             </li>
             <li>
               <strong>Knowledge</strong> — upload docs that inject into live turns
@@ -303,7 +304,13 @@ x-voiceify-key: vfk_YOUR_KEY`}
           <p className="docs-section__label">
             <Zap size={14} /> Website embed
           </p>
-          <h2>Put an agent on your site</h2>
+          <h2>Bootstrap an agent session on your site</h2>
+          <Callout kind="info">
+            <strong>Status: preview.</strong> The embed script mounts a panel, authenticates your
+            public token, and displays agent state. It does not yet capture microphone audio or hold
+            a conversation — for a live voice turn, call the server-side turn endpoint below or use
+            the dashboard Sandbox.
+          </Callout>
           <p>
             Generate an embed token in <Link to="/dashboard/api-keys">API keys → Embed widget</Link>,
             then drop the snippet on any page:
@@ -330,8 +337,9 @@ x-voiceify-key: vfk_YOUR_KEY`}
             ]}
           />
           <Callout kind="tip">
-            For full server control, prefer the <code>vfk_</code> API key +{' '}
-            <code>/api/voice/:orgId/agents/:agentId/turn</code> endpoint instead of the public widget.
+            To actually run a conversation today, use the <code>vfk_</code> API key with{' '}
+            <code>/api/voice/:orgId/agents/:agentId/turn</code> from your own backend. That endpoint
+            powers the dashboard Sandbox and is the supported production path.
           </Callout>
         </section>
 

@@ -1,7 +1,19 @@
-import type { HttpToolDefinition } from "@voiceify/tools";
 import { z } from "zod";
 
 export { executePackTool, type PackToolResult } from "./execute.js";
+
+/**
+ * Pack tools run in-process against Postgres via `executePackTool` — they are
+ * not HTTP calls, so they carry no URL or host allowlist. Earlier revisions
+ * reused the HTTP tool shape and filled it with placeholder hosts, which made
+ * installed packs look like they pointed at an unreachable third party.
+ */
+export interface PackToolDefinition {
+  name: string;
+  description: string;
+  /** Storage the tool reads and writes, surfaced in the UI. */
+  writesTo: string;
+}
 
 export const packIdSchema = z.enum(["restaurant", "receptionist", "appointments"]);
 export type PackId = z.infer<typeof packIdSchema>;
@@ -22,11 +34,9 @@ export interface AutomationPack {
   name: string;
   description: string;
   agents: PackAgentDefinition[];
-  tools: HttpToolDefinition[];
+  tools: PackToolDefinition[];
   checklist: string[];
 }
-
-const PLACEHOLDER_HOST = "https://hooks.example.invalid";
 
 export const RESTAURANT_PACK: AutomationPack = {
   id: "restaurant",
@@ -48,24 +58,16 @@ export const RESTAURANT_PACK: AutomationPack = {
     {
       name: "create_reservation",
       description: "Create a restaurant reservation",
-      method: "POST",
-      url: `${PLACEHOLDER_HOST}/restaurant/reservations`,
-      headers: {},
-      timeoutMs: 8000,
-      allowHosts: ["hooks.example.invalid"],
+      writesTo: "Reservations table",
     },
     {
       name: "check_availability",
       description: "Check table availability for a party size and time",
-      method: "POST",
-      url: `${PLACEHOLDER_HOST}/restaurant/availability`,
-      headers: {},
-      timeoutMs: 8000,
-      allowHosts: ["hooks.example.invalid"],
+      writesTo: "Reservations table",
     },
   ],
   checklist: [
-    "Connect your reservation webhook URL",
+    "Review the seeded menu items",
     "Confirm menu FAQ content",
     "Test a booking in the sandbox",
   ],
@@ -91,20 +93,12 @@ export const RECEPTIONIST_PACK: AutomationPack = {
     {
       name: "create_intake",
       description: "Capture a new caller intake record",
-      method: "POST",
-      url: `${PLACEHOLDER_HOST}/receptionist/intake`,
-      headers: {},
-      timeoutMs: 8000,
-      allowHosts: ["hooks.example.invalid"],
+      writesTo: "Intake messages table",
     },
     {
       name: "route_to_department",
       description: "Route the caller to a department queue",
-      method: "POST",
-      url: `${PLACEHOLDER_HOST}/receptionist/route`,
-      headers: {},
-      timeoutMs: 8000,
-      allowHosts: ["hooks.example.invalid"],
+      writesTo: "Departments table",
     },
   ],
   checklist: [
@@ -134,34 +128,22 @@ export const APPOINTMENTS_PACK: AutomationPack = {
     {
       name: "book_appointment",
       description: "Book a new appointment slot",
-      method: "POST",
-      url: `${PLACEHOLDER_HOST}/appointments/book`,
-      headers: {},
-      timeoutMs: 8000,
-      allowHosts: ["hooks.example.invalid"],
+      writesTo: "Appointments table",
     },
     {
       name: "reschedule_appointment",
       description: "Move an existing appointment to a new time",
-      method: "POST",
-      url: `${PLACEHOLDER_HOST}/appointments/reschedule`,
-      headers: {},
-      timeoutMs: 8000,
-      allowHosts: ["hooks.example.invalid"],
+      writesTo: "Appointments table",
     },
     {
       name: "cancel_appointment",
       description: "Cancel an existing appointment",
-      method: "POST",
-      url: `${PLACEHOLDER_HOST}/appointments/cancel`,
-      headers: {},
-      timeoutMs: 8000,
-      allowHosts: ["hooks.example.invalid"],
+      writesTo: "Appointments table",
     },
   ],
   checklist: [
-    "Connect calendar / booking API credentials",
     "Confirm available providers and services",
+    "Add an external calendar sync tool if you need one",
     "Test book + cancel in the sandbox",
   ],
 };

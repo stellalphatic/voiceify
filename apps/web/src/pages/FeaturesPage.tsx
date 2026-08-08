@@ -86,7 +86,7 @@ const steps = [
 const benefits = [
   { icon: <Zap className="w-5 h-5" />,      label: 'Sub-500ms total latency',    sub: 'End to end, including network hop' },
   { icon: <Languages className="w-5 h-5" />, label: 'English + Urdu + code-mix',   sub: 'Detect & respond in the same call' },
-  { icon: <Shield className="w-5 h-5" />,    label: 'Encrypted & compliant',      sub: 'TLS 1.3, AES-256, GDPR-ready' },
+  { icon: <Shield className="w-5 h-5" />,    label: 'Encrypted end to end in transit', sub: 'Provider keys stay on our servers' },
   { icon: <Plug className="w-5 h-5" />,      label: 'Connectors for your workflow', sub: 'Sheets, Calendar, webhooks, and custom HTTP tools' },
 ];
 
@@ -219,13 +219,14 @@ export default function FeaturesPage() {
                 Plug into your existing stack
               </h2>
               <p className="text-base text-voice-muted leading-relaxed mb-6">
-                Connect Voiceify to the tools you already use. REST APIs, custom HTTP tools, webhooks, and workspace-ready connectors help teams go live without rebuilding their stack.
+                Voiceify talks to your stack over HTTP. We ship guided templates for the destinations
+                small teams use most — you supply the endpoint and credentials, and we handle the call.
               </p>
               <ul className="space-y-2.5 mb-7">
                 {[
-                  'Google Sheets lead logging',
-                  'Google Calendar event creation',
-                  'WhatsApp Business follow-ups',
+                  'Google Sheets lead logging (via your Apps Script webhook)',
+                  'Google Calendar event creation (via your Apps Script webhook)',
+                  'WhatsApp Business follow-ups (via your Meta Cloud API app)',
                   'Slack and generic webhook notifications',
                   'Custom HTTP tools and MCP bridge setup',
                 ].map(item => (
@@ -260,21 +261,25 @@ export default function FeaturesPage() {
                   <div key={i} style={{ width: 11, height: 11, borderRadius: '50%', background: c }} />
                 ))}
               </div>
+              <p className="m-0" style={{ color: '#555B63' }}>{'# Stream a full voice turn over HTTP'}</p>
               <p className="m-0 text-voice-muted">
-                <span style={{ color: '#3D8EF0' }}>const</span>{' '}
-                <span className="text-voice-text">agent</span>{' = '}
-                <span style={{ color: '#3D8EF0' }}>new</span>{' '}
-                VoiceAgent{'({'}
+                <span style={{ color: '#3D8EF0' }}>curl</span> -N \
               </p>
-              <p className="m-0 pl-4 text-voice-muted">name: <span style={{ color: '#F5A623' }}>"Support Bot"</span>,</p>
-              <p className="m-0 pl-4 text-voice-muted">voice: <span style={{ color: '#F5A623' }}>"urdu-pk-neural"</span>,</p>
-              <p className="m-0 pl-4 text-voice-muted">llm: <span style={{ color: '#F5A623' }}>"groq/llama-3"</span>,</p>
-              <p className="m-0 text-voice-muted">{`});`}</p>
+              <p className="m-0 pl-4 text-voice-muted">
+                -H <span style={{ color: '#F5A623' }}>"x-voiceify-key: vfk_..."</span> \
+              </p>
+              <p className="m-0 pl-4 text-voice-muted">
+                -H <span style={{ color: '#F5A623' }}>"content-type: application/json"</span> \
+              </p>
+              <p className="m-0 pl-4 text-voice-muted">
+                -d <span style={{ color: '#F5A623' }}>{"'{\"message\":\"Book me a table for four\"}'"}</span> \
+              </p>
+              <p className="m-0 pl-4 text-voice-text" style={{ wordBreak: 'break-all' }}>
+                .../api/voice/$ORG/agents/$AGENT/turn
+              </p>
               <br />
-              <p className="m-0" style={{ color: '#555B63' }}>{'// Ready in 3 lines'}</p>
-              <p className="m-0 text-voice-muted">
-                <span style={{ color: '#3D8EF0' }}>await</span>{' '}
-                <span className="text-voice-text">agent</span>.listen(3000);
+              <p className="m-0" style={{ color: '#555B63' }}>
+                {'# Streams NDJSON: text, then base64 PCM audio'}
               </p>
             </div>
           </div>
@@ -284,7 +289,7 @@ export default function FeaturesPage() {
         <div className="mt-20 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight">Ready to ship a voice agent today?</h2>
           <p className="text-base text-voice-muted mb-7 max-w-xl mx-auto">
-            Free tier is generous. Pro is $29/mo. Custom n8n workflows on demand for enterprise teams.
+            Start free with 100 minutes. Pro is $149/month. Custom workflows on request for larger teams.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link

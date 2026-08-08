@@ -46,8 +46,8 @@ const POSTS: Post[] = [
     readTime: '10 min',
   },
   {
-    title: 'Custom n8n workflows: a case study',
-    excerpt: 'How a dental clinic chain used Voiceify\'s Custom plan to integrate appointment booking with their EHR — built and shipped in two weeks.',
+    title: 'Wiring appointment booking into your own systems',
+    excerpt: 'A walkthrough of connecting the Appointments pack to an external scheduler using custom HTTP tools and webhooks.',
     date: 'Dec 18, 2025',
     author: 'Priya Shah',
     authorInitials: 'PS',

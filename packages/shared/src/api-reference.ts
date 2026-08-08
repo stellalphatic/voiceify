@@ -146,7 +146,7 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
   -d '{ "publicKey": "vw_…", "origin": "https://your-site.com" }'`,
     notes: [
       'Create tokens in Dashboard → API keys → Embed widget.',
-      'Load https://voiceify.metapresence.co/widget.js with data-token="vw_…".',
+      'Load https://voiceify.metapresence.co/widget.js with data-token="vw_…". Preview: the widget bootstraps and displays agent state; it does not yet capture microphone audio.',
     ],
   },
   {

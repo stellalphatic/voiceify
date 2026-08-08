@@ -23,4 +23,20 @@ describe('interrupt detection', () => {
     const agent = 'Our clinic opens at nine and closes at six';
     expect(shouldTriggerBargeIn('mujhe appointment chahiye', agent)).toBe(true);
   });
+
+  it('keeps replies that reuse the agent wording', () => {
+    // Callers naturally answer with the nouns from the question; treating that
+    // as echo silently dropped their turn.
+    const agent = 'Would you like a table for four tonight?';
+    expect(isLikelyEcho('yes a table for four', agent)).toBe(false);
+    expect(shouldTriggerBargeIn('yes a table for four', agent)).toBe(true);
+
+    const clinic = 'We can book you an appointment on Tuesday morning';
+    expect(isLikelyEcho('Tuesday morning works', clinic)).toBe(false);
+  });
+
+  it('still rejects verbatim playback of agent speech', () => {
+    const agent = 'Thanks for calling Voiceify, how can I help you today';
+    expect(isLikelyEcho('how can I help you today', agent)).toBe(true);
+  });
 });

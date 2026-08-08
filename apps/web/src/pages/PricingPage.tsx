@@ -299,10 +299,9 @@ export default function PricingPage() {
     'Everything in Pro',
     'Volume-based discount pricing',
     'Dedicated account manager',
-    '99.99% uptime SLA',
-    'On-premise / VPC deployment',
-    'SOC 2 + HIPAA compliance options',
-    'Single sign-on (SSO / SAML)',
+    'Priority support with an agreed response time',
+    'Security and architecture review with our team',
+    'Roadmap input on SSO, VPC, and compliance work',
     'Dedicated Slack channel',
   ];
 
@@ -361,7 +360,7 @@ export default function PricingPage() {
             tierName="Enterprise"
             tagline="For larger organisations with compliance and scale needs."
             price="Custom"
-            yearLabel="Volume + SLA + on-prem options"
+            yearLabel="Volume pricing + dedicated support"
             highlight="enterprise"
             features={enterpriseFeatures}
             ctaLabel="Talk to sales"
@@ -398,10 +397,10 @@ export default function PricingPage() {
 
         {/* ── Trust badges ── */}
         <div className="pricing-trust-row">
-          <TrustBadge label="SOC 2 Type II" />
           <TrustBadge label="No credit card required" />
           <TrustBadge label="Cancel anytime" />
-          <TrustBadge label="GDPR ready" />
+          <TrustBadge label="Export your data anytime" />
+          <TrustBadge label="Encrypted in transit and at rest" />
         </div>
       </div>
 

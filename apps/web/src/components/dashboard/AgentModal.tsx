@@ -161,8 +161,10 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
       triggers: initialData?.triggers ?? [],
       tasks: initialData?.tasks ?? [],
       id: initialData?.id ?? Date.now(),
+      // Without serverId the store cannot PATCH, so edits would never reach the API.
+      serverId: initialData?.serverId,
       createdAt: initialData?.createdAt ?? new Date().toISOString().split('T')[0],
-      updatedAt: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString(),
     });
     onClose();
   };
