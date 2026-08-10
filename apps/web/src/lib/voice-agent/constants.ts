@@ -19,6 +19,14 @@ export const MIN_UTTERANCE_CHARS = 2;
  */
 export const POST_GREETING_GRACE_MS = 600;
 
+/**
+ * How long mic energy detected during agent speech stays "unconfirmed".
+ * The output is ducked for this window; unless STT confirms real non-echo
+ * words, playback returns to full level and the reply continues. Sized to
+ * cover STT interim latency without leaving the agent audibly quiet.
+ */
+export const VAD_CONFIRM_WINDOW_MS = 900;
+
 /** Industry guidance: diarization degrades on clips under ~0.5s — wait longer before cut. */
 export const MIN_DIARIZE_CLIP_MS = 800;
 

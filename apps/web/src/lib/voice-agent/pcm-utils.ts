@@ -1,12 +1,18 @@
-/** PCM decode + minimal DSP — no gain boost, no hiss amplification. */
+/**
+ * PCM decode helpers.
+ *
+ * The TTS stream arrives as consecutive slices of one continuous waveform, so
+ * the samples across a chunk boundary are already contiguous. Earlier revisions
+ * faded every chunk edge, hard-gated quiet samples and soft-clipped the whole
+ * buffer; at ~90ms per chunk that stamped an amplitude dip into the audio ten
+ * times a second, which is what the "cut-offs" and muffled delivery were. Fades
+ * belong only at the true start and end of an utterance.
+ */
 
 export const PCM_SAMPLE_RATE = 22050;
 
-/** ~3ms fade at 22050 Hz — removes click/pop between streamed chunks. */
-export const CHUNK_FADE_SAMPLES = 66;
-
-/** Samples below this level are treated as noise, not speech. */
-const NOISE_FLOOR = 0.007;
+/** ~4ms at 22050 Hz — long enough to avoid a click, short enough to be inaudible. */
+export const EDGE_FADE_SAMPLES = 88;
 
 export function decodePcmBase64ToFloat32(base64: string): Float32Array | null {
   const binary = atob(base64);
@@ -32,36 +38,20 @@ export function measurePeak(samples: Float32Array): number {
   return peak;
 }
 
-/** Zero near-silence without boosting anything — kills TTS stream padding hiss. */
-export function applyNoiseFloor(samples: Float32Array, floor = NOISE_FLOOR): Float32Array {
-  const out = new Float32Array(samples);
-  for (let i = 0; i < out.length; i++) {
-    if (Math.abs(out[i]) < floor) out[i] = 0;
-  }
-  return out;
+/** Ramp up from silence at the very start of an utterance. Mutates in place. */
+export function fadeIn(samples: Float32Array, fadeSamples = EDGE_FADE_SAMPLES): Float32Array {
+  const fade = Math.min(fadeSamples, samples.length);
+  for (let i = 0; i < fade; i++) samples[i] *= i / fade;
+  return samples;
 }
 
-/** Fade-in/out + soft-clip — boundary cleanup only, no volume normalization. */
-export function polishPcmChunk(samples: Float32Array, fadeSamples = CHUNK_FADE_SAMPLES): Float32Array {
-  if (samples.length === 0) return samples;
-
-  let out = applyNoiseFloor(samples);
-  const fade = Math.min(fadeSamples, Math.floor(out.length / 4));
-
-  if (fade >= 2) {
-    for (let i = 0; i < fade; i++) {
-      const g = i / fade;
-      out[i] *= g;
-      out[out.length - 1 - i] *= g;
-    }
+/** Ramp down to silence at the very end of an utterance. Mutates in place. */
+export function fadeOut(samples: Float32Array, fadeSamples = EDGE_FADE_SAMPLES): Float32Array {
+  const fade = Math.min(fadeSamples, samples.length);
+  for (let i = 0; i < fade; i++) {
+    samples[samples.length - 1 - i] *= i / fade;
   }
-
-  for (let i = 0; i < out.length; i++) {
-    const x = out[i];
-    out[i] = Math.tanh(x * 1.05) * 0.97;
-  }
-
-  return out;
+  return samples;
 }
 
 export function concatFloat32(chunks: Float32Array[]): Float32Array {
@@ -73,9 +63,4 @@ export function concatFloat32(chunks: Float32Array[]): Float32Array {
     offset += chunk.length;
   }
   return out;
-}
-
-/** Skip buffers that are entirely stream padding (no speech at all). */
-export function isAudibleChunk(samples: Float32Array): boolean {
-  return measurePeak(samples) >= NOISE_FLOOR;
 }

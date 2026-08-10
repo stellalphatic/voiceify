@@ -23,7 +23,20 @@ export function sanitizeVoiceReply(text: string): string {
   out = out.replace(/^#{1,6}\s+/gm, '');
   out = out.replace(/^\s*[-*•]\s+/gm, '');
   out = out.replace(/\[(.+?)\]\([^)]+\)/g, '$1');
+
+  /**
+   * Short bracketed asides are stage directions ("[laughs]", "[pause]",
+   * "[excited]"). The streaming TTS model has no audio-tag support, so it reads
+   * them out as words. The length bound keeps genuine bracketed prose intact.
+   */
+  out = out.replace(/\[[^\]]{1,24}\]/g, ' ');
+
+  /* Emoji have no spoken form and are voiced as noise or nothing. */
+  out = out.replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu, ' ');
+
   out = out.replace(/\s+/g, ' ').trim();
+  /* Collapse spaces that stripping opened up in front of punctuation. */
+  out = out.replace(/\s+([,.!?;:])/g, '$1');
 
   return out;
 }

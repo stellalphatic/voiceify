@@ -16,6 +16,7 @@ import { sanitizeVoiceReply } from './voice-sanitize';
 import { generateGroqReply } from './groq-llm';
 import {
   PCM_SAMPLE_RATE,
+  TTS_MAX_CHARS,
   TTS_MODEL,
   ttsRequestBody,
   ttsStreamUrl,
@@ -254,7 +255,7 @@ function elevenLabsKey(): string {
 
 /** Stream PCM chunks — turbo model with quality-tuned latency preset. */
 export async function* streamSpeechPcm(text: string, voiceId: string): AsyncGenerator<Uint8Array> {
-  const trimmed = text.trim().slice(0, 400);
+  const trimmed = text.trim().slice(0, TTS_MAX_CHARS);
   if (!trimmed) throw new Error('Empty text for TTS');
 
   const ttsController = new AbortController();

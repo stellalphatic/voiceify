@@ -21,6 +21,17 @@ describe('sanitizeVoiceReply', () => {
     ).toBe('Got it.');
   });
 
+  it('drops stage directions the TTS model would read aloud', () => {
+    expect(sanitizeVoiceReply('[laughs] That works for me.')).toBe('That works for me.');
+    expect(sanitizeVoiceReply('Sure [pause], let me check.')).toBe('Sure, let me check.');
+  });
+
+  it('strips emoji that have no spoken form', () => {
+    expect(sanitizeVoiceReply('Booked! 🎉 See you at seven.')).toBe(
+      'Booked! See you at seven.',
+    );
+  });
+
   it('drops tool-call scaffolding and transcript prefixes', () => {
     expect(sanitizeVoiceReply('A: What time works for you?')).toBe(
       'What time works for you?',

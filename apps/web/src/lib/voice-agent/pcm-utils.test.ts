@@ -1,48 +1,56 @@
 import { describe, it, expect } from 'vitest';
 import {
-  applyNoiseFloor,
+  concatFloat32,
   decodePcmBase64ToFloat32,
-  isAudibleChunk,
+  fadeIn,
+  fadeOut,
   measurePeak,
-  polishPcmChunk,
 } from './pcm-utils';
 
-describe('applyNoiseFloor', () => {
-  it('zeros near-silence without boosting', () => {
-    const hiss = new Float32Array(200).fill(0.004);
-    const out = applyNoiseFloor(hiss);
-    expect(measurePeak(out)).toBe(0);
-  });
-
-  it('preserves speech-level samples', () => {
-    const speech = new Float32Array(100).fill(0.12);
-    const out = applyNoiseFloor(speech);
-    expect(measurePeak(out)).toBeCloseTo(0.12, 2);
-  });
-});
-
-describe('polishPcmChunk', () => {
-  it('soft-clips loud peaks without harsh clipping', () => {
-    const loud = new Float32Array([0.95, -0.9, 0.5]);
-    const out = polishPcmChunk(loud);
-    expect(Math.abs(out[0])).toBeLessThanOrEqual(0.92);
-  });
-
-  it('fades chunk edges to reduce boundary clicks', () => {
-    const samples = new Float32Array(200).fill(0.5);
-    const out = polishPcmChunk(samples, 50);
+describe('fadeIn', () => {
+  it('starts at silence and reaches full level', () => {
+    const out = fadeIn(new Float32Array(200).fill(0.5), 50);
     expect(out[0]).toBe(0);
     expect(out[49]).toBeGreaterThan(0.4);
+    expect(out[100]).toBe(0.5);
+  });
+
+  it('leaves everything past the fade untouched', () => {
+    const out = fadeIn(new Float32Array(100).fill(0.3), 10);
+    expect(out[10]).toBeCloseTo(0.3, 5);
+    expect(out[99]).toBeCloseTo(0.3, 5);
   });
 });
 
-describe('isAudibleChunk', () => {
-  it('rejects noise-only padding', () => {
-    expect(isAudibleChunk(new Float32Array(500).fill(0.003))).toBe(false);
+describe('fadeOut', () => {
+  it('ends at silence', () => {
+    const out = fadeOut(new Float32Array(200).fill(0.5), 50);
+    expect(out[199]).toBe(0);
+    expect(out[150]).toBeGreaterThan(0.4);
+    expect(out[0]).toBe(0.5);
+  });
+});
+
+describe('stream continuity', () => {
+  /* Regression: interior chunk edges must not be attenuated, because a chunk
+     boundary sits in the middle of a continuous waveform. */
+  it('preserves sample levels across a concatenated stream', () => {
+    const chunks = [
+      new Float32Array(100).fill(0.4),
+      new Float32Array(100).fill(0.4),
+      new Float32Array(100).fill(0.4),
+    ];
+    const merged = concatFloat32(chunks);
+    expect(merged.length).toBe(300);
+    for (let i = 0; i < merged.length; i++) {
+      expect(merged[i]).toBeCloseTo(0.4, 5);
+    }
   });
 
-  it('accepts real speech', () => {
-    expect(isAudibleChunk(new Float32Array(500).fill(0.12))).toBe(true);
+  it('keeps quiet passages instead of gating them to silence', () => {
+    const quiet = new Float32Array(200).fill(0.004);
+    const merged = concatFloat32([quiet]);
+    expect(measurePeak(merged)).toBeGreaterThan(0);
   });
 });
 

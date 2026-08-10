@@ -14,7 +14,7 @@ import { PcmStreamPlayer } from './pcm-player';
 import { consumeVoiceStream } from './stream-client';
 import { blobToBase64, UtteranceRecorder } from './utterance-recorder';
 import { BARGE_IN_COOLDOWN_MS, BARGE_IN_FINAL_WAIT_MS, INTERRUPT_MIN_CHARS, isLikelyEcho, isInterruptKeyword, shouldTriggerBargeIn } from './interrupt';
-import { SCRIBE_DIARIZE_RACE_MS, SCRIBE_STT_RACE_MS, DUPLICATE_UTTERANCE_MS, MIN_UTTERANCE_CHARS, POST_GREETING_GRACE_MS, MIN_DIARIZE_CLIP_MS, MIN_DIARIZE_AUDIO_BYTES, THINKING_HOLD_MS, ENDPOINT_DEBOUNCE_MS, HOLD_PHRASES, VOICE_FETCH_TIMEOUT_MS } from './constants';
+import { SCRIBE_DIARIZE_RACE_MS, SCRIBE_STT_RACE_MS, DUPLICATE_UTTERANCE_MS, MIN_UTTERANCE_CHARS, POST_GREETING_GRACE_MS, MIN_DIARIZE_CLIP_MS, MIN_DIARIZE_AUDIO_BYTES, THINKING_HOLD_MS, ENDPOINT_DEBOUNCE_MS, HOLD_PHRASES, VAD_CONFIRM_WINDOW_MS, VOICE_FETCH_TIMEOUT_MS } from './constants';
 import { isLikelySttHallucination } from './stt-guard';
 import { ScribeRealtimeSession } from './scribe-realtime-session';
 import { VoiceActivityMonitor, type VoiceActivityOptions } from './voice-activity-monitor';
@@ -189,6 +189,8 @@ export function useVoiceAgent(
   const bargeInCooldownRef = useRef(0);
   const bargeInAwaitingFinalRef = useRef(false);
   const bargeInAwaitingFinalTimerRef = useRef<number | null>(null);
+  const vadDuckedRef = useRef(false);
+  const vadDuckTimerRef = useRef<number | null>(null);
   const recognitionRestartRef = useRef<number | null>(null);
   const vadMonitorRef = useRef<VoiceActivityMonitor | null>(null);
   const lastFinalRef = useRef({ text: '', at: 0 });
@@ -438,6 +440,15 @@ export function useVoiceAgent(
       window.clearTimeout(bargeInAwaitingFinalTimerRef.current);
       bargeInAwaitingFinalTimerRef.current = null;
     }
+    /* Reached when mic energy was rejected as echo, so restore the agent level. */
+    if (vadDuckTimerRef.current != null) {
+      window.clearTimeout(vadDuckTimerRef.current);
+      vadDuckTimerRef.current = null;
+    }
+    if (vadDuckedRef.current) {
+      vadDuckedRef.current = false;
+      playerRef.current?.unduck();
+    }
   }, []);
 
   const getVadOptions = useCallback((): VoiceActivityOptions => {
@@ -459,6 +470,13 @@ export function useVoiceAgent(
 
     bargeInCooldownRef.current = Date.now();
     turnIdRef.current += 1;
+    // softInterruptPlayback resets the player, which restores gain, so only the
+    // duck bookkeeping needs clearing here.
+    if (vadDuckTimerRef.current != null) {
+      window.clearTimeout(vadDuckTimerRef.current);
+      vadDuckTimerRef.current = null;
+    }
+    vadDuckedRef.current = false;
     softInterruptPlayback();
     speakingRef.current = false;
     thinkingRef.current = false;
@@ -492,6 +510,34 @@ export function useVoiceAgent(
 
   handleBargeInRef.current = handleBargeIn;
 
+  /**
+   * Mic energy while the speakers are live is not proof the user is talking —
+   * imperfect AEC leaks the agent's own voice back in. Committing a barge-in
+   * here bumped the turn id, which made every remaining audio event of the
+   * reply get dropped, so one echo blip silenced the rest of the answer and
+   * produced the speak/mute/speak stutter.
+   *
+   * Instead this only ducks the output and arms a confirmation window. The
+   * user gets instant feedback that they were heard, while the reply keeps
+   * streaming. Only STT seeing real, non-echo words commits the interruption
+   * (see shouldTriggerBargeIn callers); if nothing is confirmed the level is
+   * restored and the agent finishes its sentence.
+   */
+  const handleVadEnergy = useCallback(() => {
+    if (!speakingRef.current && !thinkingRef.current) return;
+    if (vadDuckedRef.current) return;
+
+    vadDuckedRef.current = true;
+    playerRef.current?.duck();
+
+    if (vadDuckTimerRef.current != null) window.clearTimeout(vadDuckTimerRef.current);
+    vadDuckTimerRef.current = window.setTimeout(() => {
+      vadDuckTimerRef.current = null;
+      vadDuckedRef.current = false;
+      if (speakingRef.current || thinkingRef.current) playerRef.current?.unduck();
+    }, VAD_CONFIRM_WINDOW_MS);
+  }, []);
+
   const syncVadMonitor = useCallback(() => {
     if (!activeRef.current || (!speakingRef.current && !thinkingRef.current)) {
       stopVadMonitor();
@@ -508,11 +554,11 @@ export function useVoiceAgent(
     vadMonitorRef.current.start(
       stream,
       () => {
-        if (speakingRef.current || thinkingRef.current) handleBargeInRef.current();
+        if (speakingRef.current || thinkingRef.current) handleVadEnergy();
       },
       getVadOptions(),
     );
-  }, [getVadOptions, stopVadMonitor]);
+  }, [getVadOptions, handleVadEnergy, stopVadMonitor]);
 
   const replaceLastUserTurn = useCallback((lines: TranscriptLine[]) => {
     const hist = historyRef.current;
