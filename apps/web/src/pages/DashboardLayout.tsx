@@ -1579,6 +1579,37 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, agentName }: { is
 
 const AnalyticsView = () => <AnalyticsDashboard />;
 
+type AgentConversation = {
+  id: string;
+  status: string;
+  channel: string;
+  startedAt: string;
+  endedAt?: string | null;
+  latencyMs?: number | null;
+};
+
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? 'yesterday' : `${days} days ago`;
+}
+
+function durationLabel(row: AgentConversation): string {
+  if (!row.endedAt) return 'in progress';
+  const secs = Math.max(
+    0,
+    Math.round(
+      (new Date(row.endedAt).getTime() - new Date(row.startedAt).getTime()) / 1000,
+    ),
+  );
+  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+}
+
 const AgentDetailView = ({ 
   agents, 
   onManageTasks, 
@@ -1591,6 +1622,51 @@ const AgentDetailView = ({
   const { id } = useParams();
   const navigate = useNavigate();
   const agent = agents.find(a => a.id === Number(id));
+  const agentServerId = agent?.serverId;
+  const [calls, setCalls] = useState<AgentConversation[] | null>(null);
+
+  useEffect(() => {
+    const orgId = getActiveOrgId();
+    if (!orgId || !agentServerId) {
+      setCalls([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiJson<{ conversations: AgentConversation[] }>(
+          `/api/orgs/${orgId}/conversations?agentId=${agentServerId}`,
+        );
+        if (!cancelled) setCalls(data.conversations);
+      } catch {
+        if (!cancelled) setCalls([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [agentServerId]);
+
+  /** Derived from this agent's own conversation rows; no placeholder figures. */
+  const stats = (() => {
+    if (!calls) return null;
+    const ended = calls.filter((c) => c.endedAt);
+    const durations = ended.map(
+      (c) =>
+        (new Date(c.endedAt as string).getTime() -
+          new Date(c.startedAt).getTime()) /
+        1000,
+    );
+    const avgSecs = durations.length
+      ? durations.reduce((a, b) => a + b, 0) / durations.length
+      : null;
+    const completed = calls.filter((c) => c.status === 'ended').length;
+    return {
+      total: calls.length,
+      avgSecs,
+      successRate: calls.length ? Math.round((completed / calls.length) * 100) : null,
+    };
+  })();
 
   if (!agent) {
     return (
@@ -1660,15 +1736,23 @@ const AgentDetailView = ({
           <div className="vfy-grid-3">
             <div className="vfy-tile">
               <p className="vfy-tile-label">Total calls</p>
-              <p className="vfy-tile-value">1,248</p>
+              <p className="vfy-tile-value">
+                {stats ? stats.total.toLocaleString() : '—'}
+              </p>
             </div>
             <div className="vfy-tile">
               <p className="vfy-tile-label">Avg duration</p>
-              <p className="vfy-tile-value">2m 14s</p>
+              <p className="vfy-tile-value">
+                {stats?.avgSecs != null
+                  ? `${Math.floor(stats.avgSecs / 60)}m ${String(Math.round(stats.avgSecs % 60)).padStart(2, '0')}s`
+                  : '—'}
+              </p>
             </div>
             <div className="vfy-tile">
-              <p className="vfy-tile-label">Success rate</p>
-              <p className="vfy-tile-value">98.2%</p>
+              <p className="vfy-tile-label">Completed</p>
+              <p className="vfy-tile-value">
+                {stats?.successRate != null ? `${stats.successRate}%` : '—'}
+              </p>
             </div>
           </div>
 
@@ -1755,26 +1839,53 @@ const AgentDetailView = ({
                 <Activity size={14} />
                 Recent activity
               </h3>
-              <span className="vfy-panel-sub">last 24h</span>
+              <span className="vfy-panel-sub">
+                {calls === null ? 'loading' : `${calls.length} recorded`}
+              </span>
             </div>
             <div className="vfy-panel-body">
-              {[
-                { when: '2 hours ago', dur: '4:12', label: 'success' as const, text: 'Completed' },
-                { when: '5 hours ago', dur: '2:48', label: 'success' as const, text: 'Completed' },
-                { when: 'yesterday',   dur: '1:02', label: 'warn'    as const, text: 'Escalated' },
-              ].map((row, i) => (
-                <div key={i} className="vfy-row" style={{ gridTemplateColumns: '36px minmax(0,1fr) auto auto' }}>
-                  <span className="vfy-row-avatar">IN</span>
-                  <div className="vfy-row-meta">
-                    <p className="vfy-row-name">Incoming call</p>
-                    <p className="vfy-row-sub">{row.when} · {row.dur}</p>
+              {calls === null ? (
+                <p style={{ color: 'var(--d-muted)', fontSize: 13, textAlign: 'center', padding: '32px 16px', margin: 0 }}>
+                  Loading conversations…
+                </p>
+              ) : calls.length === 0 ? (
+                <p style={{ color: 'var(--d-muted)', fontSize: 13, textAlign: 'center', padding: '32px 16px', margin: 0 }}>
+                  No conversations yet. Activity appears after Sandbox or live traffic.
+                </p>
+              ) : (
+                calls.slice(0, 8).map((row) => (
+                  <div key={row.id} className="vfy-row" style={{ gridTemplateColumns: '36px minmax(0,1fr) auto auto' }}>
+                    <span className="vfy-row-avatar">
+                      {row.channel.slice(0, 2).toUpperCase()}
+                    </span>
+                    <div className="vfy-row-meta">
+                      <p className="vfy-row-name">{row.channel} conversation</p>
+                      <p className="vfy-row-sub">
+                        {relativeTime(row.startedAt)} · {durationLabel(row)}
+                      </p>
+                    </div>
+                    <span
+                      className={`vfy-pill vfy-pill-${
+                        row.status === 'ended'
+                          ? 'success'
+                          : row.status === 'error'
+                            ? 'danger'
+                            : 'info'
+                      }`}
+                    >
+                      {row.status === 'ended' ? 'Completed' : row.status === 'error' ? 'Error' : 'Active'}
+                    </span>
+                    <button
+                      type="button"
+                      className="vfy-row-action"
+                      aria-label="Open transcript"
+                      onClick={() => navigate('/dashboard/conversations')}
+                    >
+                      <Play size={12} fill="currentColor" />
+                    </button>
                   </div>
-                  <span className={`vfy-pill vfy-pill-${row.label}`}>{row.text}</span>
-                  <button type="button" className="vfy-row-action" aria-label="Play recording">
-                    <Play size={12} fill="currentColor" />
-                  </button>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>

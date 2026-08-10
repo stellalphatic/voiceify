@@ -55,9 +55,12 @@ function billingMode(): "disabled" | "stripe_test" | "stripe_live" | "manual" {
     const key = process.env.STRIPE_SECRET_KEY!;
     return key.startsWith("sk_live_") ? "stripe_live" : "stripe_test";
   }
-  // Stripe is optional. Platform admin grants credits; orgs can use demo top-up when allowed.
-  if (process.env.ALLOW_DEMO_TOPUP === "false") return "disabled";
-  return "manual";
+  /**
+   * No self-serve top-up path takes a payment yet, so every one of them is a
+   * free credit grant. That must be opted into explicitly rather than being the
+   * default when the variable is simply unset.
+   */
+  return process.env.ALLOW_DEMO_TOPUP === "true" ? "manual" : "disabled";
 }
 
 usageRoutes.get("/:orgId/billing", requireOrg("billing:read"), async (c) => {

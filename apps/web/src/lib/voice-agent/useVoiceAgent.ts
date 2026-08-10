@@ -1456,8 +1456,27 @@ export function useVoiceAgent(
     voiceApiBody,
   ]);
 
+  /**
+   * Without this the row stays "active" forever, so duration and completion rate
+   * are unmeasurable. keepalive lets it land even when the tab is closing.
+   */
+  const closeServerConversation = useCallback(() => {
+    const orgId = orgIdRef.current;
+    const conversationId = conversationIdRef.current;
+    conversationIdRef.current = null;
+    if (!orgId || !conversationId) return;
+    void fetch(`/api/orgs/${orgId}/conversations/${conversationId}/end`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'ended' }),
+      keepalive: true,
+    }).catch(() => undefined);
+  }, []);
+
   const endSession = useCallback((options?: { userInitiated?: boolean }) => {
     if (options?.userInitiated) autoStartAllowedRef.current = false;
+    closeServerConversation();
     activeRef.current = false;
     setIsActive(false);
     thinkingRef.current = false;
@@ -1480,7 +1499,14 @@ export function useVoiceAgent(
     setInterimTranscript('');
     setError(null);
     setStatus('idle');
-  }, [clearBargeInAwaitingFinal, releaseRecorder, stopAudio, stopRecognition, stopVadMonitor]);
+  }, [
+    clearBargeInAwaitingFinal,
+    closeServerConversation,
+    releaseRecorder,
+    stopAudio,
+    stopRecognition,
+    stopVadMonitor,
+  ]);
 
   const resetConversation = useCallback(() => {
     conversationIdRef.current = null;

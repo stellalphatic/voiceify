@@ -4,6 +4,8 @@ import {
   db,
   desc,
   eq,
+  gte,
+  isNotNull,
   messages,
   sql,
   toolInvocations,
@@ -73,28 +75,131 @@ conversationsRoutes.get(
   },
 );
 
+/** Marks a conversation finished so duration and completion rate are measurable. */
+conversationsRoutes.post(
+  "/:orgId/conversations/:conversationId/end",
+  requireOrg("conversations:read"),
+  async (c) => {
+    const orgId = c.get("orgId");
+    const conversationId = c.req.param("conversationId");
+    const body = z
+      .object({ status: z.enum(["ended", "error"]).default("ended") })
+      .parse(await c.req.json().catch(() => ({})));
+
+    const [updated] = await db
+      .update(conversations)
+      .set({ status: body.status, endedAt: new Date() })
+      .where(
+        and(
+          eq(conversations.id, conversationId),
+          eq(conversations.orgId, orgId),
+          // Keep the first end authoritative so a retry cannot stretch duration.
+          eq(conversations.status, "active"),
+        ),
+      )
+      .returning();
+
+    if (!updated) {
+      const [existing] = await db
+        .select()
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.id, conversationId),
+            eq(conversations.orgId, orgId),
+          ),
+        )
+        .limit(1);
+      if (!existing) return c.json({ error: "Not found" }, 404);
+      return c.json({ conversation: existing });
+    }
+
+    return c.json({ conversation: updated });
+  },
+);
+
+const DAY_WINDOW = 14;
+
 conversationsRoutes.get(
   "/:orgId/analytics",
   requireOrg("usage:read"),
   async (c) => {
     const orgId = c.get("orgId");
+    const since = new Date(Date.now() - DAY_WINDOW * 24 * 60 * 60 * 1000);
+    const orgConversations = eq(conversations.orgId, orgId);
+
+    /**
+     * Averages ignore NULLs, so latency and duration are reported over the rows
+     * that actually have them plus the sample size, rather than being diluted to
+     * zero by conversations that never recorded one.
+     */
     const [counts] = await db
       .select({
         conversations: sql<number>`count(*)::int`,
-        avgLatency: sql<number>`coalesce(avg(${conversations.latencyMs}),0)::int`,
+        ended: sql<number>`count(*) filter (where ${conversations.status} = 'ended')::int`,
+        errored: sql<number>`count(*) filter (where ${conversations.status} = 'error')::int`,
+        active: sql<number>`count(*) filter (where ${conversations.status} = 'active')::int`,
+        avgLatency: sql<number | null>`avg(${conversations.latencyMs})::int`,
+        latencySamples: sql<number>`count(${conversations.latencyMs})::int`,
+        avgDurationSec: sql<
+          number | null
+        >`avg(extract(epoch from (${conversations.endedAt} - ${conversations.startedAt})))::int`,
+        durationSamples: sql<number>`count(${conversations.endedAt})::int`,
       })
       .from(conversations)
-      .where(eq(conversations.orgId, orgId));
+      .where(orgConversations);
+
+    const byDay = await db
+      .select({
+        day: sql<string>`to_char(date_trunc('day', ${conversations.startedAt}), 'YYYY-MM-DD')`,
+        total: sql<number>`count(*)::int`,
+      })
+      .from(conversations)
+      .where(and(orgConversations, gte(conversations.startedAt, since)))
+      .groupBy(sql`date_trunc('day', ${conversations.startedAt})`)
+      .orderBy(sql`date_trunc('day', ${conversations.startedAt})`);
+
+    const byChannel = await db
+      .select({
+        channel: conversations.channel,
+        total: sql<number>`count(*)::int`,
+      })
+      .from(conversations)
+      .where(orgConversations)
+      .groupBy(conversations.channel);
+
+    const [messageCounts] = await db
+      .select({
+        total: sql<number>`count(*)::int`,
+        userTurns: sql<number>`count(*) filter (where ${messages.role} = 'user')::int`,
+      })
+      .from(messages)
+      .where(eq(messages.orgId, orgId));
+
+    const [fastest] = await db
+      .select({ latencyMs: conversations.latencyMs })
+      .from(conversations)
+      .where(and(orgConversations, isNotNull(conversations.latencyMs)))
+      .orderBy(conversations.latencyMs)
+      .limit(1);
 
     const recent = await db
       .select()
       .from(conversations)
-      .where(eq(conversations.orgId, orgId))
+      .where(orgConversations)
       .orderBy(desc(conversations.startedAt))
-      .limit(14);
+      .limit(20);
 
     return c.json({
-      summary: counts,
+      summary: {
+        ...counts,
+        bestLatencyMs: fastest?.latencyMs ?? null,
+        messages: messageCounts?.total ?? 0,
+        userTurns: messageCounts?.userTurns ?? 0,
+      },
+      byDay,
+      byChannel,
+      windowDays: DAY_WINDOW,
       recent,
       creditBalanceCents: c.get("organization").creditBalanceCents,
     });

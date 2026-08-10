@@ -487,8 +487,14 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
             Embed widget
           </h3>
           <p className="vfy-settings-help">
-            Generate a public <code>vw_…</code> token and drop the snippet on any site to run an
-            agent. Voice provider credentials stay on Voiceify servers.
+            Generate a public <code>vw_…</code> token and drop the snippet on your site.
+            Voice provider credentials stay on Voiceify servers.
+          </p>
+          <p className="vfy-settings-help">
+            <strong>Preview.</strong> The snippet authenticates your token and shows agent
+            state; it does not yet capture microphone audio. For a live conversation today,
+            call the turn endpoint with a <code>vfk_</code> API key from your backend, or use
+            the Sandbox.
           </p>
 
           <div className="vfy-settings-row">

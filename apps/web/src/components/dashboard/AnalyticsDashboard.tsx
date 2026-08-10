@@ -21,10 +21,31 @@ type ConversationRow = {
 };
 
 type AnalyticsPayload = {
-  summary: { conversations: number; avgLatency: number };
+  summary: {
+    conversations: number;
+    ended: number;
+    errored: number;
+    active: number;
+    avgLatency: number | null;
+    latencySamples: number;
+    avgDurationSec: number | null;
+    durationSamples: number;
+    bestLatencyMs: number | null;
+    messages: number;
+    userTurns: number;
+  };
+  byDay: Array<{ day: string; total: number }>;
+  byChannel: Array<{ channel: string; total: number }>;
+  windowDays: number;
   recent: ConversationRow[];
   creditBalanceCents: number;
 };
+
+function formatDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+}
 
 export default function AnalyticsDashboard() {
   const orgId = getActiveOrgId();
@@ -59,62 +80,33 @@ export default function AnalyticsDashboard() {
     };
   }, [orgId]);
 
-  const byChannel = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const row of data?.recent ?? []) {
-      map.set(row.channel, (map.get(row.channel) ?? 0) + 1);
-    }
-    return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
-  }, [data]);
+  /* Server groups by real date and channel, so these are only reshaped for recharts. */
+  const byChannel = useMemo(
+    () =>
+      (data?.byChannel ?? []).map((row) => ({
+        name: row.channel,
+        value: row.total,
+      })),
+    [data],
+  );
 
-  const byDay = useMemo(() => {
-    const map = new Map<string, { count: number; latencySum: number; latencyN: number }>();
-    for (const row of data?.recent ?? []) {
-      const day = new Date(row.startedAt).toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-      });
-      const cur = map.get(day) ?? { count: 0, latencySum: 0, latencyN: 0 };
-      cur.count += 1;
-      if (row.latencyMs != null) {
-        cur.latencySum += row.latencyMs;
-        cur.latencyN += 1;
-      }
-      map.set(day, cur);
-    }
-    return Array.from(map.entries())
-      .reverse()
-      .map(([day, v]) => ({
-        day,
-        conversations: v.count,
-        avgLatency: v.latencyN ? Math.round(v.latencySum / v.latencyN) : 0,
-      }));
-  }, [data]);
+  const byDay = useMemo(
+    () =>
+      (data?.byDay ?? []).map((row) => ({
+        day: new Date(`${row.day}T00:00:00`).toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+        }),
+        conversations: row.total,
+      })),
+    [data],
+  );
 
-  const business = useMemo(() => {
-    const conversations = data?.summary.conversations ?? 0;
-    const recent = data?.recent ?? [];
-    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const thisWeek = recent.filter(
-      (r) => new Date(r.startedAt).getTime() >= weekAgo,
-    ).length;
-    const completed = recent.filter((r) => r.status === "completed" || r.status === "ended").length;
-    const recoveryRate =
-      recent.length > 0 ? Math.round((completed / recent.length) * 100) : 0;
-    /* ~4 minutes saved per handled conversation vs a human callback. */
-    const hoursSaved = Math.round((thisWeek * 4) / 60 * 10) / 10;
-    const bookingsCaptured = recent.filter((r) =>
-      /sandbox|embed|api/i.test(r.channel),
-    ).length;
-
-    return {
-      hoursSaved,
-      bookingsCaptured: Math.max(bookingsCaptured, thisWeek),
-      recoveryRate,
-      thisWeek,
-      conversations,
-    };
-  }, [data]);
+  const summary = data?.summary;
+  const completionRate =
+    summary && summary.conversations > 0
+      ? Math.round((summary.ended / summary.conversations) * 100)
+      : null;
 
   return (
     <div className="space-y-8">
@@ -123,7 +115,8 @@ export default function AnalyticsDashboard() {
           <p className="vfy-page-eyebrow">Monitor · Analytics</p>
           <h1 className="vfy-page-title">Analytics</h1>
           <p className="vfy-page-sub">
-            Plain-English business outcomes first, then technical latency for operators.
+            Measured from your conversation history. Metrics with no data yet show a
+            dash rather than an estimate.
           </p>
         </div>
       </div>
@@ -136,36 +129,50 @@ export default function AnalyticsDashboard() {
 
       <section>
         <h2 className="vfy-settings-card-title" style={{ marginBottom: 12 }}>
-          Business outcomes
+          Conversation quality
         </h2>
         <div className="vfy-biz-grid">
           <article className="vfy-biz-card">
-            <p className="vfy-biz-card-label">Time back this week</p>
-            <p className="vfy-biz-card-value">
-              {loading ? '…' : `You saved ~${business.hoursSaved} hours this week`}
-            </p>
-            <p className="vfy-biz-card-note">
-              Based on {business.thisWeek} conversations your agents handled instead of a human callback.
-            </p>
-          </article>
-          <article className="vfy-biz-card">
-            <p className="vfy-biz-card-label">Leads while you were busy</p>
+            <p className="vfy-biz-card-label">Completed conversations</p>
             <p className="vfy-biz-card-value">
               {loading
                 ? '…'
-                : `${business.bookingsCaptured} bookings captured while you were busy`}
+                : completionRate == null
+                  ? '—'
+                  : `${completionRate}%`}
             </p>
             <p className="vfy-biz-card-note">
-              Sessions that reached Sandbox, embed, or API agents in the recent window.
+              {loading
+                ? 'Loading…'
+                : `${summary?.ended ?? 0} ended cleanly, ${summary?.active ?? 0} still open, ${summary?.errored ?? 0} errored.`}
             </p>
           </article>
           <article className="vfy-biz-card">
-            <p className="vfy-biz-card-label">Missed-call recovery</p>
+            <p className="vfy-biz-card-label">Average call length</p>
             <p className="vfy-biz-card-value">
-              {loading ? '…' : `Missed-call recovery rate: ${business.recoveryRate}%`}
+              {loading
+                ? '…'
+                : summary?.avgDurationSec == null
+                  ? '—'
+                  : formatDuration(summary.avgDurationSec)}
             </p>
             <p className="vfy-biz-card-note">
-              Share of recent conversations that completed successfully.
+              {loading
+                ? 'Loading…'
+                : summary?.durationSamples
+                  ? `Across ${summary.durationSamples} completed conversation${summary.durationSamples === 1 ? '' : 's'}.`
+                  : 'Recorded once conversations finish.'}
+            </p>
+          </article>
+          <article className="vfy-biz-card">
+            <p className="vfy-biz-card-label">Caller turns captured</p>
+            <p className="vfy-biz-card-value">
+              {loading ? '…' : (summary?.userTurns ?? 0)}
+            </p>
+            <p className="vfy-biz-card-note">
+              {loading
+                ? 'Loading…'
+                : `${summary?.messages ?? 0} total transcript messages stored.`}
             </p>
           </article>
         </div>
@@ -179,13 +186,20 @@ export default function AnalyticsDashboard() {
           </p>
         </div>
         <div className="vfy-biz-card">
-          <p className="vfy-biz-card-label">Average latency</p>
+          <p className="vfy-biz-card-label">Avg first response</p>
           <p className="vfy-biz-card-value" style={{ fontSize: 22 }}>
             {loading
               ? '…'
-              : data?.summary.avgLatency
-                ? `${data.summary.avgLatency} ms`
-                : '—'}
+              : summary?.avgLatency == null
+                ? '—'
+                : `${summary.avgLatency} ms`}
+          </p>
+          <p className="vfy-biz-card-note">
+            {loading
+              ? ''
+              : summary?.latencySamples
+                ? `Best ${summary.bestLatencyMs} ms over ${summary.latencySamples} turn${summary.latencySamples === 1 ? '' : 's'}.`
+                : 'Time to first audio, measured per turn.'}
           </p>
         </div>
         <div className="vfy-biz-card">
@@ -200,7 +214,9 @@ export default function AnalyticsDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-voice-surface border border-voice-border rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-voice-text mb-4">Volume by day</h3>
+          <h3 className="text-lg font-bold text-voice-text mb-4">
+            Volume · last {data?.windowDays ?? 14} days
+          </h3>
           <div className="h-[280px]">
             {byDay.length === 0 ? (
               <p className="text-sm text-voice-muted">No recent sessions to chart.</p>
@@ -218,7 +234,7 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
         <div className="bg-voice-surface border border-voice-border rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-voice-text mb-4">By channel (recent)</h3>
+          <h3 className="text-lg font-bold text-voice-text mb-4">By channel</h3>
           <div className="h-[280px]">
             {byChannel.length === 0 ? (
               <p className="text-sm text-voice-muted">Channel breakdown appears after the first call.</p>

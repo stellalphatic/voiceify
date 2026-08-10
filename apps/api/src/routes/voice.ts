@@ -349,11 +349,14 @@ voiceRoutes.post(
       .filter(Boolean)
       .join("");
 
+    const turnStartedAt = Date.now();
+
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
         let assistantText = "";
         let ttsChars = 0;
+        let firstResponseMs: number | null = null;
         try {
           for await (const event of runVoicePipeline(
             personaId,
@@ -371,6 +374,14 @@ voiceRoutes.post(
             if (event.type === "audio" && "data" in event) {
               ttsChars += 40;
             }
+            // Time to first spoken/written token is the latency a caller feels,
+            // so measure that rather than the whole turn.
+            if (
+              firstResponseMs === null &&
+              (event.type === "text" || event.type === "audio")
+            ) {
+              firstResponseMs = Date.now() - turnStartedAt;
+            }
             if (event.type === "error") {
               controller.enqueue(
                 encoder.encode(`${JSON.stringify(event)}\n`),
@@ -387,6 +398,13 @@ voiceRoutes.post(
               role: "assistant",
               content: assistantText,
             });
+          }
+
+          if (firstResponseMs !== null) {
+            await db
+              .update(conversations)
+              .set({ latencyMs: firstResponseMs })
+              .where(eq(conversations.id, conversationId!));
           }
 
           await recordUsageAndDebit({

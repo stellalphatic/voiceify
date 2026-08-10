@@ -37,7 +37,7 @@ type ConversationRow = {
 };
 
 type AnalyticsPayload = {
-  summary: { conversations: number; avgLatency: number };
+  summary: { conversations: number; avgLatency: number | null };
   recent: ConversationRow[];
   creditBalanceCents: number;
 };
@@ -183,7 +183,7 @@ export default function OverviewDashboard({
 
   const credits = analytics?.creditBalanceCents ?? 0;
   const conversations = analytics?.summary.conversations ?? 0;
-  const avgLatency = analytics?.summary.avgLatency ?? 0;
+  const avgLatency = analytics?.summary.avgLatency ?? null;
   const greeting = account?.user.name?.split(" ")[0] || "there";
 
   const tooltipStyle = {
