@@ -1,6 +1,7 @@
 import { StrictMode, Component, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import { isChunkLoadError } from './lib/lazy-with-retry';
 import './index.css';
 
 /* ── Root Error Boundary ──────────────────────────────────────
@@ -21,6 +22,7 @@ class RootErrorBoundary extends Component<EBProps, EBState> {
 
   render() {
     if (this.state.error) {
+      const staleBuild = isChunkLoadError(this.state.error);
       return (
         <div style={{
           minHeight: '100vh',
@@ -34,9 +36,13 @@ class RootErrorBoundary extends Component<EBProps, EBState> {
           gap: '16px',
           padding: '32px',
         }}>
-          <h1 style={{ color: 'var(--color-accent)', fontSize: '2rem', margin: 0 }}>Something went wrong</h1>
+          <h1 style={{ color: 'var(--color-accent)', fontSize: '2rem', margin: 0 }}>
+            {staleBuild ? 'A new version is available' : 'Something went wrong'}
+          </h1>
           <p style={{ color: 'var(--color-text-secondary)', maxWidth: '600px', textAlign: 'center' }}>
-            A runtime error occurred. Check the browser console for details.
+            {staleBuild
+              ? 'This page was loaded from an older release. Reload to continue on the latest version.'
+              : 'A runtime error occurred. Check the browser console for details.'}
           </p>
           <pre style={{
             background: 'var(--color-bg-secondary)',
@@ -63,7 +69,7 @@ class RootErrorBoundary extends Component<EBProps, EBState> {
               cursor: 'pointer',
             }}
           >
-            Reload Page
+            {staleBuild ? 'Reload' : 'Reload Page'}
           </button>
         </div>
       );
