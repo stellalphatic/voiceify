@@ -198,6 +198,8 @@ export function useVoiceAgent(
   const bargeInAwaitingFinalTimerRef = useRef<number | null>(null);
   const vadDuckedRef = useRef(false);
   const vadDuckTimerRef = useRef<number | null>(null);
+  /** Turn whose mic energy proved to be echo rather than a real interruption. */
+  const vadUnreliableTurnRef = useRef(-1);
   const recognitionRestartRef = useRef<number | null>(null);
   const vadMonitorRef = useRef<VoiceActivityMonitor | null>(null);
   const lastFinalRef = useRef({ text: '', at: 0 });
@@ -533,6 +535,13 @@ export function useVoiceAgent(
   const handleVadEnergy = useCallback(() => {
     if (!speakingRef.current && !thinkingRef.current) return;
     if (vadDuckedRef.current) return;
+    /*
+     * A duck that already expired unconfirmed on this turn means the energy is
+     * this agent's own output leaking past AEC. Reacting again would wobble the
+     * volume once a second for the rest of the reply, so leave it alone —
+     * genuine interruptions still land through the STT path.
+     */
+    if (vadUnreliableTurnRef.current === turnIdRef.current) return;
 
     vadDuckedRef.current = true;
     playerRef.current?.duck();
@@ -541,6 +550,7 @@ export function useVoiceAgent(
     vadDuckTimerRef.current = window.setTimeout(() => {
       vadDuckTimerRef.current = null;
       vadDuckedRef.current = false;
+      vadUnreliableTurnRef.current = turnIdRef.current;
       if (speakingRef.current || thinkingRef.current) playerRef.current?.unduck();
     }, VAD_CONFIRM_WINDOW_MS);
   }, []);
