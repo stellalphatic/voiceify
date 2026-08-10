@@ -1,11 +1,30 @@
 export interface VoiceifyWidgetOptions {
   /** Embed public key from dashboard Deploy → Embed */
   token: string;
-  /** API base URL, e.g. https://app.example.com */
+  /**
+   * Voiceify API origin. Defaults to the origin this script was served from,
+   * which is the Voiceify deployment, so an embed on a customer domain does not
+   * silently call the customer's own server.
+   */
   apiBase?: string;
   /** CSS selector or element to mount into */
   container?: string | HTMLElement;
 }
+
+/**
+ * document.currentScript is only readable while the script first executes, so
+ * capture the origin now rather than when a host app constructs the widget.
+ */
+const SCRIPT_ORIGIN: string = (() => {
+  if (typeof document === "undefined") return "";
+  const src = (document.currentScript as HTMLScriptElement | null)?.src;
+  if (!src) return "";
+  try {
+    return new URL(src, document.baseURI).origin;
+  } catch {
+    return "";
+  }
+})();
 
 type EmbedSession = {
   sessionToken: string;
@@ -29,7 +48,7 @@ export class VoiceifyWidget {
 
   constructor(options: VoiceifyWidgetOptions) {
     this.token = options.token;
-    this.apiBase = (options.apiBase ?? "").replace(/\/$/, "");
+    this.apiBase = (options.apiBase ?? SCRIPT_ORIGIN).replace(/\/$/, "");
     if (options.container) {
       this.mount(options.container);
     }
@@ -112,9 +131,14 @@ export class VoiceifyWidget {
       this.setStatus("Session unavailable");
       return;
     }
-    this.setStatus("Listening mode opens in host app sandbox for FYP demos.");
-    // Host apps should use the dashboard sandbox /api/voice/:orgId/agents/:agentId/turn
-    // with the session credentials. This widget bootstraps + displays agent state.
+    /**
+     * In-widget audio is not implemented yet. Say so plainly instead of implying
+     * a session started; the supported path today is the server-side turn
+     * endpoint called with a vfk_ API key.
+     */
+    this.setStatus(
+      `${this.session.agent.name} is reachable, but in-widget voice is still in preview. Use the Voiceify turn API from your backend to hold a conversation.`,
+    );
   }
 
   unmount(): void {
