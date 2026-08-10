@@ -152,6 +152,39 @@ export function getLanguageLabel(code: LanguageCode): string {
   return LANGUAGE_LABELS[code] ?? LANGUAGE_LABELS[normalizeLanguageCode(code)] ?? code.toUpperCase();
 }
 
+/**
+ * Map an agent's configured language ("Spanish", "es-ES", "Hindi / English")
+ * to the code its first turn should be transcribed with.
+ *
+ * Language *mode* stays 'auto' for anything outside EN/UR so callers can still
+ * switch mid-call, but "auto" is not detection on the browser recognizer: it is
+ * locked to one BCP-47 locale at a time. Starting every such agent at en-US
+ * meant a Spanish caller was transcribed by an English recognizer, and the
+ * resulting garbage never looked like Spanish to the text detector, so it never
+ * recovered. Seeding the configured language fixes the first turn, and audio or
+ * text detection can still move it afterwards.
+ */
+export function resolveConfiguredLanguage(language?: string | null): LanguageCode {
+  const raw = language?.toLowerCase().trim();
+  if (!raw) return 'en';
+
+  /* Multi-language or explicitly automatic configs have no single start locale. */
+  if (/multilingual|auto|mixed/.test(raw)) return 'en';
+
+  /* "Urdu / English" — take the first listed language as the primary. */
+  const primary = raw.split(/[/,|]|\bor\b|\band\b|\+/)[0]?.trim() ?? raw;
+  if (!primary) return 'en';
+
+  for (const [code, label] of Object.entries(LANGUAGE_LABELS)) {
+    if (code === 'mixed') continue;
+    if (primary.includes(label.toLowerCase())) return code;
+  }
+
+  const normalized = normalizeLanguageCode(primary);
+  /* normalizeLanguageCode falls back to 'en', so only trust a real match. */
+  return STT_LOCALES[normalized] ? normalized : 'en';
+}
+
 function detectScriptLanguage(text: string): LanguageCode | null {
   if (/[\u0900-\u097F]/.test(text)) return 'hi';
   if (/[\u0980-\u09FF]/.test(text)) return 'bn';

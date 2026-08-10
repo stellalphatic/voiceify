@@ -6,6 +6,7 @@ import {
   getLanguageLabel,
   isConfidentLanguageSwitch,
   normalizeLanguageCode,
+  resolveConfiguredLanguage,
   resolveSttLocale,
   toScribeLanguageCode,
 } from './language';
@@ -83,6 +84,27 @@ describe('resolveSttLocale', () => {
 
   it('maps Hindi in auto mode', () => {
     expect(resolveSttLocale('auto', 'hi')).toBe('hi-IN');
+  });
+});
+
+describe('resolveConfiguredLanguage', () => {
+  it('maps a language label to its code', () => {
+    expect(resolveConfiguredLanguage('Spanish')).toBe('es');
+    expect(resolveConfiguredLanguage('Hindi')).toBe('hi');
+  });
+
+  it('maps a locale string', () => {
+    expect(resolveConfiguredLanguage('es-ES')).toBe('es');
+  });
+
+  it('takes the primary language from a multi-language config', () => {
+    expect(resolveConfiguredLanguage('Urdu / English')).toBe('ur');
+  });
+
+  it('falls back to English for automatic or unknown configs', () => {
+    expect(resolveConfiguredLanguage('Multilingual')).toBe('en');
+    expect(resolveConfiguredLanguage('')).toBe('en');
+    expect(resolveConfiguredLanguage('Klingon')).toBe('en');
   });
 });
 

@@ -8,12 +8,15 @@ import {
   resolveLanguageMode,
   toCustomAgentConfig,
 } from './dashboard-agent';
-import type { LanguageMode } from './language';
+import type { LanguageCode, LanguageMode } from './language';
+import { resolveConfiguredLanguage } from './language';
 
 export interface VoiceAgentRuntime {
   agentId?: number;
   personaId: string;
   languageMode: LanguageMode;
+  /** Language the first turn is transcribed as, before any detection kicks in. */
+  initialLanguage: LanguageCode;
   agentConfig: CustomAgentConfig | null;
   customGreeting?: string;
   agentName: string;
@@ -56,6 +59,7 @@ export function resolveVoiceAgentRuntime(
     agentId: agent.id,
     personaId,
     languageMode,
+    initialLanguage: resolveConfiguredLanguage(agent.language),
     agentConfig: toCustomAgentConfig(agent),
     customGreeting,
     agentName: agent.name,
@@ -91,6 +95,7 @@ export function runtimeForPersona(
   return {
     personaId: normalizePersonaId(personaId),
     languageMode,
+    initialLanguage: 'en',
     agentConfig: null,
     agentName: personaId,
   };

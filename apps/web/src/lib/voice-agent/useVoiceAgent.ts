@@ -147,6 +147,12 @@ export interface UseVoiceAgentOptions {
   /** When set with agentServerId, sandbox uses the metered org turn pipeline. */
   orgId?: string | null;
   agentServerId?: string | null;
+  /**
+   * Language the first turn is transcribed as. The browser recognizer handles
+   * one locale at a time, so an agent configured for a non-English language
+   * must not start on en-US or its first utterance comes back as garbage.
+   */
+  initialLanguage?: LanguageCode;
 }
 
 export function useVoiceAgent(
@@ -155,12 +161,13 @@ export function useVoiceAgent(
   options?: UseVoiceAgentOptions,
 ) {
   const persona = getPersona(personaId);
+  const initialLanguage = options?.initialLanguage ?? 'en';
   const [status, setStatus] = useState<AgentStatus>('idle');
   const [messages, setMessages] = useState<TranscriptLine[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [isActive, setIsActive] = useState(false);
-  const [activeLanguage, setActiveLanguage] = useState<LanguageCode>('en');
+  const [activeLanguage, setActiveLanguage] = useState<LanguageCode>(initialLanguage);
   const [diarizationEnabled, setDiarizationEnabled] = useState(false);
   const [scribeSttEnabled, setScribeSttEnabled] = useState(false);
   const [scribeRealtimeEnabled, setScribeRealtimeEnabled] = useState(false);
@@ -195,8 +202,8 @@ export function useVoiceAgent(
   const vadMonitorRef = useRef<VoiceActivityMonitor | null>(null);
   const lastFinalRef = useRef({ text: '', at: 0 });
   const postGreetingGraceUntilRef = useRef(0);
-  const lastLanguageRef = useRef<LanguageCode>('en');
-  const lastSttLocaleRef = useRef(resolveSttLocale('auto', 'en'));
+  const lastLanguageRef = useRef<LanguageCode>(initialLanguage);
+  const lastSttLocaleRef = useRef(resolveSttLocale(languageMode, initialLanguage));
   const languageModeRef = useRef<LanguageMode>(languageMode);
   const maintainRecognitionLoopRef = useRef<() => void>(() => {});
   const agentConfigRef = useRef(options?.agentConfig);

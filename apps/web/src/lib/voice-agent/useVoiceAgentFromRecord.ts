@@ -47,6 +47,7 @@ export function useVoiceAgentFromRecord(
         autoStart,
         orgId: opts?.orgId ?? null,
         agentServerId: opts?.agentServerId ?? null,
+        initialLanguage: runtime.initialLanguage,
       }
     : { sessionId: 'restaurant', autoStart };
 
