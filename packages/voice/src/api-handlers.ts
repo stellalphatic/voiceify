@@ -63,7 +63,7 @@ export function handleHealth(): Response {
     stack: VOICE_STACK,
     openSource: OPEN_SOURCE_STACK,
     docs: '/docs',
-    openapi: '/api/openapi',
+    openapi: '/api/openapi.json',
   });
 }
 

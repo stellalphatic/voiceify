@@ -43,15 +43,15 @@ function forbidden(message: string): never {
  */
 export function createAuth() {
   /**
-   * Signups are approved immediately. Operators can still gate them by setting
-   * AUTO_APPROVE_SIGNUPS=false, and admins can suspend or reject an account later.
+   * Self-serve signup: accounts are usable immediately. There is deliberately no
+   * approval gate, because a stale AUTO_APPROVE_SIGNUPS=false silently created
+   * every account as "pending" with no session and broke signup entirely.
+   * Moderation still happens after the fact via reject/suspend in the admin area.
    */
-  const autoApprove = process.env.AUTO_APPROVE_SIGNUPS !== "false";
   const platformAdminEmail = (
     process.env.PLATFORM_ADMIN_EMAIL ?? "admin@metapresence.co"
   ).toLowerCase();
   const baseURL = requireEnv("BETTER_AUTH_URL").replace(/\/$/, "");
-  const appURL = (process.env.APP_URL ?? baseURL).replace(/\/$/, "");
   const isHttps = baseURL.startsWith("https://");
 
   return betterAuth({
@@ -69,8 +69,7 @@ export function createAuth() {
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
-      // Gated deployments must not get a session on signup (was throwing → HTTP 500).
-      autoSignIn: autoApprove,
+      autoSignIn: true,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user: resetUser, url }) => {
         const { passwordResetEmail, sendTransactionalEmail } = await import(
@@ -100,7 +99,7 @@ export function createAuth() {
         status: {
           type: "string",
           required: false,
-          defaultValue: autoApprove ? "approved" : "pending",
+          defaultValue: "approved",
           input: false,
         },
         platformRole: {
@@ -120,31 +119,10 @@ export function createAuth() {
             return {
               data: {
                 ...data,
-                status:
-                  isPlatformAdmin || autoApprove ? "approved" : "pending",
+                status: "approved",
                 platformRole: isPlatformAdmin ? "super_admin" : "user",
               },
             };
-          },
-          after: async (created) => {
-            if (created.status !== "pending") return;
-            const {
-              pendingSignupAdminEmail,
-              sendTransactionalEmail,
-              isEmailConfigured,
-            } = await import("./email.js");
-            if (!isEmailConfigured()) return;
-            const content = pendingSignupAdminEmail({
-              userEmail: created.email,
-              userName: created.name || created.email,
-              adminUrl: `${appURL}/admin`,
-            });
-            void sendTransactionalEmail({
-              to: platformAdminEmail,
-              subject: content.subject,
-              html: content.html,
-              text: content.text,
-            });
           },
         },
       },
@@ -165,18 +143,13 @@ export function createAuth() {
               forbidden("User not found");
             }
             if (row.status === "pending") {
-              // Accounts created while approvals were mandatory stay "pending"
-              // forever otherwise, locking real users out of an open workspace.
-              if (autoApprove) {
-                await db
-                  .update(user)
-                  .set({ status: "approved", updatedAt: new Date() })
-                  .where(eq(user.id, sessionData.userId));
-              } else {
-                forbidden(
-                  "This workspace reviews new accounts before sign in. An admin will approve yours shortly.",
-                );
-              }
+              // Accounts created while the old approval gate was on are stuck
+              // "pending" in existing databases; promote them on first sign-in
+              // instead of locking those users out permanently.
+              await db
+                .update(user)
+                .set({ status: "approved", updatedAt: new Date() })
+                .where(eq(user.id, sessionData.userId));
             }
             if (row.status === "rejected") {
               forbidden("Your account request was rejected.");

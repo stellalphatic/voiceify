@@ -66,7 +66,6 @@ export default function AuthPage() {
   const [agreed, setAgreed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [pendingApproval, setPendingApproval] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -149,34 +148,23 @@ export default function AuthPage() {
 
       if (!authResult.ok) {
         const msg = authResult.error;
-        const isPending =
-          /pending/i.test(msg) || /approval/i.test(msg) || /suspended/i.test(msg);
         const alreadyExists =
           /already exists|already registered|USER_ALREADY_EXISTS/i.test(msg);
-        if (isPending) {
-          setPendingApproval(true);
-          setErrors({});
-        } else if (isSignUp && alreadyExists) {
-          setErrors({
-            form: 'An account with this email already exists. Sign in, or use Forgot password.',
-          });
-        } else {
-          setErrors({ form: msg });
-        }
+        setErrors({
+          form:
+            isSignUp && alreadyExists
+              ? 'An account with this email already exists. Sign in, or use Forgot password.'
+              : msg,
+        });
         setLoading(false);
         return;
       }
 
       let session = await getSession().catch(() => null);
 
-      /* Signup normally returns a session. Retry sign-in before assuming a gated workspace. */
+      /* Signup issues the cookie inline; retry once if it has not landed yet. */
       if (!session && isSignUp) {
-        const retry = await signInEmail({ email: email.trim(), password });
-        if (!retry.ok && /pending|approval|suspended|rejected/i.test(retry.error)) {
-          setPendingApproval(true);
-          setLoading(false);
-          return;
-        }
+        await signInEmail({ email: email.trim(), password });
         session = await getSession().catch(() => null);
       }
 
@@ -211,8 +199,8 @@ export default function AuthPage() {
         }
       } catch (orgErr) {
         const msg = orgErr instanceof Error ? orgErr.message : 'Unable to load workspace';
-        if (/pending|approval|suspended|rejected/i.test(msg)) {
-          setPendingApproval(true);
+        if (/suspended|rejected/i.test(msg)) {
+          setErrors({ form: msg });
           setLoading(false);
           return;
         }
@@ -220,9 +208,9 @@ export default function AuthPage() {
 
       navigate(redirect ? decodeURIComponent(redirect) : '/dashboard');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Authentication failed';
-      if (/pending|approval|suspended|rejected/i.test(msg)) setPendingApproval(true);
-      else setErrors({ form: msg });
+      setErrors({
+        form: err instanceof Error ? err.message : 'Authentication failed',
+      });
     } finally {
       setLoading(false);
     }
@@ -249,41 +237,26 @@ export default function AuthPage() {
 
             <header className="ap-header ap-header--vapi">
               <h1 className="ap-title" id="auth-heading">
-                {pendingApproval
-                  ? 'Pending approval'
-                  : resetSent
-                    ? 'Check your email'
-                    : isForgot
-                      ? 'Reset password'
-                      : isSignUp
-                        ? 'Create your account'
-                        : 'Sign into your account'}
+                {resetSent
+                  ? 'Check your email'
+                  : isForgot
+                    ? 'Reset password'
+                    : isSignUp
+                      ? 'Create your account'
+                      : 'Sign into your account'}
               </h1>
               <p className="ap-sub">
-                {pendingApproval
-                  ? 'This workspace requires an admin to review new accounts before sign in.'
-                  : resetSent
-                    ? `If an account exists for ${email.trim()}, we sent a reset link.`
-                    : isForgot
-                      ? 'Enter your email and we will send a secure reset link.'
-                      : isSignUp
-                        ? 'Manage voice agents, credits, and API keys in one workspace.'
-                        : 'Easily manage your voice agents all in one dashboard.'}
+                {resetSent
+                  ? `If an account exists for ${email.trim()}, we sent a reset link.`
+                  : isForgot
+                    ? 'Enter your email and we will send a secure reset link.'
+                    : isSignUp
+                      ? 'Manage voice agents, credits, and API keys in one workspace.'
+                      : 'Easily manage your voice agents all in one dashboard.'}
               </p>
             </header>
 
-            {pendingApproval && (
-              <div className="ap-form" role="status">
-                <p className="ap-banner">
-                  We saved your request for <strong>{email.trim() || 'your email'}</strong>.
-                </p>
-                <Link to={tabHref('signin')} className="ap-submit">
-                  Back to sign in
-                </Link>
-              </div>
-            )}
-
-            {resetSent && !pendingApproval && (
+            {resetSent && (
               <div className="ap-form" role="status">
                 <Link to={tabHref('signin')} className="ap-submit">
                   Back to sign in
@@ -291,7 +264,7 @@ export default function AuthPage() {
               </div>
             )}
 
-            {!pendingApproval && !resetSent && (
+            {!resetSent && (
               <form onSubmit={(e) => void handleSubmit(e)} className="ap-form" noValidate>
                 {isSignUp && (
                   <div className="ap-field">

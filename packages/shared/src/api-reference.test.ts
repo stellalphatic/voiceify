@@ -7,7 +7,7 @@ describe('api-reference', () => {
     const paths = API_ENDPOINTS.map((e) => e.path);
     expect(paths).toContain('/api/health');
     expect(paths).toContain('/api/voice/respond');
-    expect(paths).toContain('/api/openapi');
+    expect(paths).toContain('/api/openapi.json');
   });
 
   it('documents real persona ids', () => {

@@ -95,11 +95,21 @@ export async function signUpEmail(input: {
       name: input.name,
     }),
   });
+  const body = (await res.json().catch(() => ({}))) as { token?: unknown };
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
     return {
       ok: false,
       error: extractAuthError(body, `Sign up failed (${res.status})`),
+    };
+  }
+  // Better Auth answers 200 with `token: null` when the account was created but
+  // no session was issued. Treat that as a failure so it surfaces as itself
+  // rather than as a generic "could not start your session" further down.
+  if (!body?.token) {
+    return {
+      ok: false,
+      error:
+        "Your account was created but the sign-in session could not be issued. Try signing in.",
     };
   }
   return { ok: true };

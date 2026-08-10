@@ -73,7 +73,7 @@ curl -s https://your-domain/api/health | jq .emailConfigured
 
 5. In **/admin → overview**, click **Send test email to me**. Check `docker compose logs api --tail=80` for `[voiceify/email]`.
 
-**Signup note:** signups are approved immediately by default (`AUTO_APPROVE_SIGNUPS=true`), so new users land in the dashboard right after registering. Set it to `false` only if you want admin review first, in which case new users stay `pending` until approved in `/admin → Users`. Admins can still suspend or reject any account at any time.
+**Signup note:** signup is self-serve — new users get a session immediately and land in the dashboard right after registering. There is no admin approval step. Admins can still suspend or reject any account afterwards in `/admin → Users`, which takes effect on the next sign-in.
 
 Reset flow: `/auth?mode=forgot` → email link → `/auth/reset-password?token=…`
 
@@ -173,7 +173,6 @@ ELEVENLABS_API_KEY="..."
 
 PLATFORM_ADMIN_EMAIL="admin@metapresence.co"
 PLATFORM_ADMIN_PASSWORD="<strong-password>"
-AUTO_APPROVE_SIGNUPS="true"
 
 STRIPE_ENABLED="false"
 ALLOW_DEMO_TOPUP="true"

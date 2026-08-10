@@ -120,23 +120,6 @@ export function passwordResetEmail(params: {
   return { subject, html, text };
 }
 
-export function pendingSignupAdminEmail(params: {
-  userEmail: string;
-  userName: string;
-  adminUrl: string;
-}): { subject: string; html: string; text: string } {
-  const subject = `Voiceify signup pending: ${params.userEmail}`;
-  const text = `New signup awaiting approval:\nName: ${params.userName}\nEmail: ${params.userEmail}\nApprove at: ${params.adminUrl}\n`;
-  const html = `
-    <div style="font-family:system-ui,sans-serif;line-height:1.5;color:#111">
-      <p>New Voiceify signup is waiting for approval.</p>
-      <p><strong>${escapeHtml(params.userName)}</strong><br/>${escapeHtml(params.userEmail)}</p>
-      <p><a href="${escapeAttr(params.adminUrl)}">Open admin portal</a></p>
-    </div>
-  `;
-  return { subject, html, text };
-}
-
 export function contactMessageEmail(params: {
   name: string;
   email: string;
