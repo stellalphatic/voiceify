@@ -14,7 +14,8 @@ import { PcmStreamPlayer } from './pcm-player';
 import { consumeVoiceStream } from './stream-client';
 import { blobToBase64, UtteranceRecorder } from './utterance-recorder';
 import { BARGE_IN_COOLDOWN_MS, BARGE_IN_FINAL_WAIT_MS, INTERRUPT_MIN_CHARS, isLikelyEcho, isInterruptKeyword, shouldTriggerBargeIn } from './interrupt';
-import { SCRIBE_DIARIZE_RACE_MS, SCRIBE_STT_RACE_MS, DUPLICATE_UTTERANCE_MS, MIN_UTTERANCE_CHARS, POST_GREETING_GRACE_MS, MIN_DIARIZE_CLIP_MS, MIN_DIARIZE_AUDIO_BYTES, THINKING_HOLD_MS, ENDPOINT_DEBOUNCE_MS, HOLD_PHRASES, VAD_CONFIRM_WINDOW_MS, VOICE_FETCH_TIMEOUT_MS } from './constants';
+import { SCRIBE_DIARIZE_RACE_MS, SCRIBE_STT_RACE_MS, DUPLICATE_UTTERANCE_MS, MIN_UTTERANCE_CHARS, POST_GREETING_GRACE_MS, MIN_DIARIZE_CLIP_MS, MIN_DIARIZE_AUDIO_BYTES, THINKING_HOLD_MS, HOLD_PHRASES, VAD_CONFIRM_WINDOW_MS, VOICE_FETCH_TIMEOUT_MS } from './constants';
+import { resolveEndpointDelay } from './endpointing';
 import { isLikelySttHallucination } from './stt-guard';
 import { ScribeRealtimeSession } from './scribe-realtime-session';
 import { VoiceActivityMonitor, type VoiceActivityOptions } from './voice-activity-monitor';
@@ -102,7 +103,6 @@ function getSpeechRecognition(): (new () => SpeechRecognitionLike) | null {
 }
 
 const FINAL_LANG_MIN_CHARS = 12;
-const UTTERANCE_DEBOUNCE_MS = ENDPOINT_DEBOUNCE_MS;
 
 function holdPhraseForLanguage(lang: LanguageCode): string {
   return lang === 'ur' ? HOLD_PHRASES.ur : HOLD_PHRASES.en;
@@ -1085,6 +1085,9 @@ export function useVoiceAgent(
       window.clearTimeout(utteranceDebounceRef.current);
     }
 
+    /* Wait on the shape of the sentence, not a fixed window. */
+    const debounceMs = resolveEndpointDelay(pendingUtteranceRef.current);
+
     utteranceDebounceRef.current = window.setTimeout(() => {
       utteranceDebounceRef.current = null;
       const text = pendingUtteranceRef.current.trim();
@@ -1127,7 +1130,7 @@ export function useVoiceAgent(
           }
         }
       })();
-    }, UTTERANCE_DEBOUNCE_MS);
+    }, debounceMs);
   }, [clearBargeInAwaitingFinal, getRecentAgentText]);
 
   const submitUserSpeech = useCallback(

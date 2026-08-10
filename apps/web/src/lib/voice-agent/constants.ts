@@ -42,9 +42,6 @@ export const SCRIBE_REALTIME_MODEL = 'scribe_v2_realtime';
 /** Play a brief hold line if LLM+TTS takes longer than this (ms). */
 export const THINKING_HOLD_MS = 900;
 
-/** Endpointing debounce — longer than raw silence to avoid cutting mid-thought. */
-export const ENDPOINT_DEBOUNCE_MS = 550;
-
 /** Abort hung voice pipeline requests so the UI can recover. */
 export const VOICE_FETCH_TIMEOUT_MS = 30000;
 
