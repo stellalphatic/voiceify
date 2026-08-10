@@ -12,7 +12,6 @@
     "dev:web": "pnpm --filter @voiceify/web dev",
     "dev:api": "pnpm --filter @voiceify/api dev",
     "dev:worker": "pnpm --filter @voiceify/worker dev",
-    "dev:legacy": "tsx server.ts",
     "build": "turbo build",
     "preview": "pnpm --filter @voiceify/web preview",
     "typecheck": "turbo typecheck",
