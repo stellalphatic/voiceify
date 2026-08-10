@@ -12,7 +12,11 @@ FROM deps AS build
 RUN pnpm --filter @voiceify/api... build
 
 FROM base AS runner
+ARG GIT_SHA=unknown
+ARG BUILT_AT=unknown
 ENV NODE_ENV=production
+ENV GIT_SHA=$GIT_SHA
+ENV BUILT_AT=$BUILT_AT
 WORKDIR /app
 COPY --from=build /app /app
 COPY docker/api-entrypoint.sh /entrypoint.sh

@@ -65,6 +65,9 @@ function healthPayload() {
     service: "voiceify-api",
     ts: new Date().toISOString(),
     emailConfigured,
+    // Baked in at image build so a deploy can be verified without guessing.
+    gitSha: process.env.GIT_SHA ?? "unknown",
+    builtAt: process.env.BUILT_AT ?? "unknown",
   };
 }
 

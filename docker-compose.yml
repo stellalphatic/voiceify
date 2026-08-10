@@ -48,6 +48,9 @@ services:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+        BUILT_AT: ${BUILT_AT:-unknown}
     restart: unless-stopped
     env_file:
       - path: .env
@@ -121,6 +124,9 @@ services:
     build:
       context: .
       dockerfile: docker/web.Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+        BUILT_AT: ${BUILT_AT:-unknown}
     restart: unless-stopped
     expose:
       - "80"
