@@ -83,7 +83,7 @@ const CtaButton: React.FC<{
     background: isPrimary
       ? (hovered ? TOKEN.accentHover : TOKEN.accent)
       : (hovered ? TOKEN.bgCardHover : 'transparent'),
-    color: isPrimary ? 'var(--color-voice-on-accent, #ffffff)' : TOKEN.textPrimary,
+    color: isPrimary ? 'var(--color-voice-on-accent)' : TOKEN.textPrimary,
     fontFamily: "var(--font-ui, 'Inter', sans-serif)",
     fontSize: 15, fontWeight: 500, textAlign: 'center',
     borderRadius: 9999,
@@ -158,7 +158,7 @@ const PricingCard: React.FC<CardProps> = ({
         <div style={{
           position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
           background: isPopular ? TOKEN.accent : TOKEN.amber,
-          color: 'var(--color-voice-on-accent, #ffffff)',
+          color: 'var(--color-voice-on-accent)',
           fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em',
           textTransform: 'uppercase',
           padding: '4px 12px', borderRadius: 20, whiteSpace: 'nowrap',
@@ -261,6 +261,7 @@ const TrustBadge: React.FC<{ label: string }> = ({ label }) => (
 ───────────────────────────────────────────── */
 export default function PricingPage() {
   const pageRef = useRef<HTMLDivElement>(null);
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
 
   useEffect(() => {
     const el = pageRef.current;
@@ -288,7 +289,7 @@ export default function PricingPage() {
   const proFeatures = [
     'Unlimited calls',
     'All 3 personas (Restaurant, Dental, Customer Care)',
-    '40+ language auto-detection',
+    '30 languages auto-detection',
     'n8n webhook automation',
     'Real-time analytics & call logs',
     'Priority email support (4h response)',
@@ -315,6 +316,12 @@ export default function PricingPage() {
     'Custom training & runbooks',
   ];
 
+  const proPrice = billing === 'monthly' ? '$20' : '$16';
+  const proYearLabel =
+    billing === 'monthly'
+      ? 'Billed monthly — cancel anytime'
+      : 'Billed yearly at $192 — save 20%';
+
   return (
     <div className="pricing-page-root" ref={pageRef}>
       <div className="pricing-page-inner">
@@ -326,6 +333,30 @@ export default function PricingPage() {
           <p className="pricing-page-sub">
             Start free, scale with your business, or get a fully custom n8n workflow built and delivered by our team.
           </p>
+
+          <div
+            className="pricing-billing-toggle"
+            role="group"
+            aria-label="Billing period"
+          >
+            <button
+              type="button"
+              className={`pricing-billing-btn${billing === 'monthly' ? ' is-active' : ''}`}
+              aria-pressed={billing === 'monthly'}
+              onClick={() => setBilling('monthly')}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              className={`pricing-billing-btn${billing === 'yearly' ? ' is-active' : ''}`}
+              aria-pressed={billing === 'yearly'}
+              onClick={() => setBilling('yearly')}
+            >
+              Yearly
+              <span className="pricing-billing-save">Save 20%</span>
+            </button>
+          </div>
         </div>
 
         {/* ── Pricing grid ── */}
@@ -346,9 +377,9 @@ export default function PricingPage() {
           <PricingCard
             tierName="Pro"
             tagline="For SMBs running daily operations on voice AI."
-            price="$149"
+            price={proPrice}
             priceUnit="/month"
-            yearLabel="or $1,430/year — save 20%"
+            yearLabel={proYearLabel}
             badge="Most Popular"
             highlight="popular"
             features={proFeatures}
@@ -449,6 +480,53 @@ export default function PricingPage() {
           margin: 0 auto;
           max-width: 620px;
           line-height: 1.65;
+        }
+        .pricing-billing-toggle {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          margin: 28px auto 0;
+          padding: 4px;
+          border-radius: 999px;
+          border: 1px solid var(--color-border);
+          background: var(--color-bg-card);
+        }
+        .pricing-billing-btn {
+          appearance: none;
+          border: none;
+          background: transparent;
+          color: var(--color-text-secondary);
+          font: inherit;
+          font-size: 0.875rem;
+          font-weight: 500;
+          padding: 8px 18px;
+          border-radius: 999px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          transition: background 0.15s ease, color 0.15s ease;
+        }
+        .pricing-billing-btn:hover {
+          color: var(--color-text-primary);
+        }
+        .pricing-billing-btn.is-active {
+          background: var(--color-accent);
+          color: var(--color-voice-on-accent);
+        }
+        .pricing-billing-save {
+          font-size: 0.7rem;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          padding: 2px 7px;
+          border-radius: 999px;
+          background: color-mix(in srgb, var(--color-voice-on-accent) 18%, transparent);
+          color: inherit;
+        }
+        .pricing-billing-btn:not(.is-active) .pricing-billing-save {
+          background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+          color: var(--color-accent);
         }
         .pricing-grid {
           display: grid;

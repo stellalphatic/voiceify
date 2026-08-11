@@ -51,7 +51,7 @@ const RELEASES: Release[] = [
     date:    'January 2026',
     title:   'Multilingual support',
     changes: [
-      { type: 'feature',     text: 'Added support for 40+ languages including Urdu, Hindi, Arabic, and Swahili.' },
+      { type: 'feature',     text: 'Added support for 30 languages including Urdu, Hindi, Arabic, and Swahili.' },
       { type: 'feature',     text: 'Automatic Language Identification (LID) — detects language switches mid-call.' },
       { type: 'improvement', text: 'Reduced latency for non-English languages by 35% on average.' },
     ],

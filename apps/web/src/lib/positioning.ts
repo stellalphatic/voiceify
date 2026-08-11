@@ -23,7 +23,7 @@ export const POSITIONING = {
   headlineAccent: 'busiest',
   lead: CORE_PAIN_POINT.solution,
   subLead:
-    'Deploy in minutes. English, Urdu, and 40+ languages. Sub-500ms replies that sound human, not a phone tree from 2008.',
+    'Deploy in minutes. English, Urdu, and 30 languages. Sub-500ms replies that sound human, not a phone tree from 2008.',
 } as const;
 
 export const PERSONA_TIME_SAVERS = {

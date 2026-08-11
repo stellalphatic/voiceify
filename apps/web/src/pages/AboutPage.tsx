@@ -16,7 +16,7 @@ const VALUES = [
   {
     Icon: Globe2,
     title: 'Built for the world',
-    desc: '40+ languages, automatic language identification, and culturally-aware personas — out of the box.',
+    desc: '30 languages, automatic language identification, and culturally-aware personas — out of the box.',
   },
   {
     Icon: Shield,
@@ -32,7 +32,7 @@ const VALUES = [
 
 const STATS = [
   { value: '< 500ms',  label: 'Target response latency' },
-  { value: '40+',      label: 'Languages supported' },
+  { value: '30',       label: 'Languages supported' },
   { value: '3',        label: 'Ready-made agent packs' },
   { value: '100', label: 'Free minutes to start' },
 ];
@@ -144,11 +144,10 @@ export default function AboutPage() {
         >
           <h2 className="text-3xl md:text-4xl font-bold mb-4 tracking-tight">Want to build with us?</h2>
           <p className="text-voice-muted mb-7 max-w-xl mx-auto leading-relaxed">
-            We&apos;re hiring across engineering, research, design, and developer relations. Or just say hi.
+            Reach out if you want to partner, collaborate, or just say hi.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/careers" className="btn-primary-lg">View open roles</Link>
-            <Link to="/contact" className="btn-ghost-lg">Get in touch</Link>
+            <Link to="/contact" className="btn-primary-lg">Get in touch</Link>
           </div>
         </div>
       </section>

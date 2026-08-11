@@ -535,6 +535,33 @@
   line-height: 1.6;
 }
 
+.demo-play-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 4px 0 8px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--color-brand-primary);
+  color: var(--color-voice-on-accent);
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.demo-play-btn:hover:not(:disabled) {
+  background: var(--color-brand-hover);
+  transform: translateY(-1px);
+}
+
+.demo-play-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .demo-nova-script {
   display: flex;
   flex-direction: column;
@@ -582,7 +609,33 @@
   color: var(--color-voice-muted);
 }
 
-.demo-nova-script__steps strong {
+.demo-nova-script__run {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.demo-nova-script__run:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-tertiary);
+}
+
+.demo-nova-script__run:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.demo-nova-script__run strong {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -595,6 +648,13 @@
   gap: 8px;
   width: 100%;
   max-width: 340px;
+}
+
+.demo-prompts--live {
+  max-width: none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
 }
 
 .demo-prompts__label {
@@ -616,15 +676,35 @@
   scrollbar-width: thin;
 }
 
+.demo-prompts__list--compact {
+  max-height: 160px;
+}
+
 .demo-prompt-chip {
+  appearance: none;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: 100%;
   padding: 10px 12px;
   border-radius: 12px;
   background: var(--color-voice-frost);
-  border: 1px dashed var(--color-voice-frost-border);
+  border: 1px solid var(--color-voice-frost-border);
   text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.demo-prompt-chip:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.demo-prompt-chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .demo-prompt-chip__meta {

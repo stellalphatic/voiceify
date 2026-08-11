@@ -5,6 +5,8 @@ import {
 } from '@voiceify/shared';
 import type { LanguageMode } from './language';
 import { useVoiceAgent, type UseVoiceAgentOptions } from './useVoiceAgent';
+import { getPersona } from './personas';
+import { getDemoGreeting } from './nova-demo';
 
 /**
  * One hook for every voice surface — demo, sandbox, embed, etc.
@@ -56,4 +58,45 @@ export function useVoiceAgentFromRecord(
     runtime?.languageMode ?? languageModeOverride ?? 'auto',
     options,
   );
+}
+
+/** Built-in public demo agents — never take workspace/localStorage records. */
+export function buildDemoAgentRecord(
+  personaId: string,
+  languageMode: LanguageMode = 'auto',
+): VoiceAgentRecord {
+  const persona = getPersona(personaId);
+  const type =
+    persona.id === 'healthcare'
+      ? 'Healthcare'
+      : persona.id === 'support'
+        ? 'Customer Service'
+        : 'Restaurant';
+  const language =
+    languageMode === 'ur'
+      ? 'Urdu'
+      : languageMode === 'en'
+        ? 'English'
+        : 'English/Urdu';
+  const greeting =
+    getDemoGreeting(persona.id, languageMode) ??
+    (languageMode === 'ur'
+      ? persona.greetingUr
+      : languageMode === 'auto'
+        ? persona.greetingAuto
+        : persona.greeting);
+
+  return {
+    id: persona.id === 'healthcare' ? 2 : persona.id === 'support' ? 3 : 1,
+    name: persona.name,
+    type,
+    personaId: persona.id,
+    isDemoDefault: true,
+    language,
+    status: 'Active',
+    capabilities: persona.tags,
+    triggers: [],
+    voice: persona.voiceId,
+    greeting,
+  };
 }

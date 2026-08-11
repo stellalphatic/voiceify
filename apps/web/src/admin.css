@@ -238,11 +238,23 @@
   letter-spacing: 0.04em;
 }
 
-.adm-badge--pending { background: #fff4d6; }
+.adm-badge--pending {
+  background: color-mix(in srgb, var(--color-status-warning, #b45309) 18%, var(--adm-panel));
+  color: var(--color-status-warning, #b45309);
+  border-color: color-mix(in srgb, var(--color-status-warning, #b45309) 32%, var(--adm-line));
+}
 .adm-badge--approved,
-.adm-badge--active { background: #ddeedf; }
+.adm-badge--active {
+  background: color-mix(in srgb, var(--color-status-success, #16a34a) 16%, var(--adm-panel));
+  color: var(--color-status-success, #16a34a);
+  border-color: color-mix(in srgb, var(--color-status-success, #16a34a) 30%, var(--adm-line));
+}
 .adm-badge--rejected,
-.adm-badge--suspended { background: #f3d6d6; }
+.adm-badge--suspended {
+  background: color-mix(in srgb, var(--color-status-error, #dc2626) 14%, var(--adm-panel));
+  color: var(--color-status-error, #dc2626);
+  border-color: color-mix(in srgb, var(--color-status-error, #dc2626) 28%, var(--adm-line));
+}
 
 .adm-row-actions,
 .adm-credit-row,

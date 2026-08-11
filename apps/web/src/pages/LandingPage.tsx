@@ -40,7 +40,7 @@ const AUDIENCE_PATHS = [
     audience: 'Enterprise',
     title: 'Scale with confidence',
     description: 'Custom workflows, dedicated support, and SLAs built for high-volume operations.',
-    bullets: ['Custom n8n integrations', 'Dedicated success manager', '99.9% uptime SLA'],
+    bullets: ['Custom n8n integrations', 'Dedicated success manager', 'Agreed support response times'],
     tags: ['Most flexible', 'White-glove onboarding'],
     cta: 'Talk to sales',
     featured: true,
@@ -79,9 +79,9 @@ const PLATFORM_FEATURES = [
   {
     icon: Globe,
     category: 'Language',
-    title: '40+ languages',
+    title: '30 languages',
     description: 'Auto-detect and switch mid-call — English, Urdu, Arabic, and more with zero config.',
-    stat: '40+',
+    stat: '30',
     hero: false,
   },
   {
@@ -200,7 +200,7 @@ const FAQ_ITEMS = [
     id: 'languages',
     topic: 'voice',
     q: 'What languages are supported?',
-    a: '40+ languages with auto-detection mid-call, including English, Urdu, Spanish, French, and Arabic. Switch languages without restarting the session.',
+    a: '30 languages with auto-detection mid-call, including English, Urdu, Spanish, French, and Arabic. Switch languages without restarting the session.',
   },
   {
     id: 'custom-voice',
@@ -227,7 +227,7 @@ const FINAL_STEPS = [
     num: '02',
     icon: Play,
     title: 'Talk in the sandbox',
-    desc: 'Real microphone, sub-500ms replies, 40+ languages',
+    desc: 'Real microphone, sub-500ms replies, 30 languages',
   },
   {
     num: '03',
@@ -273,11 +273,11 @@ const PRICING_PLANS = [
     id: 'pro',
     name: 'Pro',
     badge: 'Most popular',
-    price: '$149',
+    price: '$20',
     period: '/ month',
     sub: 'Unlimited calls · save 20% yearly',
     tagline: 'For teams running voice AI daily.',
-    features: ['All 3 personas', '40+ languages', 'n8n webhooks', 'Priority support (4h)'],
+    features: ['All 3 personas', '30 languages', 'n8n webhooks', 'Priority support (4h)'],
     cta: 'Start free trial',
     href: '/auth?mode=signup',
     featured: true,
@@ -288,7 +288,7 @@ const PRICING_PLANS = [
     badge: 'Scale',
     price: 'Custom',
     period: ' pricing',
-    sub: 'Volume discounts + SLA',
+    sub: 'Volume discounts + agreed support terms',
     tagline: 'For orgs with volume and support needs.',
     features: ['Volume discounts', 'Agreed support response times', 'Security review', 'Dedicated manager'],
     cta: 'Talk to sales',
@@ -528,7 +528,7 @@ export default function LandingPage() {
             <h2 className="lp-h2">Agents built for rush hour</h2>
             <p className="lp-lead lp-lead--center">
               Three personas that answer when your team can&apos;t — each saves hours of
-              repeat calls in English, Urdu, and 40+ languages.
+              repeat calls in English, Urdu, and 30 languages.
             </p>
           </div>
 
@@ -730,15 +730,23 @@ export default function LandingPage() {
       <section className="lp-section lp-faq-section" id="faq">
         <div className="lp-faq-bg" aria-hidden />
         <div className="lp-container">
-          <div className="lp-section-head">
-            <span className="lp-eyebrow">FAQ</span>
-            <h2 className="lp-h2">Common questions</h2>
-            <p className="lp-lead lp-lead--center">
-              Plans, latency, languages, and security — the basics.
-            </p>
-          </div>
+          <div className="lp-faq-layout">
+            <aside className="lp-faq-intro">
+              <div className="lp-faq-intro-sticky">
+                <span className="lp-eyebrow">FAQ</span>
+                <h2 className="lp-h2 lp-faq-intro-title">Frequently asked questions</h2>
+                <p className="lp-lead lp-faq-intro-lead">
+                  Plans, latency, languages, and security — the basics before you deploy.
+                </p>
+                <p className="lp-faq-intro-cta">
+                  Still stuck?{' '}
+                  <Link to="/contact" className="lp-faq-footer-link">
+                    Talk to us
+                  </Link>
+                </p>
+              </div>
+            </aside>
 
-          <div className="lp-faq-layout lp-faq-layout--simple">
             <div className="lp-faq-list">
               {FAQ_ITEMS.map((faq) => (
                 <div
@@ -750,13 +758,20 @@ export default function LandingPage() {
                     className="lp-faq-trigger"
                     onClick={() => toggleFaq(faq.id)}
                     aria-expanded={openFaqId === faq.id}
+                    aria-controls={`faq-answer-${faq.id}`}
+                    id={`faq-trigger-${faq.id}`}
                   >
                     <span className="lp-faq-trigger-inner">
                       <span className="lp-faq-q">{faq.q}</span>
                     </span>
                     <ChevronDown className="lp-faq-icon" size={18} aria-hidden />
                   </button>
-                  <div className="lp-faq-answer">
+                  <div
+                    className="lp-faq-answer"
+                    id={`faq-answer-${faq.id}`}
+                    role="region"
+                    aria-labelledby={`faq-trigger-${faq.id}`}
+                  >
                     <p>{faq.a}</p>
                   </div>
                 </div>

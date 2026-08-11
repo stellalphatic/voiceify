@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import gsap from 'gsap';
 
@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Brain,
   ArrowRight,
+  Play,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -38,9 +39,7 @@ import {
 } from '../lib/voice-agent/demo-prompts';
 import { NOVA_DEMO_PROMPTS } from '../lib/voice-agent/nova-demo';
 
-import { useVoiceAgentFromRecord } from '../lib/voice-agent/useVoiceAgentFromRecord';
-import { useAgentStore } from '../lib/agents/AgentStoreContext';
-
+import { useVoiceAgentFromRecord, buildDemoAgentRecord } from '../lib/voice-agent/useVoiceAgentFromRecord';
 
 
 const STATUS_LABELS: Record<string, string> = {
@@ -99,19 +98,21 @@ export default function DemoPage() {
   const [searchParams] = useSearchParams();
 
   const initialPersona = searchParams.get('persona') ?? 'restaurant';
+  const landingPrompt = searchParams.get('prompt')?.trim() ?? '';
 
   const [activePersonaId, setActivePersonaId] = useState(
-
     VALID_PERSONAS.has(initialPersona) ? initialPersona : 'restaurant',
-
   );
 
   const [languageMode, setLanguageMode] = useState<LanguageMode>('auto');
   const [configOpen, setConfigOpen] = useState(true);
   const [promptFilter, setPromptFilter] = useState<'all' | DemoPromptCategory>('all');
+  const [promptBusy, setPromptBusy] = useState(false);
 
-  const { getAgentForPersona } = useAgentStore();
-  const activeAgent = getAgentForPersona(activePersonaId);
+  const activeAgent = useMemo(
+    () => buildDemoAgentRecord(activePersonaId, languageMode),
+    [activePersonaId, languageMode],
+  );
 
   const {
 
@@ -150,6 +151,8 @@ export default function DemoPage() {
     endSession,
 
     resetConversation,
+
+    sendTextTurn,
 
   } = useVoiceAgentFromRecord(activeAgent, languageMode);
 
@@ -279,65 +282,61 @@ export default function DemoPage() {
 
 
   const toggleCall = () => {
-
     if (isActive) endSession({ userInitiated: true });
-
-    else startSession();
-
+    else void startSession();
   };
 
+  const playDemo = () => {
+    if (isActive) return;
+    void startSession();
+  };
 
+  const runPrompt = async (text: string) => {
+    if (promptBusy || status === 'thinking' || status === 'speaking' || status === 'connecting') {
+      return;
+    }
+    setPromptBusy(true);
+    try {
+      await sendTextTurn(text);
+    } finally {
+      setPromptBusy(false);
+    }
+  };
+
+  /** Honor Landing “Try it” ?prompt= once. */
+  const landingPromptUsed = useRef(false);
+  useEffect(() => {
+    if (!landingPrompt || landingPromptUsed.current) return;
+    landingPromptUsed.current = true;
+    void runPrompt(landingPrompt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- inbound prompt once
+  }, [landingPrompt]);
 
   const statusHint =
-
     status === 'connecting'
-
       ? 'Warming voice pipeline…'
-
       : isActive
-
         ? status === 'listening'
-
-          ? 'Speak now — I\'m listening'
-
+          ? 'Speak now — or tap a prompt below'
           : status === 'speaking'
-
             ? 'Speak anytime to interrupt — barge-in enabled'
-
             : status === 'thinking'
-
               ? 'Processing… speak to cancel and take over'
-
-              : 'Session active'
-
+              : STATUS_LABELS[status] ?? status
         : status === 'error'
+          ? 'Session error — tap Play demo or mic to retry'
+          : 'Tap Play demo to hear the agent, or tap a prompt to try a turn';
 
-          ? 'Session error — tap mic to retry'
-
-          : 'Tap mic to start a voice call';
-
-
-
-  const ringClass =
-
+  const micRingClass =
     status === 'listening'
-
       ? 'demo-btn-mic-ring--listening'
-
       : status === 'thinking' || status === 'connecting'
-
         ? 'demo-btn-mic-ring--thinking'
-
         : status === 'speaking'
-
           ? 'demo-btn-mic-ring--speaking'
-
           : '';
 
-
-
   return (
-
     <div
       ref={containerRef}
       id="main-content"
@@ -548,20 +547,38 @@ export default function DemoPage() {
                 <p className="demo-chat__empty-title">Ready to talk to {persona.name}</p>
 
                 <p className="demo-chat__empty-sub">
-                  Tap the mic below to start. {persona.name} will greet you, then listen for your voice and the transcript will appear here live.
+                  Tap <strong>Play demo</strong> to hear {persona.name} greet you out loud.
+                  Then tap a prompt (no mic needed) or speak after allowing the microphone.
                 </p>
+
+                <button
+                  type="button"
+                  className="demo-play-btn"
+                  onClick={playDemo}
+                  disabled={isActive || status === 'connecting'}
+                >
+                  <Play size={18} aria-hidden />
+                  Play demo — hear {persona.name}
+                </button>
 
                 {activePersonaId === 'restaurant' ? (
                   <div className="demo-nova-script">
-                    <p className="demo-nova-script__label">Nova presents the demo</p>
+                    <p className="demo-nova-script__label">Suggested first lines</p>
                     <p className="demo-nova-script__text">
-                      Start the call — Nova introduces Voiceify, then try a phrase below.
+                      After the greeting, tap any phrase below — {persona.name} will answer with voice.
                     </p>
                     <ul className="demo-nova-script__steps">
                       {NOVA_DEMO_PROMPTS.map((step) => (
                         <li key={step.id}>
-                          <strong>{step.label}</strong>
-                          <span>&ldquo;{step.text}&rdquo;</span>
+                          <button
+                            type="button"
+                            className="demo-nova-script__run"
+                            disabled={promptBusy}
+                            onClick={() => void runPrompt(step.text)}
+                          >
+                            <strong>{step.label}</strong>
+                            <span>&ldquo;{step.text}&rdquo;</span>
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -570,7 +587,7 @@ export default function DemoPage() {
 
                 <div className="demo-prompts">
                   <div className="demo-prompts__head">
-                    <p className="demo-prompts__label">Try saying</p>
+                    <p className="demo-prompts__label">Try a prompt</p>
                     <span className="demo-prompts__count">{filteredPrompts.length} prompts</span>
                   </div>
                   <div className="demo-prompts__tabs" role="tablist" aria-label="Prompt categories">
@@ -598,7 +615,13 @@ export default function DemoPage() {
                   </div>
                   <div className="demo-prompts__list">
                     {filteredPrompts.map((prompt) => (
-                      <div key={prompt.id} className="demo-prompt-chip">
+                      <button
+                        key={prompt.id}
+                        type="button"
+                        className="demo-prompt-chip"
+                        disabled={promptBusy}
+                        onClick={() => void runPrompt(prompt.text)}
+                      >
                         <span className="demo-prompt-chip__meta">
                           <span className="demo-prompt-chip__cat">
                             {DEMO_PROMPT_CATEGORIES[prompt.category]}
@@ -609,7 +632,7 @@ export default function DemoPage() {
                         </span>
                         <span className="demo-prompt-chip__title">{prompt.label}</span>
                         <span className="demo-prompt-chip__text">&ldquo;{prompt.text}&rdquo;</span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -708,6 +731,24 @@ export default function DemoPage() {
                   </div>
 
                 )}
+
+                <div className="demo-prompts demo-prompts--live">
+                  <p className="demo-prompts__label">Tap a prompt to continue</p>
+                  <div className="demo-prompts__list demo-prompts__list--compact">
+                    {filteredPrompts.slice(0, 4).map((prompt) => (
+                      <button
+                        key={prompt.id}
+                        type="button"
+                        className="demo-prompt-chip"
+                        disabled={promptBusy || status === 'thinking' || status === 'connecting'}
+                        onClick={() => void runPrompt(prompt.text)}
+                      >
+                        <span className="demo-prompt-chip__title">{prompt.label}</span>
+                        <span className="demo-prompt-chip__text">&ldquo;{prompt.text}&rdquo;</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
               </>
 
@@ -877,7 +918,7 @@ export default function DemoPage() {
 
               <div className="demo-btn-mic-wrap">
 
-                {ringClass && <span className={cn('demo-btn-mic-ring', ringClass)} aria-hidden />}
+                {micRingClass && <span className={cn('demo-btn-mic-ring', micRingClass)} aria-hidden />}
 
                 <button
 

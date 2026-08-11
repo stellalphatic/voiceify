@@ -69,8 +69,18 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <p>
-          We aim for 99.9% uptime on Pro plans and 99.99% on Enterprise plans. Service credits are issued per the
-          terms of your specific SLA. Free plan is provided as-is without uptime guarantees.
+          Free and Pro are provided on a commercially reasonable efforts basis. They do not include a
+          contractual uptime percentage, service credits, or a formal SLA unless a separate written
+          agreement says otherwise.
+        </p>
+        <p>
+          Enterprise customers may negotiate availability targets, support response times, and service
+          credits in a signed order form or master service agreement. Until that agreement is in place,
+          no specific uptime figure (including 99.9% or 99.99%) is guaranteed.
+        </p>
+        <p>
+          For our current security controls and compliance roadmap, see our{' '}
+          <Link to="/security">Security</Link> page.
         </p>
       </>
     ),
