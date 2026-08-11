@@ -69,7 +69,17 @@ embedRoutes.post(
       })
       .returning();
 
-    const snippet = `<script src="${process.env.APP_URL ?? ""}/widget.js" data-token="${publicKey}" async></script>`;
+    /*
+     * An empty base makes the snippet resolve /widget.js against the customer's
+     * own domain, where it does not exist. WEB_ORIGIN is already required for
+     * CORS, so fall back to it before giving up on an absolute URL.
+     */
+    const appOrigin = (
+      process.env.APP_URL ||
+      process.env.WEB_ORIGIN ||
+      new URL(c.req.url).origin
+    ).replace(/\/$/, "");
+    const snippet = `<script src="${appOrigin}/widget.js" data-token="${publicKey}" async></script>`;
     return c.json({ config, snippet }, 201);
   },
 );

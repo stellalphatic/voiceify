@@ -158,7 +158,7 @@ voiceRoutes.post(
       .from(tools)
       .where(eq(tools.orgId, orgId));
     const versionToolIds = version?.toolIds ?? [];
-    const orgTools =
+    const enabledOrgTools =
       versionToolIds.length > 0
         ? allOrgTools.filter((t) => versionToolIds.includes(t.id))
         : allOrgTools;
@@ -227,6 +227,10 @@ voiceRoutes.post(
       }
     }
 
+    /* Guardrail switch: when tools are disabled the agent must not see or run them. */
+    const toolsAllowed = (agent.guardrails as Record<string, unknown> | null)?.allowTools !== false;
+    const orgTools = toolsAllowed ? enabledOrgTools : [];
+
     const toolHint =
       orgTools.length > 0
         ? `\n\n[Tools available to you]\n${orgTools
@@ -261,6 +265,22 @@ voiceRoutes.post(
     if (Array.isArray(guardrails.allowedLanguages) && guardrails.allowedLanguages.length) {
       guardrailLines.push(
         `Prefer languages: ${(guardrails.allowedLanguages as string[]).join(", ")}.`,
+      );
+    }
+    if (typeof guardrails.maxReplySeconds === "number" && guardrails.maxReplySeconds > 0) {
+      /* Conversational speech runs ~2.5 words per second. */
+      const wordBudget = Math.max(8, Math.round(guardrails.maxReplySeconds * 2.5));
+      guardrailLines.push(
+        `Keep each spoken reply under ${guardrails.maxReplySeconds} seconds — at most about ${wordBudget} words.`,
+      );
+    }
+    if (guardrails.temperatureStrictness === "strict") {
+      guardrailLines.push(
+        "Answer literally and briefly. Do not speculate, embellish, or volunteer information you were not asked for.",
+      );
+    } else if (guardrails.temperatureStrictness === "creative") {
+      guardrailLines.push(
+        "You may vary your phrasing and proactively suggest relevant options.",
       );
     }
     const guardrailHint = guardrailLines.length

@@ -4,16 +4,19 @@ import { ShieldAlert } from 'lucide-react';
 import { useAgentStore } from '../../lib/agents/AgentStoreContext';
 import { apiJson, getActiveOrgId } from '../../lib/auth/client';
 
+/**
+ * Every field here is read by the turn pipeline in apps/api/src/routes/voice.ts.
+ * Controls that could only be stored and never enforced were removed rather than
+ * left on screen implying protection the runtime does not provide.
+ */
 type GuardrailsState = {
   blockPii: boolean;
   stayOnTopic: boolean;
   noMedicalAdvice: boolean;
   blockProfanity: boolean;
   refuseJailbreak: boolean;
-  requireToolConfirmation: boolean;
-  escalateToHuman: boolean;
+  allowTools: boolean;
   maxReplySeconds: number;
-  maxToolCallsPerTurn: number;
   temperatureStrictness: 'strict' | 'balanced' | 'creative';
   blockedTopics: string;
   allowedLanguages: string[];
@@ -25,10 +28,8 @@ const DEFAULTS: GuardrailsState = {
   noMedicalAdvice: true,
   blockProfanity: true,
   refuseJailbreak: true,
-  requireToolConfirmation: false,
-  escalateToHuman: true,
+  allowTools: true,
   maxReplySeconds: 12,
-  maxToolCallsPerTurn: 2,
   temperatureStrictness: 'balanced',
   blockedTopics: '',
   allowedLanguages: ['en', 'ur', 'auto', 'ar', 'hi', 'es'],
@@ -44,19 +45,7 @@ const LANG_OPTIONS = [
   { code: 'auto', label: 'Auto-detect' },
 ] as const;
 
-function storageKey(agentId: number) {
-  return `voiceify.guardrails.${agentId}`;
-}
-
-function loadGuardrails(agentId: number): GuardrailsState {
-  try {
-    const raw = window.localStorage.getItem(storageKey(agentId));
-    if (!raw) return DEFAULTS;
-    return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<GuardrailsState>) };
-  } catch {
-    return DEFAULTS;
-  }
-}
+type ServerAgentRow = { id: string; guardrails?: Partial<GuardrailsState> | null };
 
 export default function GuardrailsWorkspace() {
   const { agents } = useAgentStore();
@@ -70,41 +59,72 @@ export default function GuardrailsWorkspace() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
 
+  /*
+   * Read the policy the runtime actually enforces. This used to load from
+   * localStorage, so a second browser showed defaults that contradicted what
+   * was stored on the agent while claiming to be "synced to server".
+   */
+  const serverId = selected?.serverId;
   useEffect(() => {
-    if (typeof agentId === 'number') {
-      setForm(loadGuardrails(agentId));
-      setSaved(false);
-    }
-  }, [agentId]);
-
-  const save = () => {
-    if (typeof agentId !== 'number') return;
-    window.localStorage.setItem(storageKey(agentId), JSON.stringify(form));
-    setSaved(true);
+    setSaved(false);
     setError(null);
+    if (!serverId) {
+      setForm(DEFAULTS);
+      return;
+    }
 
     const orgId = getActiveOrgId();
-    const serverId = selected?.serverId;
-    if (orgId && serverId) {
-      setBusy(true);
-      void (async () => {
-        try {
-          await apiJson(`/api/orgs/${orgId}/agents/${serverId}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ guardrails: form }),
-          });
-        } catch (err) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : 'Saved locally, but server sync failed',
-          );
-        } finally {
-          setBusy(false);
-        }
-      })();
+    if (!orgId) {
+      setForm(DEFAULTS);
+      return;
     }
+
+    let cancelled = false;
+    setLoading(true);
+    void (async () => {
+      try {
+        const data = await apiJson<{ agents: ServerAgentRow[] }>(
+          `/api/orgs/${orgId}/agents`,
+        );
+        if (cancelled) return;
+        const row = data.agents.find((a) => a.id === serverId);
+        setForm({ ...DEFAULTS, ...(row?.guardrails ?? {}) });
+      } catch {
+        if (!cancelled) setForm(DEFAULTS);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [serverId]);
+
+  const save = () => {
+    const orgId = getActiveOrgId();
+    if (!orgId || !serverId) {
+      setError('Save this agent to your workspace before setting guardrails.');
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    void (async () => {
+      try {
+        await apiJson(`/api/orgs/${orgId}/agents/${serverId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ guardrails: form }),
+        });
+        setSaved(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not save guardrails');
+      } finally {
+        setBusy(false);
+      }
+    })();
   };
 
   return (
@@ -157,8 +177,7 @@ export default function GuardrailsWorkspace() {
                 ['noMedicalAdvice', 'Refuse diagnosis or prescribing language'],
                 ['blockProfanity', 'Redirect when callers use abusive language'],
                 ['refuseJailbreak', 'Refuse prompt-injection / “ignore instructions” attempts'],
-                ['requireToolConfirmation', 'Ask before executing high-impact tools'],
-                ['escalateToHuman', 'Offer human handoff when confidence is low'],
+                ['allowTools', 'Allow this agent to run connected tools'],
               ] as const
             ).map(([key, label]) => (
               <label key={key} className="vfy-check-row">
@@ -171,42 +190,21 @@ export default function GuardrailsWorkspace() {
               </label>
             ))}
 
-            <div className="vfy-settings-row" style={{ gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <label className="vfy-label" htmlFor="max-reply">
-                  Max spoken reply (seconds)
-                </label>
-                <input
-                  id="max-reply"
-                  type="number"
-                  min={4}
-                  max={45}
-                  className="vfy-field-input"
-                  value={form.maxReplySeconds}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, maxReplySeconds: Number(e.target.value) || 12 }))
-                  }
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label className="vfy-label" htmlFor="max-tools">
-                  Max tool calls / turn
-                </label>
-                <input
-                  id="max-tools"
-                  type="number"
-                  min={0}
-                  max={8}
-                  className="vfy-field-input"
-                  value={form.maxToolCallsPerTurn}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      maxToolCallsPerTurn: Number(e.target.value) || 0,
-                    }))
-                  }
-                />
-              </div>
+            <div>
+              <label className="vfy-label" htmlFor="max-reply">
+                Max spoken reply (seconds)
+              </label>
+              <input
+                id="max-reply"
+                type="number"
+                min={4}
+                max={45}
+                className="vfy-field-input"
+                value={form.maxReplySeconds}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, maxReplySeconds: Number(e.target.value) || 12 }))
+                }
+              />
             </div>
 
             <div>
@@ -273,20 +271,19 @@ export default function GuardrailsWorkspace() {
             <button
               type="button"
               className="vfy-btn vfy-btn-primary"
-              disabled={busy}
+              disabled={busy || loading}
               onClick={save}
             >
-              Save guardrails
+              {busy ? 'Saving…' : 'Save guardrails'}
             </button>
             {error && (
               <p className="text-sm" role="alert" style={{ color: 'var(--d-danger)' }}>
                 {error}
               </p>
             )}
-            {saved && (
+            {saved && !error && (
               <p className="text-sm" style={{ color: 'var(--d-accent)' }}>
-                Guardrails saved for {selected?.name}
-                {selected?.serverId ? ' (synced to server)' : ''}.
+                Guardrails saved for {selected?.name}.
               </p>
             )}
           </div>
