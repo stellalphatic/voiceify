@@ -22,7 +22,11 @@ interface Props {
 
 export default function LegalPageLayout({ eyebrow, title, intro, lastUpdated, sections }: Props) {
   return (
-    <div className="min-h-screen bg-voice-bg text-voice-text font-sans selection:bg-voice-accent selection:text-voice-on-accent pt-28 pb-20">
+    <div
+      id="main-content"
+      tabIndex={-1}
+      className="min-h-screen bg-voice-bg text-voice-text font-sans selection:bg-voice-accent selection:text-voice-on-accent pt-28 pb-20"
+    >
       <div className="max-w-6xl mx-auto px-6">
 
         {/* ── Header ── */}

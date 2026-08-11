@@ -380,7 +380,7 @@
   border: none;
   border-radius: 9999px;
   background: var(--lp-accent);
-  color: var(--color-voice-on-accent, #ffffff);
+  color: var(--color-voice-on-accent);
   font-size: 13px;
   font-weight: 500;
   font-family: inherit;
@@ -624,8 +624,11 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  /* Fixed height keeps the hero from reflowing as turns stream in. */
-  min-height: 208px;
+  /* Locked to full 4-turn script height so the hero never reflows as turns stream in. */
+  height: 360px;
+  min-height: 360px;
+  max-height: 360px;
+  overflow: hidden;
   padding: 18px 16px;
   justify-content: flex-end;
 }
@@ -783,12 +786,12 @@
 .lp-livecall-link {
   border: 1px solid var(--color-brand-primary, #292524);
   background: var(--color-brand-primary, #292524);
-  color: #fafaf9;
+  color: var(--color-voice-on-accent);
 }
 
 .lp-livecall-link:hover {
   background: var(--color-brand-hover, #0c0a09);
-  color: #ffffff;
+  color: var(--color-voice-on-accent);
 }
 
 @media (max-width: 960px) {
@@ -3152,31 +3155,48 @@
   box-shadow: 0 18px 52px -28px rgba(12, 10, 9, 0.04);
 }
 
-/* Featured tier — fixed dark inversion in both themes, ElevenLabs-style */
+/* Featured tier — elevated contrast island (theme-aware, not page-ink) */
 .lp-pricing-card--featured {
-  border-color: #0c0a09;
-  background: #0c0a09;
-  box-shadow: 0 20px 56px -28px rgba(12, 10, 9, 0.35);
+  --lp-featured-muted: #a8a29e;
+  --lp-featured-body: #d6d3d1;
+  --lp-featured-strong: #fafaf9;
+  border-color: var(--color-text-primary);
+  background: var(--color-text-primary);
+  box-shadow: 0 20px 56px -28px color-mix(in srgb, var(--color-text-primary) 35%, transparent);
 }
 
 .lp-pricing-card--featured:hover {
-  border-color: #0c0a09;
-  box-shadow: 0 28px 72px -24px rgba(12, 10, 9, 0.4);
+  border-color: var(--color-text-primary);
+  box-shadow: 0 28px 72px -24px color-mix(in srgb, var(--color-text-primary) 40%, transparent);
+}
+
+[data-theme="dark"] .lp-pricing-card--featured {
+  --lp-featured-muted: var(--color-text-muted);
+  --lp-featured-body: var(--color-text-secondary);
+  --lp-featured-strong: var(--color-text-primary);
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border-strong);
+  box-shadow: 0 20px 56px -28px rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="dark"] .lp-pricing-card--featured:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: 0 28px 72px -24px rgba(0, 0, 0, 0.65);
 }
 
 .lp-pricing-card--featured .lp-pricing-name,
 .lp-pricing-card--featured .lp-pricing-amount span,
 .lp-pricing-card--featured .lp-pricing-sub {
-  color: #a8a29e;
+  color: var(--lp-featured-muted);
 }
 
 .lp-pricing-card--featured .lp-pricing-tagline,
 .lp-pricing-card--featured .lp-pricing-features li {
-  color: #d6d3d1;
+  color: var(--lp-featured-body);
 }
 
 .lp-pricing-card--featured .lp-pricing-features li svg {
-  color: #a7e5d3;
+  color: var(--orb-mint, #a7e5d3);
 }
 
 .lp-pricing-card-top {
@@ -3228,7 +3248,7 @@
 }
 
 .lp-pricing-card--featured .lp-pricing-amount strong {
-  color: #ffffff;
+  color: var(--lp-featured-strong);
 }
 
 .lp-pricing-amount span {
@@ -3307,18 +3327,30 @@
   transform: translateX(3px);
 }
 
-/* Primary CTA inside the dark featured card — white pill on ink */
+/* Primary CTA on featured card — contrast pill against the featured surface */
 .lp-pricing-cta--primary {
-  background: #ffffff;
-  border-color: #ffffff;
-  color: #0c0a09;
+  background: var(--color-bg-primary);
+  border-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
   box-shadow: none;
 }
 
 .lp-pricing-cta--primary:hover {
-  background: #f0efed;
-  border-color: #f0efed;
-  color: #0c0a09;
+  background: var(--color-bg-elevated);
+  border-color: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .lp-pricing-cta--primary {
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+  color: var(--color-bg-primary);
+}
+
+[data-theme="dark"] .lp-pricing-cta--primary:hover {
+  background: var(--color-text-secondary);
+  border-color: var(--color-text-secondary);
+  color: var(--color-bg-primary);
 }
 
 .lp-pricing-trust {
@@ -3418,23 +3450,45 @@
 
 .lp-faq-layout {
   display: grid;
-  grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
-  gap: clamp(1.25rem, 2.5vw, 2rem);
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
+  gap: clamp(3rem, 5vw, 4rem);
   align-items: start;
   position: relative;
   z-index: 1;
 }
 
-/* Simple variant — single centered column (markup has no aside) */
-.lp-faq-layout--simple {
-  display: block;
-  max-width: 760px;
-  margin-inline: auto;
+.lp-faq-intro {
+  min-width: 0;
 }
 
+.lp-faq-intro-sticky {
+  position: sticky;
+  top: 6rem; /* top-24 — clears fixed navbar */
+  padding-block: 4px;
+}
+
+.lp-faq-intro-title {
+  margin: 0 0 12px;
+  text-align: left;
+  max-width: 18ch;
+}
+
+.lp-faq-intro-lead {
+  margin: 0;
+  text-align: left;
+  max-width: 36ch;
+}
+
+.lp-faq-intro-cta {
+  margin: 1.5rem 0 0;
+  font-size: 0.9375rem;
+  color: var(--lp-dim);
+}
+
+/* Legacy aside card (unused in current markup; keep for compatibility) */
 .lp-faq-aside {
   position: sticky;
-  top: 96px;
+  top: 6rem;
   padding: 22px 20px;
   border: 1px solid var(--lp-border);
   border-radius: 16px;
@@ -4173,6 +4227,15 @@
 
   .lp-faq-layout {
     grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .lp-faq-intro-sticky {
+    position: static;
+  }
+
+  .lp-faq-intro-title {
+    max-width: none;
   }
 
   .lp-faq-aside {

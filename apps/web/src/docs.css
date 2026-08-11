@@ -254,7 +254,7 @@ body:has(.docs-page) .techy-ambient::after {
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
-  color: var(--color-voice-on-accent, #ffffff);
+  color: var(--color-voice-on-accent);
   background: var(--color-brand-primary);
   transition: background 0.15s ease;
 }

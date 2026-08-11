@@ -61,7 +61,7 @@ class RootErrorBoundary extends Component<EBProps, EBState> {
             onClick={() => window.location.reload()}
             style={{
               background: 'var(--color-brand-primary)',
-              color: 'var(--color-voice-on-accent, #ffffff)',
+              color: 'var(--color-voice-on-accent)',
               border: 'none',
               borderRadius: '9999px',
               padding: '10px 24px',

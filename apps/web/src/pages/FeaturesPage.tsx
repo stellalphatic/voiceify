@@ -289,7 +289,7 @@ export default function FeaturesPage() {
         <div className="mt-20 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight">Ready to ship a voice agent today?</h2>
           <p className="text-base text-voice-muted mb-7 max-w-xl mx-auto">
-            Start free with 100 minutes. Pro is $149/month. Custom workflows on request for larger teams.
+            Start free with 100 minutes. Pro is $20/month. Custom workflows on request for larger teams.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link

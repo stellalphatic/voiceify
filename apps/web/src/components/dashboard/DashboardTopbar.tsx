@@ -64,9 +64,9 @@ export default function DashboardTopbar({ crumbs, actions, onMenuClick }: Dashbo
         </div>
 
         <div className="vfy-top-right">
-          <span className="vfy-top-status" aria-label="System status: live">
-            <span className="vfy-top-status-dot" />
-            <span>Live</span>
+          <span className="vfy-top-status" title="API and dashboard are reachable">
+            <span className="vfy-top-status-dot" aria-hidden />
+            <span>Online</span>
           </span>
 
           <a

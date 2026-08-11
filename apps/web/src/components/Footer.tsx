@@ -17,7 +17,6 @@ const NAV_COLS = [
     links: [
       { label: 'About', to: '/about' },
       { label: 'Blog', to: '/blog' },
-      { label: 'Careers', to: '/careers' },
       { label: 'Contact', to: '/contact' },
     ],
   },
@@ -40,6 +39,7 @@ const SOCIALS = [
 
 export default function Footer() {
   const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  const scrollTopOnNav = () => window.scrollTo(0, 0);
 
   return (
     <footer className="footer-techy footer-techy--minimal">
@@ -49,10 +49,10 @@ export default function Footer() {
             Voice AI for real businesses
           </h2>
           <div className="footer-cta-actions">
-            <Link to="/contact" className="footer-cta-btn footer-cta-btn--outline">
+            <Link to="/contact" className="footer-cta-btn footer-cta-btn--outline" onClick={scrollTopOnNav}>
               Talk to sales
             </Link>
-            <Link to="/auth?mode=signup" className="footer-cta-btn footer-cta-btn--primary">
+            <Link to="/auth?mode=signup" className="footer-cta-btn footer-cta-btn--primary" onClick={scrollTopOnNav}>
               Create an AI agent
             </Link>
           </div>
@@ -62,7 +62,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 relative z-[1]">
         <div className="footer-main-grid footer-main-grid--minimal">
           <div className="footer-brand-block">
-            <Link to="/" className="footer-brand-link">
+            <Link to="/" className="footer-brand-link" onClick={scrollTopOnNav}>
               <span className="footer-brand-name">Voiceify</span>
             </Link>
             <p className="footer-brand-tagline">
@@ -83,7 +83,7 @@ export default function Footer() {
               <ul className="footer-nav-list">
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    <Link to={l.to} className="footer-nav-link">
+                    <Link to={l.to} className="footer-nav-link" onClick={scrollTopOnNav}>
                       {l.label}
                     </Link>
                   </li>

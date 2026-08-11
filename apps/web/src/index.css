@@ -332,7 +332,7 @@
   --color-voice-accent:          var(--color-accent);
   --color-voice-accent-hover:    var(--color-accent-hover);
   --color-voice-text:            var(--color-text-primary);
-  --color-voice-muted:           var(--color-text-secondary);
+  --color-voice-muted:           var(--color-text-muted);
   --color-voice-border:          var(--color-border);
   --color-voice-on-accent:       #ffffff;
   --color-voice-backdrop:        var(--color-bg-overlay);
@@ -495,8 +495,8 @@ html {
   scroll-behavior: auto;
   scroll-padding-top: 88px;
   -webkit-text-size-adjust: 100%;
-  /* Phase 2 — smooth theme switching on the root element */
-  transition: background-color 0.3s ease, color 0.3s ease;
+  /* Theme switch only on the root — avoid per-node color flashes */
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -505,24 +505,10 @@ html {
   }
 }
 
-/* Phase 2 — Global ambient transitions for theme-sensitive properties.
-   Scoped to color/border only — NOT transform/opacity (prevents animation jank). */
-* {
-  transition:
-    background-color 0.3s ease,
-    border-color 0.3s ease,
-    color 0.2s ease;
-}
-
-/* Restore interactive hover transitions to the fast design-token value */
-*:hover {
-  transition: var(--transition-fast);
-}
-
-/* Never transition transforms — causes layout/GPU jank */
-*,
-*:hover {
-  transition-property: background-color, border-color, color, box-shadow, opacity;
+@media (prefers-reduced-motion: reduce) {
+  html {
+    transition: none;
+  }
 }
 
 body {
@@ -535,10 +521,16 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition:
-    background-color var(--transition-slow),
-    color var(--transition-slow);
+    background-color 0.25s ease,
+    color 0.25s ease;
   /* Prevent horizontal scroll on mobile from any rogue element */
   overflow-x: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body {
+    transition: none;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -563,15 +555,23 @@ p, li {
   overflow-wrap: break-word;
 }
 
-/* Smooth theme transitions on structural elements */
+/* Smooth theme transitions on structural shells only — not every text node/icon */
 nav, footer, main, aside, header,
 [class*="bg-voice-bg"],
 [class*="bg-voice-surface"],
 .theme-transition-surfaces {
   transition:
-    background-color var(--transition-slow),
-    color var(--transition-slow),
-    border-color var(--transition-slow);
+    background-color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  nav, footer, main, aside, header,
+  [class*="bg-voice-bg"],
+  [class*="bg-voice-surface"],
+  .theme-transition-surfaces {
+    transition: none;
+  }
 }
 
 /* Theme toggle — shared across navbar, auth, dashboard */
@@ -618,7 +618,7 @@ nav, footer, main, aside, header,
   font-style: normal;
 }
 
-/* Marketing prose pages (About, Blog, Security, Careers, Changelog…) —
+/* Marketing prose pages (About, Blog, Security, Changelog…) —
    headings adopt the display voice; never bolder than 500 */
 .min-h-screen.bg-voice-bg h1,
 .min-h-screen.bg-voice-bg h2 {

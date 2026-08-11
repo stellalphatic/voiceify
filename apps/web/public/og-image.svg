@@ -43,7 +43,7 @@
   <text x="96" y="476" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="68" fill="#00D992" letter-spacing="-2">Sounds Human</text>
 
   <!-- Subhead -->
-  <text x="96" y="540" font-family="Inter, system-ui, sans-serif" font-weight="500" font-size="26" fill="#9aa0aa">Sub-500ms latency · 40+ languages · Enterprise security</text>
+  <text x="96" y="540" font-family="Inter, system-ui, sans-serif" font-weight="500" font-size="26" fill="#9aa0aa">Sub-500ms latency · 30 languages · Enterprise security</text>
 
   <!-- Footer chip -->
   <g transform="translate(96, 580)">

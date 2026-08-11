@@ -1523,6 +1523,29 @@ export function useVoiceAgent(
   ]);
 
   /**
+   * Text → voice turn (demo prompt chips, typed sandbox input).
+   * Starts a session (greeting TTS) if idle, then runs the LLM+TTS pipeline.
+   */
+  const sendTextTurn = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || processingRef.current) return;
+      processingRef.current = true;
+      setError(null);
+      try {
+        if (!activeRef.current) {
+          await startSession();
+        }
+        if (!activeRef.current) return;
+        await processUserMessage(trimmed, performance.now(), null);
+      } finally {
+        processingRef.current = false;
+      }
+    },
+    [processUserMessage, startSession],
+  );
+
+  /**
    * Without this the row stays "active" forever, so duration and completion rate
    * are unmeasurable. keepalive lets it land even when the tab is closing.
    */
@@ -1633,5 +1656,6 @@ export function useVoiceAgent(
     endSession,
     resetConversation,
     startListening,
+    sendTextTurn,
   };
 }

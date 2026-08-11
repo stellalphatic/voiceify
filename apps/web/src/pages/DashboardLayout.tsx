@@ -9,7 +9,7 @@ import '../dashboard.css';
 import { 
   Mic, 
   Activity, 
-  Users, 
+  Bot, 
   Settings, 
   BarChart3, 
   Play, 
@@ -132,7 +132,7 @@ const LegacySidebar = () => {
   const navItems = [
     { id: '', icon: LayoutDashboard, label: 'Dashboard', path: '' },
     { id: 'create-conversation', icon: MessageSquarePlus, label: 'Create Conversation', path: 'sandbox' },
-    { id: 'my-avatars', icon: Users, label: 'My Avatars', path: 'agents' },
+    { id: 'my-avatars', icon: Bot, label: 'My Avatars', path: 'agents' },
     { id: 'analytics', icon: BarChart3, label: 'Analytics', path: 'analytics' },
   ];
 
@@ -150,7 +150,7 @@ const LegacySidebar = () => {
         {/* Voiceify waveform mark */}
         <svg
           width="32" height="32" viewBox="0 0 32 32"
-          fill="none" stroke="#ffffff" strokeWidth="2"
+          fill="none" stroke="currentColor" strokeWidth="2"
           strokeLinecap="round" strokeLinejoin="round"
           aria-label="Voiceify" style={{ flexShrink: 0 }}
         >
@@ -1671,7 +1671,7 @@ const AgentDetailView = ({
   if (!agent) {
     return (
       <div className="vfy-panel" style={{ padding: 64, textAlign: 'center' }}>
-        <Users size={36} color="var(--d-dim)" style={{ marginBottom: 12 }} />
+        <Bot size={36} color="var(--d-dim)" style={{ marginBottom: 12 }} />
         <h3 style={{ color: 'var(--d-text)', fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>
           Agent not found
         </h3>

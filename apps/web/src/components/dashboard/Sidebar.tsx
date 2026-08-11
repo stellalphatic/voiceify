@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import {
-  Activity,
   BarChart3,
   BookOpen,
+  Bot,
   GitBranch,
   KeyRound,
+  LayoutDashboard,
   MessageSquare,
   Mic2,
   Settings,
   Shield,
   ShieldAlert,
   TerminalSquare,
-  Users,
   Webhook,
   Wrench,
   type LucideIcon,
@@ -34,8 +34,8 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Build',
     items: [
-      { id: 'dashboard', icon: BarChart3, label: 'Overview', path: DASHBOARD_NAV_PATHS.overview },
-      { id: 'agents', icon: Users, label: 'Agents', path: DASHBOARD_NAV_PATHS.agents },
+      { id: 'dashboard', icon: LayoutDashboard, label: 'Overview', path: DASHBOARD_NAV_PATHS.overview },
+      { id: 'agents', icon: Bot, label: 'Agents', path: DASHBOARD_NAV_PATHS.agents },
       { id: 'sandbox', icon: TerminalSquare, label: 'Sandbox', path: DASHBOARD_NAV_PATHS.sandbox },
     ],
   },
@@ -59,7 +59,7 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
         label: 'Conversations',
         path: DASHBOARD_NAV_PATHS.conversations,
       },
-      { id: 'analytics', icon: Activity, label: 'Analytics', path: DASHBOARD_NAV_PATHS.analytics },
+      { id: 'analytics', icon: BarChart3, label: 'Analytics', path: DASHBOARD_NAV_PATHS.analytics },
     ],
   },
   {

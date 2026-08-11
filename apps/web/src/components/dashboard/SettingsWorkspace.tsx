@@ -268,17 +268,17 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
             <User size={18} />
             Account
           </h3>
-          <div className="space-y-3">
-            <div>
-              <label className="vfy-label">Name</label>
-              <input className="vfy-field-input" value={accountName} readOnly aria-label="Account name" />
+          <div className="vfy-settings-readonly" aria-label="Account details">
+            <div className="vfy-settings-readonly-row">
+              <span className="vfy-label">Name</span>
+              <p className="vfy-settings-readonly-value">{accountName.trim() || '—'}</p>
             </div>
-            <div>
-              <label className="vfy-label">Email</label>
-              <input className="vfy-field-input" value={accountEmail} readOnly aria-label="Account email" />
+            <div className="vfy-settings-readonly-row">
+              <span className="vfy-label">Email</span>
+              <p className="vfy-settings-readonly-value">{accountEmail.trim() || '—'}</p>
             </div>
             <p className="vfy-settings-help">
-              Workspace ID: <code>{orgId ?? '—'}</code>
+              These details are read-only. Workspace ID: <code>{orgId ?? '—'}</code>
             </p>
           </div>
         </section>
@@ -371,8 +371,7 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
           </p>
           <p className="vfy-settings-help">{billingMessage}</p>
           <p className="vfy-settings-help">
-            Balance updates when voice turns debit usage (STT, LLM, TTS) and when an admin grants
-            credits. This is the live org balance from Postgres, not a demo counter.
+            Your balance updates automatically as your voice agents use STT, LLM, and TTS services.
           </p>
           <p className="vfy-settings-help">
             Need keys for your backend or website? Open{' '}

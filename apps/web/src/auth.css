@@ -1031,7 +1031,7 @@
   min-height: 44px;
   font-weight: 500;
   background: var(--ap-accent);
-  color: var(--color-voice-on-accent, #ffffff);
+  color: var(--color-voice-on-accent);
   border: none;
   margin-top: 8px;
 }

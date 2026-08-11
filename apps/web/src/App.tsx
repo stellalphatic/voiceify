@@ -19,7 +19,6 @@ const FeaturesPage  = lazyWithRetry(() => import('./pages/FeaturesPage'));
 const ChangelogPage = lazyWithRetry(() => import('./pages/ChangelogPage'));
 const DocsPage      = lazyWithRetry(() => import('./pages/DocsPage'));
 const AboutPage     = lazyWithRetry(() => import('./pages/AboutPage'));
-const CareersPage   = lazyWithRetry(() => import('./pages/CareersPage'));
 const BlogPage      = lazyWithRetry(() => import('./pages/BlogPage'));
 const ContactPage   = lazyWithRetry(() => import('./pages/ContactPage'));
 const PrivacyPage   = lazyWithRetry(() => import('./pages/PrivacyPage'));
@@ -44,7 +43,6 @@ function AppRoutes() {
             <Route path="/changelog" element={<ChangelogPage />} />
             <Route path="/docs"      element={<DocsPage />} />
             <Route path="/about"     element={<AboutPage />} />
-            <Route path="/careers"   element={<CareersPage />} />
             <Route path="/blog"      element={<BlogPage />} />
             <Route path="/contact"   element={<ContactPage />} />
             <Route path="/privacy"   element={<PrivacyPage />} />
