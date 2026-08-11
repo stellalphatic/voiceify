@@ -27,6 +27,15 @@ export const POST_GREETING_GRACE_MS = 600;
  */
 export const VAD_CONFIRM_WINDOW_MS = 900;
 
+/**
+ * Grace window after the agent stops speaking during which a full STT transcript
+ * is treated as trailing speaker echo, not the user. Imperfect AEC lets the tail
+ * of the agent's own audio land as a "committed" transcript a beat after
+ * playback ends; without this it becomes a fake user turn that restarts the
+ * agent. Kept short so a caller answering promptly is still heard.
+ */
+export const ECHO_TAIL_MS = 400;
+
 /** Industry guidance: diarization degrades on clips under ~0.5s — wait longer before cut. */
 export const MIN_DIARIZE_CLIP_MS = 800;
 

@@ -13,8 +13,8 @@ import {
 import { PcmStreamPlayer } from './pcm-player';
 import { consumeVoiceStream } from './stream-client';
 import { blobToBase64, UtteranceRecorder } from './utterance-recorder';
-import { BARGE_IN_COOLDOWN_MS, BARGE_IN_FINAL_WAIT_MS, INTERRUPT_MIN_CHARS, isLikelyEcho, isInterruptKeyword, shouldTriggerBargeIn } from './interrupt';
-import { SCRIBE_DIARIZE_RACE_MS, SCRIBE_STT_RACE_MS, DUPLICATE_UTTERANCE_MS, MIN_UTTERANCE_CHARS, POST_GREETING_GRACE_MS, MIN_DIARIZE_CLIP_MS, MIN_DIARIZE_AUDIO_BYTES, THINKING_HOLD_MS, HOLD_PHRASES, VAD_CONFIRM_WINDOW_MS, VOICE_FETCH_TIMEOUT_MS } from './constants';
+import { BARGE_IN_COOLDOWN_MS, BARGE_IN_FINAL_WAIT_MS, INTERRUPT_MIN_CHARS, isLikelyEcho, isInterruptKeyword } from './interrupt';
+import { SCRIBE_DIARIZE_RACE_MS, SCRIBE_STT_RACE_MS, DUPLICATE_UTTERANCE_MS, MIN_UTTERANCE_CHARS, POST_GREETING_GRACE_MS, MIN_DIARIZE_CLIP_MS, MIN_DIARIZE_AUDIO_BYTES, THINKING_HOLD_MS, HOLD_PHRASES, VAD_CONFIRM_WINDOW_MS, ECHO_TAIL_MS, VOICE_FETCH_TIMEOUT_MS } from './constants';
 import { resolveEndpointDelay } from './endpointing';
 import { isLikelySttHallucination } from './stt-guard';
 import { ScribeRealtimeSession } from './scribe-realtime-session';
@@ -200,6 +200,8 @@ export function useVoiceAgent(
   const vadDuckTimerRef = useRef<number | null>(null);
   /** Turn whose mic energy proved to be echo rather than a real interruption. */
   const vadUnreliableTurnRef = useRef(-1);
+  /** When the agent last stopped speaking — used to reject trailing speaker echo. */
+  const agentSpeechEndedAtRef = useRef(0);
   const recognitionRestartRef = useRef<number | null>(null);
   const vadMonitorRef = useRef<VoiceActivityMonitor | null>(null);
   const lastFinalRef = useRef({ text: '', at: 0 });
@@ -430,6 +432,10 @@ export function useVoiceAgent(
 
   const stopVadMonitor = useCallback(() => {
     vadMonitorRef.current?.stop();
+    // Central chokepoint for "agent stopped speaking": every natural completion,
+    // error path and barge-in routes through here. Stamp the time so STT can
+    // reject the tail of the agent's own audio that leaks past AEC just after.
+    agentSpeechEndedAtRef.current = Date.now();
   }, []);
 
   const restartRecorderForInterrupt = useCallback(async () => {
@@ -1151,10 +1157,25 @@ export function useVoiceAgent(
 
       const agentText = getRecentAgentText();
       if (speakingRef.current || thinkingRef.current) {
-        if (shouldTriggerBargeIn(fallback, agentText)) {
+        // While the speakers are live, a full committed transcript is almost
+        // always the agent's own audio surviving AEC — frequently mis-transcribed
+        // into another language, so it does not match agentText and slips past
+        // the echo filter. Only an explicit interrupt keyword may cut the agent
+        // here; sustained real speech is confirmed by the VAD duck→confirm path.
+        if (isInterruptKeyword(fallback)) {
           handleBargeIn(fallback);
         }
         if (speakingRef.current || thinkingRef.current) return;
+      }
+      // Echo tail: a transcript landing right after the agent stops is trailing
+      // speaker echo, not the user. Drop it unless it is an explicit interrupt or
+      // we are already awaiting the user's post-barge-in words.
+      if (
+        Date.now() - agentSpeechEndedAtRef.current < ECHO_TAIL_MS &&
+        !bargeInAwaitingFinalRef.current &&
+        !isInterruptKeyword(fallback)
+      ) {
+        return;
       }
       if (Date.now() < postGreetingGraceUntilRef.current && !bargeInAwaitingFinalRef.current) return;
       // Always echo-filter, including right after a barge-in. Exempting that
@@ -1242,22 +1263,25 @@ export function useVoiceAgent(
        * echoes of the agent's own voice were bumping the turn id and dropping
        * every remaining audio chunk, which left replies as text with silence.
        */
-      let bargeInThisEvent = false;
       if (speakingRef.current || thinkingRef.current) {
         const candidate = interim || final;
         if (isInterruptKeyword(candidate)) {
           handleBargeIn(candidate);
-          bargeInThisEvent = true;
         }
       }
 
       if (final && activeRef.current && !processingRef.current) {
         if (isLikelySttHallucination(final)) return;
-        if (speakingRef.current || thinkingRef.current) {
-          if (!bargeInThisEvent && shouldTriggerBargeIn(final, agentText)) {
-            handleBargeIn(final);
-          }
-          if (speakingRef.current || thinkingRef.current) return;
+        // Only the interrupt-keyword barge-in above may cut the agent. A full
+        // transcript during playback is almost always speaker echo (often
+        // mis-transcribed), so never self-barge on it here.
+        if (speakingRef.current || thinkingRef.current) return;
+        if (
+          Date.now() - agentSpeechEndedAtRef.current < ECHO_TAIL_MS &&
+          !bargeInAwaitingFinalRef.current &&
+          !isInterruptKeyword(final)
+        ) {
+          return;
         }
         if (Date.now() < postGreetingGraceUntilRef.current && !bargeInAwaitingFinalRef.current) return;
         if (isLikelyEcho(final, agentText) && !bargeInAwaitingFinalRef.current) return;
@@ -1324,10 +1348,12 @@ export function useVoiceAgent(
 
       void session
         .start({
-          languageCode: toScribeLanguageCode(
-            lastLanguageRef.current,
-            languageModeRef.current,
-          ),
+          // Always auto-detect on realtime. The only non-auto modes are 'en' and
+          // 'ur' — precisely the English↔Urdu pair testers code-switch between —
+          // so forcing either one mis-transcribes the other and is the root cause
+          // of "wrong language" in the sandbox. Reply language stays governed by
+          // languageMode; only the transcriber is freed to hear what was spoken.
+          languageCode: undefined,
           callbacks: {
             onPartial: (interim) => {
               const agentText = getRecentAgentText();
@@ -1350,7 +1376,20 @@ export function useVoiceAgent(
             },
             onCommitted: (final) => {
               setInterimTranscript('');
-              if (languageModeRef.current === 'auto' && final.length >= FINAL_LANG_MIN_CHARS) {
+              // Never let echo drive language detection: a transcript committed
+              // while the agent speaks (or in the echo tail right after) is the
+              // agent's own audio, and detecting on it would flip the reply
+              // language to whatever the agent just said.
+              const isEchoWindow =
+                !bargeInAwaitingFinalRef.current &&
+                (speakingRef.current ||
+                  thinkingRef.current ||
+                  Date.now() - agentSpeechEndedAtRef.current < ECHO_TAIL_MS);
+              if (
+                !isEchoWindow &&
+                languageModeRef.current === 'auto' &&
+                final.length >= FINAL_LANG_MIN_CHARS
+              ) {
                 applyDetectedLanguage(detectLanguage(final), { sampleText: final });
               }
               submitUserSpeech(final);
