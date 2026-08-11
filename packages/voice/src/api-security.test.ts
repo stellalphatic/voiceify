@@ -40,14 +40,30 @@ describe('sanitizeHistory', () => {
 
 describe('verifyApiKey', () => {
   const original = process.env.VOICEIFY_API_KEY;
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalPublicVoice = process.env.PUBLIC_VOICE_ENABLED;
 
   afterEach(() => {
     if (original === undefined) delete process.env.VOICEIFY_API_KEY;
     else process.env.VOICEIFY_API_KEY = original;
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+    if (originalPublicVoice === undefined) delete process.env.PUBLIC_VOICE_ENABLED;
+    else process.env.PUBLIC_VOICE_ENABLED = originalPublicVoice;
   });
 
   it('allows when env not set', () => {
     delete process.env.VOICEIFY_API_KEY;
+    expect(verifyApiKey({})).toEqual({ ok: true });
+  });
+
+  it('fails closed in production unless public voice is explicitly enabled', () => {
+    delete process.env.VOICEIFY_API_KEY;
+    process.env.NODE_ENV = 'production';
+    delete process.env.PUBLIC_VOICE_ENABLED;
+    expect(verifyApiKey({}).ok).toBe(false);
+
+    process.env.PUBLIC_VOICE_ENABLED = 'true';
     expect(verifyApiKey({})).toEqual({ ok: true });
   });
 

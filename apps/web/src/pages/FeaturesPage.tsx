@@ -140,7 +140,8 @@ export default function FeaturesPage() {
             A sub-500ms voice pipeline,<br className="hidden sm:block" /> end to end.
           </h1>
           <p className="text-base sm:text-lg text-voice-muted leading-relaxed">
-            Powered by Gemini 2.5 Flash + ElevenLabs Scribe + Flash TTS. Every component is purpose-built for speed, so your callers never sit in silence.
+            Powered by a Groq-hosted Llama primary model, an optional Gemini fallback, ElevenLabs
+            Scribe, and streaming TTS. Each stage is selected for low-latency voice turns.
           </p>
         </div>
 
@@ -289,7 +290,7 @@ export default function FeaturesPage() {
         <div className="mt-20 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight">Ready to ship a voice agent today?</h2>
           <p className="text-base text-voice-muted mb-7 max-w-xl mx-auto">
-            Start free with 100 minutes. Pro is $149/month. Custom workflows on request for larger teams.
+            Start free with 100 minutes. Pro is $20/month. Custom workflows on request for larger teams.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link

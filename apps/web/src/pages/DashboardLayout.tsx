@@ -9,7 +9,7 @@ import '../dashboard.css';
 import { 
   Mic, 
   Activity, 
-  Users, 
+  Bot, 
   Settings, 
   BarChart3, 
   Play, 
@@ -30,10 +30,8 @@ import {
   Clock,
   Volume2,
   RefreshCw,
-  GripVertical,
   Calendar,
   Filter,
-  ArrowUpDown,
   MessageSquarePlus,
   UserPlus,
   LogOut,
@@ -42,27 +40,35 @@ import {
   X,
   Search
 } from 'lucide-react';
-import { Reorder, motion, AnimatePresence } from "motion/react";
 import UserMenu from '../components/dashboard/UserMenu';
-import gsap from 'gsap';
 import { cn } from '../lib/utils';
 import { Routes, Route, Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Sidebar from '@/components/dashboard/Sidebar';
 import DashboardTopbar from '@/components/dashboard/DashboardTopbar';
 import StatCard from '@/components/dashboard/StatCard';
-import OverviewDashboard from '@/components/dashboard/OverviewDashboard';
-import AnalyticsDashboard from '@/components/dashboard/AnalyticsDashboard';
-import SettingsWorkspace from '@/components/dashboard/SettingsWorkspace';
 import AgentModal from '@/components/dashboard/AgentModal';
 import Modal, { ModalShell } from '@/components/dashboard/Modal';
-import IntegrationsWorkspace from '@/components/dashboard/IntegrationsWorkspace';
-import KnowledgeWorkspace from '@/components/dashboard/KnowledgeWorkspace';
-import ToolsWorkspace from '@/components/dashboard/ToolsWorkspace';
-import VoicesWorkspace from '@/components/dashboard/VoicesWorkspace';
-import WorkflowsWorkspace from '@/components/dashboard/WorkflowsWorkspace';
-import ConversationsWorkspace from '@/components/dashboard/ConversationsWorkspace';
-import GuardrailsWorkspace from '@/components/dashboard/GuardrailsWorkspace';
 import { buildDashboardCrumbs } from '../lib/dashboard/crumbs';
+
+/** Lazy so gsap (Overview) and heavy workspaces are not on every dashboard paint. */
+const OverviewDashboard = React.lazy(() => import('@/components/dashboard/OverviewDashboard'));
+const AnalyticsDashboard = React.lazy(() => import('@/components/dashboard/AnalyticsDashboard'));
+const SettingsWorkspace = React.lazy(() => import('@/components/dashboard/SettingsWorkspace'));
+const IntegrationsWorkspace = React.lazy(() => import('@/components/dashboard/IntegrationsWorkspace'));
+const KnowledgeWorkspace = React.lazy(() => import('@/components/dashboard/KnowledgeWorkspace'));
+const ToolsWorkspace = React.lazy(() => import('@/components/dashboard/ToolsWorkspace'));
+const VoicesWorkspace = React.lazy(() => import('@/components/dashboard/VoicesWorkspace'));
+const WorkflowsWorkspace = React.lazy(() => import('@/components/dashboard/WorkflowsWorkspace'));
+const ConversationsWorkspace = React.lazy(() => import('@/components/dashboard/ConversationsWorkspace'));
+const GuardrailsWorkspace = React.lazy(() => import('@/components/dashboard/GuardrailsWorkspace'));
+
+function DashboardRouteFallback() {
+  return (
+    <div className="vfy-page-head" style={{ padding: '2rem 0' }} aria-busy="true">
+      <p className="vfy-page-sub">Loading…</p>
+    </div>
+  );
+}
 import {
   PhoneCall,
   Timer,
@@ -132,7 +138,7 @@ const LegacySidebar = () => {
   const navItems = [
     { id: '', icon: LayoutDashboard, label: 'Dashboard', path: '' },
     { id: 'create-conversation', icon: MessageSquarePlus, label: 'Create Conversation', path: 'sandbox' },
-    { id: 'my-avatars', icon: Users, label: 'My Avatars', path: 'agents' },
+    { id: 'my-avatars', icon: Bot, label: 'My Avatars', path: 'agents' },
     { id: 'analytics', icon: BarChart3, label: 'Analytics', path: 'analytics' },
   ];
 
@@ -150,7 +156,7 @@ const LegacySidebar = () => {
         {/* Voiceify waveform mark */}
         <svg
           width="32" height="32" viewBox="0 0 32 32"
-          fill="none" stroke="#ffffff" strokeWidth="2"
+          fill="none" stroke="currentColor" strokeWidth="2"
           strokeLinecap="round" strokeLinejoin="round"
           aria-label="Voiceify" style={{ flexShrink: 0 }}
         >
@@ -341,13 +347,6 @@ const AgentTasksModal = ({
     }
   };
 
-  const handleReorder = (newOrder: Task[]) => {
-    if (sortBy !== 'Manual') {
-      setSortBy('Manual');
-    }
-    onUpdateTasks(agent.id, newOrder);
-  };
-
   const getStatusColor = (status: Task['status']) => {
     switch(status) {
       case 'To Do': return 'bg-voice-frost-strong text-voice-text border-voice-frost-border';
@@ -408,8 +407,6 @@ const AgentTasksModal = ({
     });
 
   const isFiltered = filterStatus !== 'All' || filterPriority !== 'All' || searchTerm !== '' || filterStartDate !== '' || filterEndDate !== '' || sortBy !== 'Manual' || filterDateType !== 'createdAt';
-  const canDrag = !isFiltered;
-
   return (
     <ModalShell open={isOpen && Boolean(agent)} onClose={onClose}>
       {(surfaceRef) => !agent ? null : (
@@ -594,13 +591,6 @@ const AgentTasksModal = ({
 
           {/* Task List */}
           <div>
-            {canDrag && filteredTasks.length > 1 && (
-              <div className="flex items-center gap-2 text-[10px] text-voice-accent font-medium uppercase tracking-widest mb-4 bg-voice-accent/5 py-1.5 px-3 rounded-lg border border-voice-accent/10">
-                <ArrowUpDown className="w-3 h-3" />
-                Drag tasks to reorder
-              </div>
-            )}
-            
             {filteredTasks.length === 0 ? (
               <div className="text-center py-12 text-voice-muted text-sm flex flex-col items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-voice-frost flex items-center justify-center">
@@ -609,29 +599,15 @@ const AgentTasksModal = ({
                 <p>No tasks found matching your filters.</p>
               </div>
             ) : (
-              <Reorder.Group axis="y" values={filteredTasks} onReorder={handleReorder} className="space-y-3">
-                <AnimatePresence mode="popLayout">
+              <div className="space-y-3">
                   {filteredTasks.map(task => (
-                    <Reorder.Item 
-                      key={task.id} 
-                      value={task} 
-                      dragListener={canDrag}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      whileDrag={{ scale: 1.02, boxShadow: 'var(--color-voice-shadow-drag)' }}
-                      className="relative"
-                    >
+                    <div key={task.id} className="relative">
                       <div className={cn(
                         "bg-voice-bg border border-voice-border rounded-xl p-4 flex items-center justify-between group select-none hover:border-voice-accent/30 transition-all",
-                        canDrag ? "cursor-grab active:cursor-grabbing" : "opacity-80",
+                        isFiltered ? "opacity-80" : "",
                         isOverdue(task.dueDate) && task.status !== 'Completed' && "border-voice-danger-border bg-voice-danger-faint hover:border-voice-danger border-l-4 border-l-voice-danger"
                       )}>
                         <div className="flex items-center gap-4 flex-1 min-w-0">
-                          {canDrag && (
-                            <GripVertical className="w-4 h-4 text-voice-muted/30 group-hover:text-voice-muted/60 transition-colors" />
-                          )}
-                        
                           <div className="flex flex-col gap-2 flex-1 min-w-0">
                             <div className="flex items-center gap-3">
                               <select
@@ -737,10 +713,9 @@ const AgentTasksModal = ({
                           )}
                         </div>
                       </div>
-                    </Reorder.Item>
+                    </div>
                   ))}
-                </AnimatePresence>
-              </Reorder.Group>
+              </div>
             )}
           </div>
         </div>
@@ -772,7 +747,6 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
   const location = useLocation();
   const navigate = useNavigate();
   const greetingRef = useRef<HTMLTextAreaElement>(null);
-  const visualizerRef = useRef<HTMLDivElement>(null);
   const syncedMessageCountRef = useRef(0);
   const latencySampleCountRef = useRef(0);
 
@@ -872,47 +846,6 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
   useEffect(() => {
     if (error) addLog('system', error);
   }, [error]);
-
-  useEffect(() => {
-    if (visualizerRef.current) {
-      const bars = visualizerRef.current.children;
-      gsap.killTweensOf(bars);
-      const animating = isLive && (status === 'listening' || status === 'speaking');
-
-      if (animating) {
-        Array.from(bars).forEach((bar: Element, i) => {
-          const centerOffset = Math.abs(i - 9.5);
-          const baseIntensity = Math.max(0.3, 1 - (centerOffset / 10));
-
-          gsap.to(bar, {
-            height: () => Math.max(4, Math.random() * 40 * baseIntensity + 8),
-            duration: () => 0.1 + Math.random() * 0.15,
-            ease: "power1.inOut",
-            repeat: -1,
-            yoyo: true,
-            delay: Math.random() * 0.1
-          });
-
-          gsap.to(bar, {
-            opacity: () => 0.7 + Math.random() * 0.3,
-            duration: 0.2,
-            repeat: -1,
-            yoyo: true,
-            ease: "sine.inOut"
-          });
-        });
-      } else {
-        Array.from(bars).forEach((bar: Element) => {
-          gsap.to(bar, {
-            height: 4,
-            opacity: 0.3,
-            duration: 0.5,
-            ease: "power2.out"
-          });
-        });
-      }
-    }
-  }, [isLive, status]);
 
   const handleAgentSwitch = (id: number) => {
     setActiveAgentId(id);
@@ -1201,9 +1134,19 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
         <div className="p-6 bg-voice-scrim border-t border-voice-frost-border backdrop-blur-sm">
           <div className="flex flex-col items-center gap-6">
             {/* Visualizer */}
-            <div ref={visualizerRef} className="flex items-center justify-center gap-1 h-12 w-64">
+            <div
+              className={cn(
+                'sandbox-visualizer flex items-center justify-center gap-1 h-12 w-64',
+                isLive && (status === 'listening' || status === 'speaking') && 'is-active',
+              )}
+              aria-hidden
+            >
               {[...Array(20)].map((_, i) => (
-                <div key={i} className="w-1.5 bg-voice-accent rounded-full h-1 opacity-30"></div>
+                <div
+                  key={i}
+                  className="sandbox-visualizer-bar w-1.5 bg-voice-accent rounded-full h-1 opacity-30"
+                  style={{ animationDelay: `${i * 35}ms` }}
+                />
               ))}
             </div>
 
@@ -1532,6 +1475,15 @@ const AgentsView = ({
                 <button type="button" className="btn-cfg" onClick={() => onEditAgent(agent)}>
                   Configure ›
                 </button>
+                <button
+                  type="button"
+                  className="btn-cfg"
+                  onClick={() => onDeleteAgent(agent)}
+                  aria-label={`Delete ${agent.name}`}
+                  title="Delete agent"
+                >
+                  <Trash2 size={14} aria-hidden />
+                </button>
               </div>
             </div>
           );
@@ -1671,7 +1623,7 @@ const AgentDetailView = ({
   if (!agent) {
     return (
       <div className="vfy-panel" style={{ padding: 64, textAlign: 'center' }}>
-        <Users size={36} color="var(--d-dim)" style={{ marginBottom: 12 }} />
+        <Bot size={36} color="var(--d-dim)" style={{ marginBottom: 12 }} />
         <h3 style={{ color: 'var(--d-text)', fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>
           Agent not found
         </h3>
@@ -2091,42 +2043,44 @@ export default function DashboardLayout() {
         agentName={deletingAgent?.name || ''}
       />
 
-      <Routes>
-        <Route index element={<DashboardView onCreateAgent={handleCreateAgent} />} />
-        <Route
-          path="agents"
-          element={
-            <AgentsView
-              agents={dashboardAgents}
-              onCreateAgent={handleCreateAgent}
-              onDeleteAgent={handleDeleteClick}
-              onEditAgent={handleEditAgent}
-              onManageTasks={handleManageTasks}
-            />
-          }
-        />
-        <Route
-          path="agents/:id"
-          element={
-            <AgentDetailView
-              agents={dashboardAgents}
-              onManageTasks={handleManageTasks}
-              onEditAgent={handleEditAgent}
-            />
-          }
-        />
-        <Route path="sandbox" element={<SandboxView agents={dashboardAgents} onUpdateAgent={handleAgentUpdate} />} />
-        <Route path="knowledge" element={<KnowledgeWorkspace />} />
-        <Route path="tools" element={<ToolsWorkspace />} />
-        <Route path="voices" element={<VoicesWorkspace />} />
-        <Route path="workflows" element={<WorkflowsWorkspace />} />
-        <Route path="conversations" element={<ConversationsWorkspace />} />
-        <Route path="guardrails" element={<GuardrailsWorkspace />} />
-        <Route path="settings" element={<SettingsView />} />
-        <Route path="api-keys" element={<ApiKeysView />} />
-        <Route path="analytics" element={<AnalyticsView />} />
-        <Route path="integrations" element={<IntegrationsWorkspace />} />
-      </Routes>
+      <React.Suspense fallback={<DashboardRouteFallback />}>
+        <Routes>
+          <Route index element={<DashboardView onCreateAgent={handleCreateAgent} />} />
+          <Route
+            path="agents"
+            element={
+              <AgentsView
+                agents={dashboardAgents}
+                onCreateAgent={handleCreateAgent}
+                onDeleteAgent={handleDeleteClick}
+                onEditAgent={handleEditAgent}
+                onManageTasks={handleManageTasks}
+              />
+            }
+          />
+          <Route
+            path="agents/:id"
+            element={
+              <AgentDetailView
+                agents={dashboardAgents}
+                onManageTasks={handleManageTasks}
+                onEditAgent={handleEditAgent}
+              />
+            }
+          />
+          <Route path="sandbox" element={<SandboxView agents={dashboardAgents} onUpdateAgent={handleAgentUpdate} />} />
+          <Route path="knowledge" element={<KnowledgeWorkspace />} />
+          <Route path="tools" element={<ToolsWorkspace />} />
+          <Route path="voices" element={<VoicesWorkspace />} />
+          <Route path="workflows" element={<WorkflowsWorkspace />} />
+          <Route path="conversations" element={<ConversationsWorkspace />} />
+          <Route path="guardrails" element={<GuardrailsWorkspace />} />
+          <Route path="settings" element={<SettingsView />} />
+          <Route path="api-keys" element={<ApiKeysView />} />
+          <Route path="analytics" element={<AnalyticsView />} />
+          <Route path="integrations" element={<IntegrationsWorkspace />} />
+        </Routes>
+      </React.Suspense>
     </DashboardChrome>
   );
 }

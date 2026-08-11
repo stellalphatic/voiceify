@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import PublicLayout from './components/PublicLayout';
 import RequireAuth from './components/RequireAuth';
 import PageLoader from './components/PageLoader';
@@ -19,13 +19,13 @@ const FeaturesPage  = lazyWithRetry(() => import('./pages/FeaturesPage'));
 const ChangelogPage = lazyWithRetry(() => import('./pages/ChangelogPage'));
 const DocsPage      = lazyWithRetry(() => import('./pages/DocsPage'));
 const AboutPage     = lazyWithRetry(() => import('./pages/AboutPage'));
-const CareersPage   = lazyWithRetry(() => import('./pages/CareersPage'));
 const BlogPage      = lazyWithRetry(() => import('./pages/BlogPage'));
 const ContactPage   = lazyWithRetry(() => import('./pages/ContactPage'));
 const PrivacyPage   = lazyWithRetry(() => import('./pages/PrivacyPage'));
 const TermsPage     = lazyWithRetry(() => import('./pages/TermsPage'));
 const SecurityPage  = lazyWithRetry(() => import('./pages/SecurityPage'));
 const CookiesPage   = lazyWithRetry(() => import('./pages/CookiesPage'));
+const NotFoundPage  = lazyWithRetry(() => import('./pages/NotFoundPage'));
 
 function AppRoutes() {
   return (
@@ -44,7 +44,6 @@ function AppRoutes() {
             <Route path="/changelog" element={<ChangelogPage />} />
             <Route path="/docs"      element={<DocsPage />} />
             <Route path="/about"     element={<AboutPage />} />
-            <Route path="/careers"   element={<CareersPage />} />
             <Route path="/blog"      element={<BlogPage />} />
             <Route path="/contact"   element={<ContactPage />} />
             <Route path="/privacy"   element={<PrivacyPage />} />
@@ -74,7 +73,9 @@ function AppRoutes() {
             }
           />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route element={<PublicLayout />}>
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
         </Routes>
       </Suspense>
     </BrowserRouter>

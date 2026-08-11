@@ -5,7 +5,13 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { AuthAccountProvider } from "../lib/auth/AuthAccountContext";
-import { apiJson, getSession, type AuthUser } from "../lib/auth/client";
+import {
+  apiJson,
+  getActiveOrgId,
+  getSession,
+  setActiveOrgId,
+  type AuthUser,
+} from "../lib/auth/client";
 
 export const VOICEIFY_AUTH_TOKEN_KEY = "voiceify.auth.token";
 
@@ -80,6 +86,31 @@ export default function RequireAuth({ children }: RequireAuthProps) {
         /* tenant user — /api/admin/me returns 403 */
       }
 
+      if (!getActiveOrgId()) {
+        try {
+          const orgs = await apiJson<{
+            organizations: Array<{ id: string }>;
+          }>("/api/orgs");
+          let orgId = orgs.organizations[0]?.id;
+          if (!orgId) {
+            const created = await apiJson<{ organization: { id: string } }>(
+              "/api/orgs",
+              {
+                method: "POST",
+                body: JSON.stringify({ name: `${nextUser.name || "My"} Workspace` }),
+              },
+            );
+            orgId = created.organization.id;
+          }
+          setActiveOrgId(orgId);
+        } catch {
+          /**
+           * Authentication remains valid even if workspace bootstrap is
+           * temporarily unavailable. Data views expose their own retry state.
+           */
+        }
+      }
+
       if (cancelled) return;
       setUser(nextUser);
       setState("yes");
@@ -87,7 +118,7 @@ export default function RequireAuth({ children }: RequireAuthProps) {
     return () => {
       cancelled = true;
     };
-  }, [location.pathname]);
+  }, []);
 
   if (state === "loading") {
     return (

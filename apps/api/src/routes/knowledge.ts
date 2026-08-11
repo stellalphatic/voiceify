@@ -6,6 +6,14 @@ import {
   knowledgeDocs,
   sql,
 } from "@voiceify/db";
+import {
+  embedQuery,
+  embedTexts,
+  isQdrantConfigured,
+  isSemanticEmbeddingConfigured,
+  searchPoints,
+  upsertPoints,
+} from "@voiceify/voice";
 import { createHash } from "node:crypto";
 import { unlink, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
@@ -20,49 +28,46 @@ export const knowledgeRoutes = new Hono<AppEnv>();
 knowledgeRoutes.use("*", requireSession);
 
 const UPLOAD_ROOT = process.env.UPLOAD_DIR ?? path.resolve("data/uploads");
-const EMBED_DIMS = 64;
 
-function chunkText(text: string, size = 800): string[] {
+function chunkText(text: string, size = 900, overlap = 140): string[] {
   const cleaned = text.replace(/\r\n/g, "\n").trim();
   if (!cleaned) return [];
   const chunks: string[] = [];
-  for (let i = 0; i < cleaned.length; i += size) {
-    chunks.push(cleaned.slice(i, i + size));
+  let start = 0;
+  while (start < cleaned.length) {
+    let end = Math.min(cleaned.length, start + size);
+    if (end < cleaned.length) {
+      const boundary = Math.max(
+        cleaned.lastIndexOf("\n", end),
+        cleaned.lastIndexOf(". ", end),
+        cleaned.lastIndexOf(" ", end),
+      );
+      if (boundary > start + size / 2) end = boundary + 1;
+    }
+    const piece = cleaned.slice(start, end).trim();
+    if (piece) chunks.push(piece);
+    if (end >= cleaned.length) break;
+    start = Math.max(start + 1, end - overlap);
   }
   return chunks;
 }
 
-/** Lightweight local bag-of-hash embedding (no external vector API required). */
-function embedText(text: string): number[] {
-  const vec = new Array<number>(EMBED_DIMS).fill(0);
-  const tokens = text
-    .toLowerCase()
-    .replace(/[^a-z0-9\u0600-\u06ff\s]/gi, " ")
-    .split(/\s+/)
-    .filter((t) => t.length > 1);
-  for (const token of tokens) {
-    const h = createHash("sha256").update(token).digest();
-    const idx = h.readUInt16BE(0) % EMBED_DIMS;
-    const sign = h[2]! & 1 ? 1 : -1;
-    vec[idx]! += sign;
-  }
-  const norm = Math.sqrt(vec.reduce((s, v) => s + v * v, 0)) || 1;
-  return vec.map((v) => v / norm);
-}
-
 function cosine(a: number[], b: number[]): number {
+  if (a.length !== b.length || a.length === 0) return 0;
   let s = 0;
-  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+  for (let i = 0; i < a.length; i++) {
     s += (a[i] ?? 0) * (b[i] ?? 0);
   }
   return s;
 }
 
 function parseEmbedding(tsv: string | null): number[] | null {
-  if (!tsv?.startsWith("emb:")) return null;
+  if (!tsv?.startsWith("emb2:")) return null;
   try {
-    const parsed = JSON.parse(tsv.slice(4)) as number[];
-    return Array.isArray(parsed) ? parsed : null;
+    const parsed = JSON.parse(tsv.slice(5)) as number[];
+    return Array.isArray(parsed) && parsed.every(Number.isFinite)
+      ? parsed
+      : null;
   } catch {
     return null;
   }
@@ -95,56 +100,81 @@ async function ingestDocument(input: {
     .returning();
   if (!doc) throw new Error("Failed to create document");
 
-  await db.insert(knowledgeChunks).values(
-    pieces.map((content, chunkIndex) => ({
-      docId: doc.id,
-      orgId: input.orgId,
-      content,
-      chunkIndex,
-      tsv: `emb:${JSON.stringify(embedText(content))}`,
-    })),
-  );
-
-  // Optional Qdrant mirror — Postgres remains source of truth for chunks.
-  let vectorBackend: "postgres" | "qdrant+postgres" = "postgres";
   try {
-    const { isQdrantConfigured, upsertPoints } = await import("@voiceify/voice");
-    if (isQdrantConfigured()) {
-      await upsertPoints(
-        input.orgId,
-        pieces.map((content, chunkIndex) => {
-          const h = createHash("md5")
-            .update(`${doc.id}:${chunkIndex}`)
-            .digest("hex");
-          const id = `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
-          return {
-            id,
-            vector: embedText(content),
-            payload: {
-              orgId: input.orgId,
-              docId: doc.id,
-              chunkIndex,
-              content,
-            },
-          };
-        }),
-      );
-      vectorBackend = "qdrant+postgres";
+    const embeddingBatch = isSemanticEmbeddingConfigured()
+      ? await embedTexts(pieces)
+      : null;
+
+    await db.insert(knowledgeChunks).values(
+      pieces.map((content, chunkIndex) => ({
+        docId: doc.id,
+        orgId: input.orgId,
+        content,
+        chunkIndex,
+        tsv: embeddingBatch
+          ? `emb2:${JSON.stringify(embeddingBatch.vectors[chunkIndex])}`
+          : null,
+      })),
+    );
+
+    // Qdrant is the semantic index; Postgres remains the durable source.
+    let vectorBackend:
+      | "postgres-keyword"
+      | "postgres-semantic"
+      | "qdrant+postgres" = embeddingBatch
+      ? "postgres-semantic"
+      : "postgres-keyword";
+    let vectorWarning: string | null = null;
+    if (embeddingBatch && isQdrantConfigured()) {
+      try {
+        await upsertPoints(
+          input.orgId,
+          pieces.map((content, chunkIndex) => {
+            const h = createHash("md5")
+              .update(`${doc.id}:${chunkIndex}`)
+              .digest("hex");
+            const id = `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
+            return {
+              id,
+              vector: embeddingBatch.vectors[chunkIndex]!,
+              payload: {
+                orgId: input.orgId,
+                docId: doc.id,
+                chunkIndex,
+                content,
+              },
+            };
+          }),
+        );
+        vectorBackend = "qdrant+postgres";
+      } catch (error) {
+        vectorWarning =
+          error instanceof Error
+            ? `Qdrant mirror failed: ${error.message}`
+            : "Qdrant mirror failed";
+      }
     }
-  } catch {
-    /* Qdrant optional — never fail ingest */
+
+    await db
+      .update(knowledgeDocs)
+      .set({ status: "ready" })
+      .where(eq(knowledgeDocs.id, doc.id));
+
+    return {
+      doc: { ...doc, status: "ready" as const },
+      chunks: pieces.length,
+      vectorBackend,
+      vectorWarning,
+      embeddingProvider: embeddingBatch?.provider ?? null,
+      embeddingModel: embeddingBatch?.model ?? null,
+    };
+  } catch (error) {
+    await db
+      .update(knowledgeDocs)
+      .set({ status: "failed" })
+      .where(eq(knowledgeDocs.id, doc.id));
+    throw error;
   }
-
-  await db
-    .update(knowledgeDocs)
-    .set({ status: "ready" })
-    .where(eq(knowledgeDocs.id, doc.id));
-
-  return {
-    doc: { ...doc, status: "ready" as const },
-    chunks: pieces.length,
-    vectorBackend,
-  };
 }
 
 async function extractPdf(buffer: Buffer): Promise<string> {
@@ -358,23 +388,27 @@ knowledgeRoutes.get(
     const q = String(c.req.query("q") ?? "").trim();
     if (!q) return c.json({ hits: [] });
 
-    const pattern = `%${q.replace(/%/g, "")}%`;
-    const queryEmb = embedText(q);
-
-    try {
-      const { isQdrantConfigured, searchPoints } = await import("@voiceify/voice");
-      if (isQdrantConfigured()) {
-        const qHits = await searchPoints({
-          orgId,
-          vector: queryEmb,
-          limit: 8,
-        });
-        if (qHits.length) {
-          return c.json({ hits: qHits, mode: "qdrant" });
+    const pattern = `%${q.replace(/[%_]/g, "")}%`;
+    let queryEmbedding: number[] | null = null;
+    let embeddingWarning: string | null = null;
+    if (isSemanticEmbeddingConfigured()) {
+      try {
+        const vector = await embedQuery(q);
+        queryEmbedding = vector;
+        if (isQdrantConfigured()) {
+          const qHits = await searchPoints({
+            orgId,
+            vector,
+            limit: 8,
+          });
+          if (qHits.length) {
+            return c.json({ hits: qHits, mode: "qdrant" });
+          }
         }
+      } catch (error) {
+        embeddingWarning =
+          error instanceof Error ? error.message : "Semantic search failed";
       }
-    } catch {
-      /* fall through to Postgres hybrid */
     }
 
     const rows = await db
@@ -386,13 +420,18 @@ knowledgeRoutes.get(
     const ranked = rows
       .map((row) => {
         const emb = parseEmbedding(row.tsv);
-        const vectorScore = emb ? cosine(queryEmb, emb) : 0;
+        const vectorScore =
+          queryEmbedding && emb ? cosine(queryEmbedding, emb) : 0;
         const keywordHit = row.content.toLowerCase().includes(q.toLowerCase())
           ? 0.35
           : 0;
-        return { ...row, score: vectorScore + keywordHit };
+        return { ...row, score: vectorScore * 0.8 + keywordHit };
       })
-      .filter((r) => r.score > 0.05 || r.content.toLowerCase().includes(q.toLowerCase()))
+      .filter(
+        (row) =>
+          row.score > 0.2 ||
+          row.content.toLowerCase().includes(q.toLowerCase()),
+      )
       .sort((a, b) => b.score - a.score)
       .slice(0, 8);
 
@@ -408,9 +447,13 @@ knowledgeRoutes.get(
           ),
         )
         .limit(8);
-      return c.json({ hits, mode: "keyword" });
+      return c.json({ hits, mode: "keyword", embeddingWarning });
     }
 
-    return c.json({ hits: ranked, mode: "hybrid" });
+    return c.json({
+      hits: ranked,
+      mode: queryEmbedding ? "semantic-hybrid" : "keyword",
+      embeddingWarning,
+    });
   },
 );

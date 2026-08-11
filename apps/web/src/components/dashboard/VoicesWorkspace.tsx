@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Check, Copy, Mic2, Search, Volume2 } from 'lucide-react';
+import { Bot, Mic2, Search, Volume2 } from 'lucide-react';
 import { apiJson } from '../../lib/auth/client';
+import { useAgentStore } from '../../lib/agents/AgentStoreContext';
 
 type VoiceRow = {
   id: string;
@@ -28,30 +29,6 @@ function voiceMeta(v: VoiceRow) {
   return [v.labels?.accent, v.labels?.language ?? v.labels?.locale, v.labels?.gender]
     .filter(Boolean)
     .join(' · ');
-}
-
-function CopyIdButton({ id }: { id: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      className="vfy-btn vfy-btn-ghost vfy-voice-copy"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(id);
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1400);
-        } catch {
-          /* ignore */
-        }
-      }}
-      title="Copy voice ID"
-      aria-label="Copy voice ID"
-    >
-      {copied ? <Check size={13} /> : <Copy size={13} />}
-      {copied ? 'Copied' : 'Copy ID'}
-    </button>
-  );
 }
 
 const PREVIEW_SAMPLE_RATE = 22050;
@@ -162,13 +139,27 @@ function PreviewVoiceButton({ voiceId, name }: { voiceId: string; name: string }
 }
 
 export default function VoicesWorkspace() {
+  const { agents, updateAgent } = useAgentStore();
   const [voices, setVoices] = useState<VoiceRow[]>([]);
   const [personas, setPersonas] = useState<VoicesPayload['personas']>([]);
   const [search, setSearch] = useState('');
   const [accent, setAccent] = useState('all');
   const [language, setLanguage] = useState('all');
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedAgentId, setSelectedAgentId] = useState('');
+
+  const assignVoice = (voiceId: string, voiceName: string) => {
+    const agent = agents.find((item) => String(item.id) === selectedAgentId);
+    if (!agent) {
+      setError('Select an agent before assigning a voice.');
+      return;
+    }
+    setError(null);
+    updateAgent({ ...agent, voice: voiceId });
+    setMessage(`${voiceName} assigned to ${agent.name}.`);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -229,7 +220,7 @@ export default function VoicesWorkspace() {
           <p className="vfy-page-eyebrow">Configure · Voices</p>
           <h1 className="vfy-page-title">Voice library</h1>
           <p className="vfy-page-sub">
-            Pick a voice for your agent. Copy the ID and paste it in the agent editor.
+            Select an agent, preview voices, then assign one directly.
           </p>
         </div>
         {!loading && (
@@ -244,6 +235,31 @@ export default function VoicesWorkspace() {
           {error}
         </p>
       )}
+      {message && (
+        <p className="text-sm" role="status" style={{ color: 'var(--d-accent)' }}>
+          {message}
+        </p>
+      )}
+
+      <section className="vfy-settings-card">
+        <h3 className="vfy-settings-card-title">
+          <Bot size={18} />
+          Apply voice to agent
+        </h3>
+        <select
+          className="vfy-field-select"
+          value={selectedAgentId}
+          onChange={(event) => setSelectedAgentId(event.target.value)}
+          aria-label="Select agent for voice assignment"
+        >
+          <option value="">Select an agent</option>
+          {agents.map((agent) => (
+            <option key={agent.id} value={String(agent.id)}>
+              {agent.name}
+            </option>
+          ))}
+        </select>
+      </section>
 
       {personas && personas.length > 0 && (
         <section className="vfy-settings-card">
@@ -261,7 +277,14 @@ export default function VoicesWorkspace() {
                   <p className="vfy-voices-persona-name">{p.name}</p>
                   <p className="vfy-voices-persona-tag">{p.tagline}</p>
                 </div>
-                <CopyIdButton id={p.voiceId} />
+                <button
+                  type="button"
+                  className="vfy-btn vfy-btn-primary"
+                  disabled={!selectedAgentId}
+                  onClick={() => assignVoice(p.voiceId, p.name)}
+                >
+                  Assign
+                </button>
                 <PreviewVoiceButton voiceId={p.voiceId} name={p.name} />
               </div>
             ))}
@@ -321,7 +344,14 @@ export default function VoicesWorkspace() {
                   <p className="vfy-voice-row-name">{v.name}</p>
                   {meta ? <p className="vfy-voice-row-meta">{meta}</p> : null}
                 </div>
-                <CopyIdButton id={v.id} />
+                <button
+                  type="button"
+                  className="vfy-btn vfy-btn-primary"
+                  disabled={!selectedAgentId}
+                  onClick={() => assignVoice(v.id, v.name)}
+                >
+                  Assign
+                </button>
                 <PreviewVoiceButton voiceId={v.id} name={v.name} />
               </li>
             );

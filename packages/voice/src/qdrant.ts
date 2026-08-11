@@ -33,7 +33,9 @@ export function isQdrantConfigured(): boolean {
 
 export function collectionName(orgId: string): string {
   const safe = orgId.replace(/[^a-zA-Z0-9_-]/g, "_");
-  return `voiceify_kb_${safe}`;
+  const version = (process.env.EMBEDDING_COLLECTION_VERSION?.trim() || "v2")
+    .replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `voiceify_kb_${version}_${safe}`;
 }
 
 export async function ensureCollection(
@@ -95,6 +97,8 @@ export async function searchPoints(input: {
   orgId: string;
   vector: number[];
   limit?: number;
+  docIds?: string[];
+  scoreThreshold?: number;
 }): Promise<Array<{ content: string; docId: string; score: number }>> {
   const base = qdrantUrl();
   if (!base) return [];
@@ -107,6 +111,19 @@ export async function searchPoints(input: {
         vector: input.vector,
         limit: input.limit ?? 8,
         with_payload: true,
+        score_threshold: input.scoreThreshold ?? 0.25,
+        ...(input.docIds?.length
+          ? {
+              filter: {
+                must: [
+                  {
+                    key: "docId",
+                    match: { any: input.docIds },
+                  },
+                ],
+              },
+            }
+          : {}),
       }),
       signal: AbortSignal.timeout(8_000),
     },

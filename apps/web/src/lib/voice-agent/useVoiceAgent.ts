@@ -1236,10 +1236,16 @@ export function useVoiceAgent(
         applyDetectedLanguage(detectLanguage(final), { sampleText: final });
       }
 
+      /*
+       * While the agent is speaking, only interrupt keywords on interim text
+       * may cut it off. Full barge-in waits for a final transcript — interim
+       * echoes of the agent's own voice were bumping the turn id and dropping
+       * every remaining audio chunk, which left replies as text with silence.
+       */
       let bargeInThisEvent = false;
       if (speakingRef.current || thinkingRef.current) {
         const candidate = interim || final;
-        if (shouldTriggerBargeIn(candidate, agentText)) {
+        if (isInterruptKeyword(candidate)) {
           handleBargeIn(candidate);
           bargeInThisEvent = true;
         }
@@ -1328,10 +1334,8 @@ export function useVoiceAgent(
               setInterimTranscript(interim);
               const agentBusy = speakingRef.current || thinkingRef.current;
               if (agentBusy) {
-                if (
-                  isInterruptKeyword(interim) ||
-                  shouldTriggerBargeIn(interim, agentText)
-                ) {
+                /* Interims alone only cut on explicit interrupt words — see browser STT path. */
+                if (isInterruptKeyword(interim)) {
                   handleBargeIn(interim);
                 }
               } else if (

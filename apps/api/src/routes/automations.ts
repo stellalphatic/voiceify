@@ -14,6 +14,8 @@ import {
   faqEntries,
   menuItems,
   and,
+  isNull,
+  sql,
   tools,
 } from "@voiceify/db";
 import { buildDashboardSystemPrompt } from "@voiceify/shared";
@@ -166,11 +168,49 @@ automationsRoutes.post(
     if (body.createAgent && pack.agents[0]) {
       const def = pack.agents[0];
       const user = c.get("user");
-      const existingAgent = await db
-        .select()
-        .from(agents)
-        .where(and(eq(agents.orgId, orgId), eq(agents.name, def.name)))
-        .limit(1);
+      const installedAgentId =
+        typeof install?.config?.agentId === "string"
+          ? install.config.agentId
+          : null;
+      let existingAgent = installedAgentId
+        ? await db
+            .select()
+            .from(agents)
+            .where(
+              and(
+                eq(agents.id, installedAgentId),
+                eq(agents.orgId, orgId),
+                isNull(agents.deletedAt),
+              ),
+            )
+            .limit(1)
+        : await db
+            .select()
+            .from(agents)
+            .where(
+              and(
+                eq(agents.orgId, orgId),
+                eq(agents.name, def.name),
+                isNull(agents.deletedAt),
+              ),
+            )
+            .limit(1);
+
+      if (!existingAgent[0] && !installedAgentId) {
+        const linked = await db
+          .select({ agent: agents })
+          .from(agentVersions)
+          .innerJoin(agents, eq(agentVersions.agentId, agents.id))
+          .where(
+            and(
+              eq(agentVersions.orgId, orgId),
+              isNull(agents.deletedAt),
+              sql`${agentVersions.config}->>'packId' = ${body.packId}`,
+            ),
+          )
+          .limit(1);
+        existingAgent = linked.map((row) => row.agent);
+      }
 
       if (existingAgent[0]) {
         agent = existingAgent[0];
@@ -238,6 +278,21 @@ automationsRoutes.post(
           }
         }
       }
+    }
+
+    if (install && agent) {
+      const [updatedInstall] = await db
+        .update(automationInstalls)
+        .set({
+          config: {
+            ...install.config,
+            version: pack.version,
+            agentId: agent.id,
+          },
+        })
+        .where(eq(automationInstalls.id, install.id))
+        .returning();
+      install = updatedInstall ?? install;
     }
 
     return c.json(

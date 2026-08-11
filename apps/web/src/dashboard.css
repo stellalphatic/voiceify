@@ -259,13 +259,14 @@
   justify-content: center;
   width: 30px; height: 30px;
   border-radius: 7px;
-  background: var(--color-brand-primary, #292524);
-  color: #ffffff;
+  /* Invert with theme (same pattern as .navbar-logo-orb) — avoids white-on-white in dark mode */
+  background: var(--color-text-primary);
+  color: var(--color-bg-primary);
   flex-shrink: 0;
 }
 .vfy-side-brand-orb svg {
-  color: #ffffff;
-  stroke: #ffffff;
+  color: inherit;
+  stroke: currentColor;
 }
 .vfy-side-brand-text {
   font-family: var(--d-sans);
@@ -495,7 +496,7 @@
   gap: 6px;
   padding: 7px 12px;
   background: var(--d-accent);
-  color: var(--color-voice-on-accent, #ffffff);
+  color: var(--color-voice-on-accent);
   font-family: var(--d-sans);
   font-size: 12px;
   font-weight: 700;
@@ -688,22 +689,22 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  background: var(--d-card);
-  border: 1px solid var(--d-border);
+  background: color-mix(in srgb, var(--color-voice-status-online, var(--d-accent)) 12%, var(--d-card));
+  border: 1px solid color-mix(in srgb, var(--color-voice-status-online, var(--d-accent)) 28%, var(--d-border));
   border-radius: 999px;
   font-family: var(--d-mono);
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--d-text-2);
+  color: var(--color-voice-status-online, var(--d-accent));
 }
 .vfy-top-status-dot {
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: var(--d-accent);
-  box-shadow: 0 0 8px var(--d-accent);
-  animation: vfy-pulse 1.6s ease-in-out infinite;
+  background: var(--color-voice-status-online, var(--d-accent));
+  box-shadow: none;
+  animation: none;
 }
 @keyframes vfy-pulse {
   0%, 100% { opacity: 1; }
@@ -743,7 +744,7 @@
   gap: 6px;
   padding: 7px 16px;
   background: var(--color-brand-primary, #292524);
-  color: var(--color-voice-on-accent, #ffffff);
+  color: var(--color-voice-on-accent);
   font-family: var(--d-sans);
   font-size: 13px;
   font-weight: 500;
@@ -757,7 +758,7 @@
 }
 .vfy-top-cta:hover {
   background: var(--color-brand-hover, #0c0a09);
-  color: var(--color-voice-on-accent, #ffffff);
+  color: var(--color-voice-on-accent);
   box-shadow: 0 10px 24px -6px rgba(12, 10, 9, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0);
 }
 
@@ -986,7 +987,7 @@
   gap: 5px;
   padding: 6px 14px;
   background: var(--color-brand-primary, #292524);
-  color: var(--color-voice-on-accent, #ffffff);
+  color: var(--color-voice-on-accent);
   font-family: var(--d-sans);
   font-size: 12px;
   font-weight: 600;
@@ -998,7 +999,7 @@
 }
 .vfy-stat-cta-btn:hover {
   background: var(--color-brand-hover, #0c0a09);
-  color: var(--color-voice-on-accent, #ffffff);
+  color: var(--color-voice-on-accent);
 }
 .vfy-stat-cta-sub {
   font-family: var(--d-sans);
@@ -1789,13 +1790,13 @@
 }
 .vfy-btn-primary {
   background: var(--color-brand-primary, #292524);
-  color: var(--color-voice-on-accent, #ffffff);
+  color: var(--color-voice-on-accent);
   border-radius: 9999px;
   border-color: color-mix(in srgb, var(--color-brand-primary, #292524) 76%, var(--d-border));
 }
 .vfy-btn-primary:hover {
   background: var(--color-brand-hover, #0c0a09);
-  color: var(--color-voice-on-accent, #ffffff);
+  color: var(--color-voice-on-accent);
 }
 .vfy-btn-primary:disabled {
   opacity: 0.55;
@@ -1811,7 +1812,8 @@
 .vfy-btn-ghost:hover { background: var(--d-card-2); border-color: var(--d-border-2); color: var(--d-text); }
 .vfy-btn-danger {
   background: var(--d-danger);
-  color: #fff;
+  /* Always light on semantic red — do not use --color-voice-on-accent (inverts in dark). */
+  color: #ffffff;
 }
 .vfy-btn-danger:hover { background: #ff446a; }
 
@@ -2061,7 +2063,7 @@
 }
 
 .vfy-dash .agent-card-create .create-icon {
-  stroke: var(--color-voice-on-accent, #ffffff);
+  stroke: var(--color-voice-on-accent);
   transition: stroke 0.12s ease;
 }
 
@@ -2082,7 +2084,7 @@
 }
 
 .vfy-dash .agent-card-create:hover .create-icon {
-  stroke: var(--color-voice-on-accent, #ffffff);
+  stroke: var(--color-voice-on-accent);
 }
 
 .vfy-dash .agent-card-create:hover .create-text {
@@ -2456,7 +2458,7 @@
   height: 64px;
   border: none;
   background: var(--d-accent);
-  color: var(--color-voice-on-accent, #ffffff);
+  color: var(--color-voice-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2474,7 +2476,8 @@
 .vfy-sandbox-mic.is-live {
   background: var(--d-danger);
   border-color: var(--d-danger);
-  color: #fff;
+  /* Light icon on red — not theme-inverted accent fill */
+  color: #ffffff;
 }
 
 .vfy-sandbox-side {
@@ -2737,6 +2740,40 @@
   color: var(--d-text-2);
 }
 
+.vfy-settings-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vfy-settings-readonly-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vfy-settings-readonly-row .vfy-label {
+  margin: 0;
+}
+
+.vfy-settings-readonly-value {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--d-radius, 8px);
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--d-border) 35%, transparent);
+  color: var(--d-text);
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: default;
+  user-select: text;
+  pointer-events: auto;
+}
+
+.vfy-settings-readonly .vfy-settings-help {
+  margin: 0;
+}
+
 /* Knowledge-base agent scope picker */
 .vfy-scope {
   display: flex;
@@ -2937,6 +2974,11 @@
   .vfy-kb-actions { grid-template-columns: 1fr; }
 }
 .vfy-kb-card {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
   border: 1px solid var(--d-border);
   background: var(--d-card);
   border-radius: var(--d-radius-lg);
@@ -2944,6 +2986,15 @@
   display: grid;
   gap: 6px;
   color: var(--d-text);
+  transition: border-color 150ms ease, transform 150ms ease, background 150ms ease;
+}
+.vfy-kb-card:hover {
+  border-color: var(--d-accent);
+  transform: translateY(-1px);
+}
+.vfy-kb-card:focus-visible {
+  outline: 2px solid var(--d-accent);
+  outline-offset: 2px;
 }
 .vfy-kb-card h3 {
   margin: 0;
@@ -2982,6 +3033,35 @@
   line-height: 1.4;
   min-width: 0;
   flex: 1 1 180px;
+}
+
+.sandbox-visualizer-bar {
+  height: 4px;
+  opacity: 0.3;
+  transform-origin: center;
+}
+
+.sandbox-visualizer.is-active .sandbox-visualizer-bar {
+  animation: sandbox-wave 560ms ease-in-out infinite alternate;
+}
+
+@keyframes sandbox-wave {
+  from {
+    height: 6px;
+    opacity: 0.55;
+  }
+  to {
+    height: 38px;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sandbox-visualizer.is-active .sandbox-visualizer-bar {
+    animation: none;
+    height: 18px;
+    opacity: 0.8;
+  }
 }
 
 .vfy-tools-layout {
@@ -3476,7 +3556,7 @@
   border: none;
   cursor: pointer;
   background: var(--color-accent);
-  color: var(--color-voice-on-accent, #ffffff);
+  color: var(--color-voice-on-accent);
   box-shadow: 0 12px 28px -10px rgba(12, 10, 9, 0.10);
   transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
@@ -3492,6 +3572,7 @@
 }
 .vfy-sandbox-mic.is-active {
   background: #ff3d5a;
+  /* Light icon on red — not theme-inverted accent fill */
   color: #ffffff;
   box-shadow: 0 12px 28px -10px rgba(255, 61, 90, 0.5);
 }

@@ -20,7 +20,7 @@ import {
 } from "./conversations.js";
 import { creditLedger, usageDaily, usageEvents } from "./usage.js";
 import { knowledgeChunks, knowledgeDocs } from "./knowledge.js";
-import { embedConfigs, simulationScenarios } from "./embed.js";
+import { embedConfigs, embedSessions, simulationScenarios } from "./embed.js";
 import { webhookDeliveries, webhooks } from "./webhooks.js";
 
 export const userSelectSchema = createSelectSchema(user);
@@ -80,6 +80,8 @@ export const webhookDeliveryInsertSchema = createInsertSchema(webhookDeliveries)
 
 export const embedConfigSelectSchema = createSelectSchema(embedConfigs);
 export const embedConfigInsertSchema = createInsertSchema(embedConfigs);
+export const embedSessionSelectSchema = createSelectSchema(embedSessions);
+export const embedSessionInsertSchema = createInsertSchema(embedSessions);
 export const simulationScenarioSelectSchema =
   createSelectSchema(simulationScenarios);
 export const simulationScenarioInsertSchema =

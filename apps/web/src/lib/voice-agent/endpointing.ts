@@ -10,13 +10,16 @@
  */
 
 /** Transcript reads as a finished thought — respond promptly. */
-export const ENDPOINT_COMPLETE_MS = 280;
+export const ENDPOINT_COMPLETE_MS = 350;
 
-/** No strong signal either way. */
-export const ENDPOINT_DEFAULT_MS = 550;
+/**
+ * No strong signal either way. Kept longer than a breath pause so the agent
+ * does not cut in while the caller is still forming a longer sentence.
+ */
+export const ENDPOINT_DEFAULT_MS = 850;
 
 /** Clearly mid-thought — wait rather than talk over the caller. */
-export const ENDPOINT_INCOMPLETE_MS = 1100;
+export const ENDPOINT_INCOMPLETE_MS = 1600;
 
 /**
  * Words that nearly always have more speech behind them: conjunctions,
@@ -30,7 +33,7 @@ const TRAILING_INCOMPLETE =
 const TERMINAL_PUNCTUATION = /[.!?。！？؟۔]$/;
 
 /** Short answers that are complete on their own. */
-const SHORT_ANSWER_MAX_WORDS = 3;
+const SHORT_ANSWER_MAX_WORDS = 2;
 
 export function resolveEndpointDelay(text: string): number {
   const trimmed = text.trim();

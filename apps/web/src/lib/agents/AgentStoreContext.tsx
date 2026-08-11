@@ -14,7 +14,11 @@ import {
   saveDashboardAgents,
   type StoredVoiceAgent,
 } from "@voiceify/shared";
-import { apiJson, getActiveOrgId } from "../auth/client";
+import {
+  apiJson,
+  getActiveOrgId,
+  ORG_CHANGED_EVENT,
+} from "../auth/client";
 
 export type AppAgent = StoredVoiceAgent & { serverId?: string };
 
@@ -100,6 +104,14 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void refreshFromApi();
+  }, [refreshFromApi]);
+
+  useEffect(() => {
+    const refresh = () => {
+      void refreshFromApi();
+    };
+    window.addEventListener(ORG_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(ORG_CHANGED_EVENT, refresh);
   }, [refreshFromApi]);
 
   useEffect(() => {

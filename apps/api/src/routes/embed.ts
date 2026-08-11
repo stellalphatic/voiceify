@@ -3,10 +3,12 @@ import {
   and,
   db,
   embedConfigs,
+  embedSessions,
   eq,
+  gt,
   isNull,
 } from "@voiceify/db";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../lib/types.js";
@@ -15,6 +17,23 @@ import { rateLimit } from "../middleware/rate-limit.js";
 import { requireSession } from "../middleware/session.js";
 
 export const embedRoutes = new Hono<AppEnv>();
+
+const allowedOriginSchema = z
+  .string()
+  .trim()
+  .refine((value) => {
+    if (value === "*") return true;
+    try {
+      const parsed = new URL(value);
+      return parsed.origin === value.replace(/\/$/, "");
+    } catch {
+      return false;
+    }
+  }, "Use an origin such as https://example.com (no path)");
+
+function hashEmbedToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 embedRoutes.get(
   "/orgs/:orgId/embed",
@@ -39,10 +58,23 @@ embedRoutes.post(
     const body = z
       .object({
         agentId: z.string().uuid(),
-        allowedOrigins: z.array(z.string()).default(["*"]),
+        allowedOrigins: z.array(allowedOriginSchema).min(1).max(50),
         theme: z.record(z.unknown()).default({}),
       })
       .parse(await c.req.json());
+
+    if (
+      body.allowedOrigins.includes("*") &&
+      process.env.ALLOW_WILDCARD_EMBEDS !== "true"
+    ) {
+      return c.json(
+        {
+          error:
+            "Wildcard embeds are disabled. Add explicit website origins or set ALLOW_WILDCARD_EMBEDS=true intentionally.",
+        },
+        400,
+      );
+    }
 
     const [agent] = await db
       .select()
@@ -103,12 +135,24 @@ embedRoutes.post(
       .limit(1);
     if (!config) return c.json({ error: "Invalid embed key" }, 401);
 
+    const requestedOrigin = c.req.header("origin") || body.origin;
+    if (!requestedOrigin) {
+      return c.json({ error: "Embed origin is required" }, 400);
+    }
+    let normalizedOrigin: string;
+    try {
+      normalizedOrigin = new URL(requestedOrigin).origin;
+    } catch {
+      return c.json({ error: "Invalid embed origin" }, 400);
+    }
+
     const allowed = config.allowedOrigins ?? [];
     if (
-      body.origin &&
-      allowed.length &&
+      allowed.length === 0 ||
+      (
       !allowed.includes("*") &&
-      !allowed.includes(body.origin)
+      !allowed.includes(normalizedOrigin)
+      )
     ) {
       return c.json({ error: "Origin not allowed" }, 403);
     }
@@ -122,8 +166,19 @@ embedRoutes.post(
       return c.json({ error: "Agent not deployed" }, 409);
     }
 
+    const sessionToken = `emb_${randomBytes(32).toString("hex")}`;
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    await db.insert(embedSessions).values({
+      configId: config.id,
+      orgId: config.orgId,
+      agentId: agent.id,
+      tokenHash: hashEmbedToken(sessionToken),
+      origin: normalizedOrigin,
+      expiresAt,
+    });
+
     return c.json({
-      sessionToken: `emb_${randomBytes(20).toString("hex")}`,
+      sessionToken,
       orgId: config.orgId,
       agentId: agent.id,
       agent: {
@@ -134,6 +189,54 @@ embedRoutes.post(
       },
       theme: config.theme,
       expiresIn: 3600,
+    });
+  },
+);
+
+/** Re-check an embed token before any interactive action. */
+embedRoutes.post(
+  "/public/session/validate",
+  rateLimit({ prefix: "embed-validate", limit: 60 }),
+  async (c) => {
+    const body = z
+      .object({
+        sessionToken: z.string().startsWith("emb_").min(68),
+        origin: z.string().optional(),
+      })
+      .parse(await c.req.json());
+    const requestedOrigin = c.req.header("origin") || body.origin;
+    if (!requestedOrigin) return c.json({ error: "Embed origin is required" }, 400);
+
+    let origin: string;
+    try {
+      origin = new URL(requestedOrigin).origin;
+    } catch {
+      return c.json({ error: "Invalid embed origin" }, 400);
+    }
+
+    const [session] = await db
+      .select()
+      .from(embedSessions)
+      .where(
+        and(
+          eq(embedSessions.tokenHash, hashEmbedToken(body.sessionToken)),
+          eq(embedSessions.origin, origin),
+          gt(embedSessions.expiresAt, new Date()),
+        ),
+      )
+      .limit(1);
+    if (!session) return c.json({ error: "Invalid or expired embed session" }, 401);
+
+    await db
+      .update(embedSessions)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(embedSessions.id, session.id));
+
+    return c.json({
+      ok: true,
+      orgId: session.orgId,
+      agentId: session.agentId,
+      expiresAt: session.expiresAt.toISOString(),
     });
   },
 );

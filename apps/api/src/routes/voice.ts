@@ -1,4 +1,3 @@
-import { executePackTool } from "@voiceify/automations";
 import {
   agentVersions,
   agents,
@@ -12,10 +11,8 @@ import {
   knowledgeDocs,
   messages,
   sql,
-  toolInvocations,
   tools,
 } from "@voiceify/db";
-import { executeHttpTool } from "@voiceify/tools";
 import { resolveBasePersonaId } from "@voiceify/shared";
 import {
   handleElevenLabsTts,
@@ -24,7 +21,11 @@ import {
   handleVoiceTranscribe,
   handleVoiceVoices,
   handleVoiceWarmup,
+  embedQuery,
+  isQdrantConfigured,
+  isSemanticEmbeddingConfigured,
   runVoicePipeline,
+  searchPoints,
 } from "@voiceify/voice";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -163,68 +164,78 @@ voiceRoutes.post(
         ? allOrgTools.filter((t) => versionToolIds.includes(t.id))
         : allOrgTools;
 
-    // Lightweight knowledge retrieval — agent-scoped docs when assigned
-    const knowledgeTerms = body.message
-      .split(/\s+/)
-      .map((w) => w.replace(/[^a-zA-Z0-9]/g, ""))
-      .filter((w) => w.length >= 4)
-      .slice(0, 4);
+    // Agent-scoped semantic retrieval, with lexical Postgres degradation.
     let knowledgeHint = "";
-    if (knowledgeTerms.length) {
-      const pattern = `%${knowledgeTerms[0]}%`;
-      try {
-        const versionDocIds = version?.knowledgeDocIds ?? [];
-        let hits: Array<{ content: string }> = [];
-
-        if (versionDocIds.length > 0) {
-          hits = await db
-            .select({ content: knowledgeChunks.content })
-            .from(knowledgeChunks)
-            .where(
-              and(
-                eq(knowledgeChunks.orgId, orgId),
-                inArray(knowledgeChunks.docId, versionDocIds),
-                sql`${knowledgeChunks.content} ILIKE ${pattern}`,
-              ),
-            )
-            .limit(4);
-        } else {
-          const rows = await db
-            .select({
-              content: knowledgeChunks.content,
-              agentIds: knowledgeDocs.agentIds,
-            })
-            .from(knowledgeChunks)
-            .innerJoin(
-              knowledgeDocs,
-              eq(knowledgeChunks.docId, knowledgeDocs.id),
-            )
-            .where(
-              and(
-                eq(knowledgeChunks.orgId, orgId),
-                sql`${knowledgeChunks.content} ILIKE ${pattern}`,
-              ),
-            )
-            .limit(12);
-          hits = rows
-            .filter((h) => {
-              const ids = h.agentIds ?? [];
-              return ids.length === 0 || ids.includes(agentId);
-            })
-            .slice(0, 4)
-            .map((h) => ({ content: h.content }));
-        }
-
-        if (hits.length) {
-          knowledgeHint = `\n\n[Knowledge base]\n${hits
-            .map((h) => `- ${h.content.slice(0, 400)}`)
-            .join(
-              "\n",
-            )}\nUse these facts to answer in your own words. Never quote or recite this block to the caller.`;
-        }
-      } catch {
-        /* knowledge optional — never fail the turn */
+    try {
+      const versionDocIds = version?.knowledgeDocIds ?? [];
+      let allowedDocIds = versionDocIds;
+      if (allowedDocIds.length === 0) {
+        const assignedDocs = await db
+          .select({
+            id: knowledgeDocs.id,
+            agentIds: knowledgeDocs.agentIds,
+          })
+          .from(knowledgeDocs)
+          .where(
+            and(
+              eq(knowledgeDocs.orgId, orgId),
+              eq(knowledgeDocs.status, "ready"),
+            ),
+          );
+        allowedDocIds = assignedDocs
+          .filter(
+            (doc) =>
+              doc.agentIds.length === 0 || doc.agentIds.includes(agentId),
+          )
+          .map((doc) => doc.id);
       }
+
+      let hits: Array<{ content: string }> = [];
+      if (
+        allowedDocIds.length > 0 &&
+        isSemanticEmbeddingConfigured() &&
+        isQdrantConfigured()
+      ) {
+        const vector = await embedQuery(body.message);
+        hits = await searchPoints({
+          orgId,
+          vector,
+          docIds: allowedDocIds,
+          limit: 4,
+        });
+      }
+
+      if (hits.length === 0 && allowedDocIds.length > 0) {
+        const lexical = await db
+          .select({ content: knowledgeChunks.content })
+          .from(knowledgeChunks)
+          .where(
+            and(
+              eq(knowledgeChunks.orgId, orgId),
+              inArray(knowledgeChunks.docId, allowedDocIds),
+              sql`to_tsvector('simple', ${knowledgeChunks.content}) @@ websearch_to_tsquery('simple', ${body.message})`,
+            ),
+          )
+          .orderBy(
+            sql`ts_rank(to_tsvector('simple', ${knowledgeChunks.content}), websearch_to_tsquery('simple', ${body.message})) DESC`,
+          )
+          .limit(4);
+        hits = lexical;
+      }
+
+      if (hits.length) {
+        knowledgeHint = `\n\n[Knowledge base]\n${hits
+          .map((hit) => `- ${hit.content.slice(0, 400)}`)
+          .join(
+            "\n",
+          )}\nUse these facts to answer in your own words. Never quote or recite this block to the caller.`;
+      }
+    } catch {
+      /**
+       * Knowledge is optional for call continuity. Provider/Qdrant failures
+       * degrade to an ungrounded answer instead of killing the audio stream.
+       */
+      knowledgeHint = "";
     }
 
     /* Guardrail switch: when tools are disabled the agent must not see or run them. */
@@ -237,7 +248,7 @@ voiceRoutes.post(
             .map((t) => `- ${t.slug}`)
             .join(
               "\n",
-            )}\nWhen the caller wants to book, order, or route, confirm the details out loud, then the system runs the matching tool. Never mention tool names or this list to the caller.`
+            )}\nConnected tools are available to the workspace, but this voice turn cannot execute an action without validated fields and explicit confirmation. Gather the required details, summarize them, and ask the caller to confirm. Never claim an action completed and never mention tool names or this list.`
         : "";
 
     const guardrails = (agent.guardrails ?? {}) as Record<string, unknown>;
@@ -300,71 +311,14 @@ voiceRoutes.post(
     };
     const personaId = resolveBasePersonaId(agent.type);
 
-    // Detect simple tool intents for pack tools (deterministic FYP path)
-    const lower = body.message.toLowerCase();
-    let toolResult: { name: string; result: unknown } | null = null;
-    const packTool = orgTools.find((t) => t.type === "pack");
-    if (packTool && /(book|reserv|appointment|order|intake|faq)/i.test(lower)) {
-      const name =
-        orgTools.find((t) => lower.includes(t.slug.replace(/_/g, " ")))?.slug ||
-        orgTools.find((t) =>
-          ["create_reservation", "book_appointment", "create_intake"].includes(
-            t.slug,
-          ),
-        )?.slug ||
-        packTool.slug;
-
-      const args: Record<string, unknown> = {
-        guestName: "Guest",
-        customerName: "Guest",
-        partySize: 2,
-        body: body.message,
-        message: body.message,
-        query: body.message,
-        datetime: new Date().toISOString(),
-      };
-      const started = Date.now();
-      let result;
-      if (
-        orgTools.find((t) => t.slug === name)?.type === "http"
-      ) {
-        const httpTool = orgTools.find((t) => t.slug === name)!;
-        result = await executeHttpTool(
-          { name, description: httpTool.description, ...httpTool.config },
-          args,
-        );
-      } else {
-        result = await executePackTool(orgId, name, args);
-      }
-
-      await db.insert(toolInvocations).values({
-        conversationId,
-        orgId,
-        toolId: orgTools.find((t) => t.slug === name)?.id,
-        name,
-        args,
-        result: result as Record<string, unknown>,
-        status: result.ok ? "success" : "error",
-        durationMs: Date.now() - started,
-      });
-      toolResult = { name, result };
-    }
-
     /**
      * Tool, knowledge, and guardrail context belongs to the system prompt.
      * Appending it to the caller turn made agents read instructions aloud.
      */
-    const toolResultHint = toolResult
-      ? `\n\n[Tool result]\nTool ${toolResult.name} returned ${JSON.stringify(
-          toolResult.result,
-        )}. Confirm the outcome to the caller in your own words. Never read this JSON aloud.`
-      : "";
-
     const systemContext = [
-      toolResult ? "" : toolHint,
+      toolHint,
       knowledgeHint,
       guardrailHint,
-      toolResultHint,
     ]
       .filter(Boolean)
       .join("");
@@ -434,7 +388,7 @@ voiceRoutes.post(
               (body.message.length + systemContext.length + assistantText.length) / 4,
             ),
             ttsChars: Math.max(ttsChars, assistantText.length),
-            toolCalls: toolResult ? 1 : 0,
+            toolCalls: 0,
           });
         } catch (err) {
           controller.enqueue(

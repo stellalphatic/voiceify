@@ -9,6 +9,11 @@ export interface VoiceifyWidgetOptions {
   apiBase?: string;
   /** CSS selector or element to mount into */
   container?: string | HTMLElement;
+  /**
+   * Visual theme. `auto` follows the host page `data-theme` or
+   * `prefers-color-scheme`. Defaults to `auto`.
+   */
+  theme?: "light" | "dark" | "auto";
 }
 
 /**
@@ -39,16 +44,63 @@ type EmbedSession = {
   theme?: Record<string, unknown>;
 };
 
+type ResolvedTheme = "light" | "dark";
+
+const THEME_STYLES: Record<
+  ResolvedTheme,
+  { panel: string; title: string; status: string; button: string }
+> = {
+  light: {
+    panel:
+      "font-family:Inter,system-ui,-apple-system,sans-serif;max-width:360px;padding:16px 18px;border:1px solid #e7e5e4;border-radius:12px;background:#f5f5f4;color:#0c0a09;",
+    title: "font-size:18px;font-weight:600;letter-spacing:-0.02em;margin-bottom:4px;",
+    status: "font-size:13px;opacity:0.75;margin-bottom:12px;line-height:1.45;",
+    button:
+      "appearance:none;border:1px solid #292524;background:#292524;color:#fafaf9;padding:10px 14px;font:inherit;cursor:pointer;width:100%;border-radius:999px;font-weight:500;",
+  },
+  dark: {
+    panel:
+      "font-family:Inter,system-ui,-apple-system,sans-serif;max-width:360px;padding:16px 18px;border:1px solid #44403c;border-radius:12px;background:#1c1917;color:#fafaf9;",
+    title: "font-size:18px;font-weight:600;letter-spacing:-0.02em;margin-bottom:4px;",
+    status: "font-size:13px;opacity:0.75;margin-bottom:12px;line-height:1.45;",
+    button:
+      "appearance:none;border:1px solid #fafaf9;background:#fafaf9;color:#0c0a09;padding:10px 14px;font:inherit;cursor:pointer;width:100%;border-radius:999px;font-weight:500;",
+  },
+};
+
+function resolveHostTheme(preferred?: "light" | "dark" | "auto"): ResolvedTheme {
+  if (preferred === "light" || preferred === "dark") return preferred;
+
+  if (typeof document !== "undefined") {
+    const attr = document.documentElement.getAttribute("data-theme");
+    if (attr === "light" || attr === "dark") return attr;
+  }
+
+  if (typeof window !== "undefined" && window.matchMedia) {
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+  }
+
+  return "light";
+}
+
 export class VoiceifyWidget {
   readonly token: string;
   readonly apiBase: string;
+  private themeMode: "light" | "dark" | "auto";
+  private resolvedTheme: ResolvedTheme = "light";
   private root: HTMLElement | null = null;
-  private session: EmbedSession | null = null;
+  private titleEl: HTMLElement | null = null;
   private statusEl: HTMLElement | null = null;
+  private talkBtn: HTMLButtonElement | null = null;
+  private session: EmbedSession | null = null;
+  private themeMql: MediaQueryList | null = null;
+  private themeObserver: MutationObserver | null = null;
 
   constructor(options: VoiceifyWidgetOptions) {
     this.token = options.token;
     this.apiBase = (options.apiBase ?? SCRIPT_ORIGIN).replace(/\/$/, "");
+    this.themeMode = options.theme ?? "auto";
+    this.resolvedTheme = resolveHostTheme(this.themeMode);
     if (options.container) {
       this.mount(options.container);
     }
@@ -66,32 +118,65 @@ export class VoiceifyWidget {
     el.innerHTML = "";
     const panel = document.createElement("div");
     panel.dataset.voiceifyWidget = "true";
-    panel.style.cssText =
-      "font-family:Georgia,Times New Roman,serif;max-width:360px;padding:16px 18px;border:1px solid #d7d2c8;background:linear-gradient(160deg,#f7f4ef,#efe8dc);color:#1c1915;";
+    panel.dataset.theme = this.resolvedTheme;
 
     const title = document.createElement("div");
     title.textContent = "Voiceify";
-    title.style.cssText = "font-size:20px;font-weight:700;margin-bottom:4px;";
+    this.titleEl = title;
 
     const status = document.createElement("div");
     status.textContent = "Connecting…";
-    status.style.cssText = "font-size:13px;opacity:0.75;margin-bottom:12px;";
     this.statusEl = status;
 
     const talkBtn = document.createElement("button");
     talkBtn.type = "button";
-    talkBtn.textContent = "Start voice session";
-    talkBtn.style.cssText =
-      "appearance:none;border:1px solid #1c1915;background:#1c1915;color:#f7f4ef;padding:10px 14px;font:inherit;cursor:pointer;width:100%;";
+    talkBtn.textContent = "Preview embed";
     talkBtn.addEventListener("click", () => {
       void this.startSession();
     });
+    this.talkBtn = talkBtn;
 
     panel.append(title, status, talkBtn);
     el.appendChild(panel);
     this.root = panel;
+    this.applyThemeStyles();
+    this.watchTheme();
     void this.bootstrap();
     return panel;
+  }
+
+  private applyThemeStyles(): void {
+    if (!this.root || !this.titleEl || !this.statusEl || !this.talkBtn) return;
+    const styles = THEME_STYLES[this.resolvedTheme];
+    this.root.style.cssText = styles.panel;
+    this.root.dataset.theme = this.resolvedTheme;
+    this.titleEl.style.cssText = styles.title;
+    this.statusEl.style.cssText = styles.status;
+    this.talkBtn.style.cssText = styles.button;
+  }
+
+  private setResolvedTheme(next: ResolvedTheme): void {
+    if (this.resolvedTheme === next) return;
+    this.resolvedTheme = next;
+    this.applyThemeStyles();
+  }
+
+  private watchTheme(): void {
+    if (this.themeMode !== "auto" || typeof window === "undefined") return;
+
+    this.themeMql = window.matchMedia("(prefers-color-scheme: dark)");
+    const onScheme = () => {
+      this.setResolvedTheme(resolveHostTheme("auto"));
+    };
+    this.themeMql.addEventListener?.("change", onScheme);
+
+    this.themeObserver = new MutationObserver(() => {
+      this.setResolvedTheme(resolveHostTheme("auto"));
+    });
+    this.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
   }
 
   private setStatus(text: string): void {
@@ -113,6 +198,15 @@ export class VoiceifyWidget {
         return;
       }
       this.session = (await res.json()) as EmbedSession;
+
+      const sessionTheme = this.session.theme?.mode;
+      if (
+        this.themeMode === "auto" &&
+        (sessionTheme === "light" || sessionTheme === "dark")
+      ) {
+        this.setResolvedTheme(sessionTheme);
+      }
+
       this.setStatus(
         `${this.session.agent.name} ready${
           this.session.agent.greeting ? ` — ${this.session.agent.greeting}` : ""
@@ -131,19 +225,46 @@ export class VoiceifyWidget {
       this.setStatus("Session unavailable");
       return;
     }
-    /**
-     * In-widget audio is not implemented yet. Say so plainly instead of implying
-     * a session started; the supported path today is the server-side turn
-     * endpoint called with a vfk_ API key.
-     */
-    this.setStatus(
-      `${this.session.agent.name} is reachable, but in-widget voice is still in preview. Use the Voiceify turn API from your backend to hold a conversation.`,
-    );
+    try {
+      const validation = await fetch(
+        `${this.apiBase}/api/public/session/validate`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            sessionToken: this.session.sessionToken,
+            origin: window.location.origin,
+          }),
+        },
+      );
+      if (!validation.ok) {
+        this.session = null;
+        this.setStatus("Session expired. Reconnecting…");
+        await this.bootstrap();
+        return;
+      }
+
+      /**
+       * In-widget audio is not implemented yet. Say so plainly instead of
+       * implying a voice call started.
+       */
+      this.setStatus(
+        `${this.session.agent.name} is authenticated, but in-widget voice is still in preview. Use the dashboard Sandbox for a live conversation.`,
+      );
+    } catch {
+      this.setStatus("Unable to validate the embed session");
+    }
   }
 
   unmount(): void {
+    this.themeObserver?.disconnect();
+    this.themeObserver = null;
+    this.themeMql = null;
     this.root?.remove();
     this.root = null;
+    this.titleEl = null;
+    this.statusEl = null;
+    this.talkBtn = null;
     this.session = null;
   }
 }
@@ -174,10 +295,16 @@ if (typeof window !== "undefined") {
       target.id = mountId;
       document.body.appendChild(target);
     }
+    const themeAttr = script.dataset.theme;
+    const theme =
+      themeAttr === "light" || themeAttr === "dark" || themeAttr === "auto"
+        ? themeAttr
+        : "auto";
     mountVoiceifyWidget({
       token,
       apiBase: script.dataset.apiBase,
       container: target,
+      theme,
     });
   }
 }

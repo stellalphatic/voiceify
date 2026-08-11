@@ -29,6 +29,13 @@
       "when": 1786000000000,
       "tag": "0003_contact_messages",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786420000000,
+      "tag": "0004_embed_sessions",
+      "breakpoints": true
     }
   ]
 }

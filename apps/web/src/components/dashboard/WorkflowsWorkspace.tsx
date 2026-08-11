@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { GitBranch, Sparkles, Utensils, Headphones, CalendarDays } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { apiJson, getActiveOrgId } from '../../lib/auth/client';
 import { useAgentStore } from '../../lib/agents/AgentStoreContext';
-import { SMB_CONNECTORS } from '../../lib/connectors/catalog';
-import ConnectorGrid from '../connectors/ConnectorGrid';
 import WorkflowCanvas from './WorkflowCanvas';
 
 type Pack = {
@@ -18,8 +17,6 @@ type AutomationsPayload = {
   available: Pack[];
 };
 
-type ToolRow = { slug: string };
-
 const PACK_ICONS: Record<string, typeof Utensils> = {
   restaurant: Utensils,
   receptionist: Headphones,
@@ -30,7 +27,6 @@ export default function WorkflowsWorkspace() {
   const orgId = getActiveOrgId();
   const { refreshFromApi } = useAgentStore();
   const [packs, setPacks] = useState<Pack[]>([]);
-  const [tools, setTools] = useState<ToolRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -39,12 +35,10 @@ export default function WorkflowsWorkspace() {
     if (!orgId) return;
     setError(null);
     try {
-      const [auto, toolData] = await Promise.all([
-        apiJson<AutomationsPayload>(`/api/orgs/${orgId}/automations`),
-        apiJson<{ tools: ToolRow[] }>(`/api/orgs/${orgId}/tools`),
-      ]);
+      const auto = await apiJson<AutomationsPayload>(
+        `/api/orgs/${orgId}/automations`,
+      );
       setPacks(auto.available);
-      setTools(toolData.tools);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load workflows');
     }
@@ -53,8 +47,6 @@ export default function WorkflowsWorkspace() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const installedSlugs = useMemo(() => new Set(tools.map((t) => t.slug)), [tools]);
 
   const install = async (packId: string) => {
     if (!orgId) return;
@@ -99,16 +91,15 @@ export default function WorkflowsWorkspace() {
         </p>
       )}
 
-      <section className="vfy-settings-card vfy-connector-hero">
-        <h3 className="vfy-settings-card-title">Connect tools used in your flow</h3>
+      <section className="vfy-settings-card">
+        <h3 className="vfy-settings-card-title">Tools used by workflows</h3>
         <p className="vfy-settings-help">
-          Add these once so canvas tool nodes can fire for real during Sandbox turns.
+          Configure HTTP actions and business connectors once under Tools, then reference them in
+          your workflow.
         </p>
-        <ConnectorGrid
-          connectors={SMB_CONNECTORS}
-          installedSlugs={installedSlugs}
-          onInstalled={() => void load()}
-        />
+        <Link to="/dashboard/tools" className="vfy-btn vfy-btn-ghost">
+          Manage tools and connectors
+        </Link>
       </section>
 
       <section className="vfy-settings-card">

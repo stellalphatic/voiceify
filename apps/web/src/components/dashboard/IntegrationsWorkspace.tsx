@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CheckCircle2,
@@ -10,9 +10,7 @@ import {
   Sparkles,
   Waves,
 } from 'lucide-react';
-import { apiJson, getActiveOrgId } from '../../lib/auth/client';
-import { SMB_CONNECTORS } from '../../lib/connectors/catalog';
-import ConnectorGrid from '../connectors/ConnectorGrid';
+ 
 
 type Health = {
   gemini?: boolean;
@@ -29,23 +27,9 @@ type Health = {
   };
 };
 
-type ToolRow = { slug: string };
-
 export default function IntegrationsWorkspace() {
-  const orgId = getActiveOrgId();
   const [health, setHealth] = useState<Health | null>(null);
-  const [tools, setTools] = useState<ToolRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  const loadTools = useCallback(async () => {
-    if (!orgId) return;
-    try {
-      const data = await apiJson<{ tools: ToolRow[] }>(`/api/orgs/${orgId}/tools`);
-      setTools(data.tools);
-    } catch {
-      /* optional */
-    }
-  }, [orgId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,13 +45,10 @@ export default function IntegrationsWorkspace() {
         }
       }
     })();
-    void loadTools();
     return () => {
       cancelled = true;
     };
-  }, [loadTools]);
-
-  const installedSlugs = useMemo(() => new Set(tools.map((t) => t.slug)), [tools]);
+  }, []);
 
   const providers = [
     {
@@ -122,11 +103,11 @@ export default function IntegrationsWorkspace() {
     <div className="max-w-5xl space-y-6">
       <div className="vfy-page-head">
         <div className="vfy-page-head-titles">
-          <p className="vfy-page-eyebrow">Manage · Integrations</p>
-          <h1 className="vfy-page-title">Integrations</h1>
+          <p className="vfy-page-eyebrow">Operate · Providers</p>
+          <h1 className="vfy-page-title">Provider status</h1>
           <p className="vfy-page-sub">
-            Step-by-step setup for Google Sheets, WhatsApp, Calendar, and Email. Platform voice
-            providers stay on the server, never in the browser.
+            Check the server-side speech, model, and retrieval providers used by Voiceify. Add
+            business connectors under Tools.
           </p>
         </div>
       </div>
@@ -136,19 +117,6 @@ export default function IntegrationsWorkspace() {
           {error}
         </p>
       )}
-
-      <section className="vfy-settings-card vfy-connector-hero">
-        <h3 className="vfy-settings-card-title">Business connectors</h3>
-        <p className="vfy-settings-help">
-          Log bookings to Sheets, ping WhatsApp, create Calendar events, and email yourself when a
-          lead comes in. Each one walks you through creating the endpoint on your side first.
-        </p>
-        <ConnectorGrid
-          connectors={SMB_CONNECTORS}
-          installedSlugs={installedSlugs}
-          onInstalled={() => void loadTools()}
-        />
-      </section>
 
       <section className="vfy-settings-card">
         <h3 className="vfy-settings-card-title">Voice pipeline (platform)</h3>

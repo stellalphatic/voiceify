@@ -167,6 +167,9 @@ function statusLabel(status: string): string {
 export default function KnowledgeWorkspace() {
   const orgId = getActiveOrgId();
   const fileRef = useRef<HTMLInputElement>(null);
+  const accessSectionRef = useRef<HTMLElement>(null);
+  const uploadSectionRef = useRef<HTMLElement>(null);
+  const textSectionRef = useRef<HTMLElement>(null);
   const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [title, setTitle] = useState('');
@@ -182,6 +185,16 @@ export default function KnowledgeWorkspace() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  const focusSection = (
+    section: HTMLElement | null,
+    selector: string,
+  ) => {
+    section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => {
+      section?.querySelector<HTMLElement>(selector)?.focus();
+    }, 350);
+  };
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -360,24 +373,36 @@ export default function KnowledgeWorkspace() {
       )}
 
       <div className="vfy-kb-actions">
-        <div className="vfy-kb-card">
+        <button
+          type="button"
+          className="vfy-kb-card"
+          onClick={() => focusSection(textSectionRef.current, 'input')}
+        >
           <Globe size={20} />
           <h3>Add text</h3>
           <p>Paste website copy, FAQs, or scripts.</p>
-        </div>
-        <div className="vfy-kb-card">
+        </button>
+        <button
+          type="button"
+          className="vfy-kb-card"
+          onClick={() => focusSection(uploadSectionRef.current, 'button')}
+        >
           <Upload size={20} />
           <h3>Upload PDF / DOCX</h3>
           <p>Extract, embed, store chunks, discard file.</p>
-        </div>
-        <div className="vfy-kb-card">
+        </button>
+        <button
+          type="button"
+          className="vfy-kb-card"
+          onClick={() => focusSection(accessSectionRef.current, 'input')}
+        >
           <BookOpen size={20} />
           <h3>Ground agents</h3>
           <p>Hybrid keyword + embedding retrieval.</p>
-        </div>
+        </button>
       </div>
 
-      <section className="vfy-settings-card">
+      <section ref={accessSectionRef} className="vfy-settings-card">
         <h3 className="vfy-settings-card-title">
           <Users size={18} />
           Agent access for new documents
@@ -394,7 +419,7 @@ export default function KnowledgeWorkspace() {
         />
       </section>
 
-      <section className="vfy-settings-card">
+      <section ref={uploadSectionRef} className="vfy-settings-card">
         <h3 className="vfy-settings-card-title">
           <Upload size={18} />
           Upload document
@@ -444,7 +469,7 @@ export default function KnowledgeWorkspace() {
         </div>
       </section>
 
-      <section className="vfy-settings-card">
+      <section ref={textSectionRef} className="vfy-settings-card">
         <h3 className="vfy-settings-card-title">
           <Plus size={18} />
           Paste text

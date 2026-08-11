@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, BookOpen, ChevronRight, Menu, Settings2 } from 'lucide-react';
+import { BookOpen, ChevronRight, Menu, MessageSquareText, Settings2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ThemeToggle from '../ThemeToggle';
 import UserMenu from './UserMenu';
@@ -64,21 +64,19 @@ export default function DashboardTopbar({ crumbs, actions, onMenuClick }: Dashbo
         </div>
 
         <div className="vfy-top-right">
-          <span className="vfy-top-status" aria-label="System status: live">
-            <span className="vfy-top-status-dot" />
-            <span>Live</span>
+          <span className="vfy-top-status" title="API and dashboard are reachable">
+            <span className="vfy-top-status-dot" aria-hidden />
+            <span>Online</span>
           </span>
 
-          <a
-            href="/docs"
+          <Link
+            to="/docs"
             className="vfy-top-docs"
             title="API documentation"
-            target="_blank"
-            rel="noopener noreferrer"
           >
             <BookOpen size={15} strokeWidth={2.25} />
             <span>Docs</span>
-          </a>
+          </Link>
 
           <span className="vfy-top-theme">
             <ThemeToggle size="sm" />
@@ -96,10 +94,10 @@ export default function DashboardTopbar({ crumbs, actions, onMenuClick }: Dashbo
           <Link
             to="/dashboard/conversations"
             className="vfy-top-iconbtn"
-            aria-label="Conversations"
-            title="Conversations"
+            aria-label="Recent conversations"
+            title="Recent conversations"
           >
-            <Bell size={17} strokeWidth={2.25} />
+            <MessageSquareText size={17} strokeWidth={2.25} />
           </Link>
 
           <UserMenu afterSignOutUrl="/" />

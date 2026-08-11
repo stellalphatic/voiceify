@@ -240,6 +240,7 @@ export async function apiJson<T>(
 }
 
 export const ORG_STORAGE_KEY = "voiceify.activeOrgId";
+export const ORG_CHANGED_EVENT = "voiceify:active-org-changed";
 
 export function getActiveOrgId(): string | null {
   try {
@@ -252,6 +253,9 @@ export function getActiveOrgId(): string | null {
 export function setActiveOrgId(orgId: string): void {
   try {
     localStorage.setItem(ORG_STORAGE_KEY, orgId);
+    window.dispatchEvent(
+      new CustomEvent(ORG_CHANGED_EVENT, { detail: { orgId } }),
+    );
   } catch {
     /* ignore */
   }

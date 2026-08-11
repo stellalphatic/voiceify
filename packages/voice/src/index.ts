@@ -2,6 +2,7 @@ export * from "./api-handlers.js";
 export * from "./api-security.js";
 export * from "./coqui-tts.js";
 export * from "./custom-agent.js";
+export * from "./embeddings.js";
 export * from "./express-forward.js";
 export * from "./groq-llm.js";
 export * from "./language.js";

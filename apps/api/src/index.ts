@@ -38,11 +38,20 @@ function corsOrigins(): string[] {
 }
 
 const app = new Hono<AppEnv>();
+const allowedCorsOrigins = corsOrigins();
 
 app.use(
   "*",
   cors({
-    origin: corsOrigins(),
+    origin: (origin, c) => {
+      /**
+       * Public embed routes perform their own DB-backed origin check against
+       * embed_configs.allowed_origins. Reflecting here only permits the browser
+       * to reach that check; it does not authorize the request.
+       */
+      if (c.req.path.startsWith("/api/public/")) return origin;
+      return allowedCorsOrigins.includes(origin) ? origin : undefined;
+    },
     allowHeaders: [
       "Content-Type",
       "Authorization",

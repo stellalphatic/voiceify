@@ -8,7 +8,10 @@ export const LIMITS = {
   historyMaxItems: 12,
   ttsTextMaxChars: 400,
   audioMaxBytes: 8 * 1024 * 1024,
-  rateLimitPerMinute: 60,
+  rateLimitPerMinute: Number(
+    process.env.PUBLIC_VOICE_RATE_LIMIT_PER_MINUTE ??
+      (process.env.NODE_ENV === 'production' ? 10 : 60),
+  ),
 } as const;
 
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -46,7 +49,18 @@ export function verifyApiKey(
   headers: Headers | Record<string, string | string[] | undefined>,
 ): { ok: true } | { ok: false; message: string } {
   const required = process.env.VOICEIFY_API_KEY?.trim();
-  if (!required) return { ok: true };
+  if (!required) {
+    const publicVoiceEnabled =
+      process.env.PUBLIC_VOICE_ENABLED?.trim().toLowerCase() === 'true';
+    if (process.env.NODE_ENV === 'production' && !publicVoiceEnabled) {
+      return {
+        ok: false,
+        message:
+          'Public voice API is disabled. Set PUBLIC_VOICE_ENABLED=true intentionally to enable the public demo.',
+      };
+    }
+    return { ok: true };
+  }
 
   const get = (key: string): string => {
     if (headers instanceof Headers) return headers.get(key) ?? '';

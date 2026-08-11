@@ -3,6 +3,7 @@ import {
   db,
   eq,
   organizations,
+  sql,
   usageEvents,
   type UsageKind,
 } from "@voiceify/db";
@@ -49,17 +50,6 @@ export async function recordUsageAndDebit(input: {
   if (input.toolCalls)
     events.push({ kind: "tool_call", quantity: input.toolCalls });
 
-  if (events.length > 0) {
-    await db.insert(usageEvents).values(
-      events.map((e) => ({
-        orgId: input.orgId,
-        conversationId: input.conversationId,
-        kind: e.kind,
-        quantity: e.quantity,
-      })),
-    );
-  }
-
   const amountCents = Math.max(
     1,
     estimateUsageCents({
@@ -71,35 +61,52 @@ export async function recordUsageAndDebit(input: {
   );
 
   return db.transaction(async (tx) => {
-    const [org] = await tx
-      .select()
-      .from(organizations)
-      .where(eq(organizations.id, input.orgId))
-      .limit(1);
+    /**
+     * Debit first. Inserting usage before the compare-and-decrement let a
+     * failed debit (insufficient funds after a race) still record usage.
+     * The predicate runs under Postgres's row lock, so at most one debit can
+     * consume the final credits and the balance cannot go below 0.
+     */
+    const [updated] = await tx
+      .update(organizations)
+      .set({
+        creditBalanceCents: sql`${organizations.creditBalanceCents} - ${amountCents}`,
+        updatedAt: new Date(),
+      })
+      .where(
+        sql`${organizations.id} = ${input.orgId} AND ${organizations.creditBalanceCents} >= ${amountCents}`,
+      )
+      .returning({ balanceAfter: organizations.creditBalanceCents });
 
-    if (!org) {
-      throw new Error("Organization not found");
+    if (!updated) {
+      const [org] = await tx
+        .select({ balanceCents: organizations.creditBalanceCents })
+        .from(organizations)
+        .where(eq(organizations.id, input.orgId))
+        .limit(1);
+      if (!org) throw new Error("Organization not found");
+      return { balanceAfter: org.balanceCents, debitedCents: 0 };
+    }
+
+    if (events.length > 0) {
+      await tx.insert(usageEvents).values(
+        events.map((event) => ({
+          orgId: input.orgId,
+          conversationId: input.conversationId,
+          kind: event.kind,
+          quantity: event.quantity,
+        })),
+      );
     }
 
     const result = debitCredits({
-      balanceCents: org.creditBalanceCents,
+      balanceCents: updated.balanceAfter + amountCents,
       amountCents,
       reason: "voice_turn",
       refType: "conversation",
       refId: input.conversationId,
     });
-
-    if (!result.ok) {
-      return { balanceAfter: org.creditBalanceCents, debitedCents: 0 };
-    }
-
-    await tx
-      .update(organizations)
-      .set({
-        creditBalanceCents: result.balanceAfter,
-        updatedAt: new Date(),
-      })
-      .where(eq(organizations.id, input.orgId));
+    if (!result.ok) throw new Error("Atomic credit debit invariant failed");
 
     await tx.insert(creditLedger).values({
       orgId: input.orgId,
@@ -107,11 +114,11 @@ export async function recordUsageAndDebit(input: {
       reason: result.reason,
       refType: result.refType,
       refId: result.refId,
-      balanceAfter: result.balanceAfter,
+      balanceAfter: updated.balanceAfter,
     });
 
     return {
-      balanceAfter: result.balanceAfter,
+      balanceAfter: updated.balanceAfter,
       debitedCents: amountCents,
     };
   });
@@ -125,19 +132,15 @@ export async function grantCredits(input: {
   refId?: string;
 }): Promise<number> {
   return db.transaction(async (tx) => {
-    const [org] = await tx
-      .select()
-      .from(organizations)
-      .where(eq(organizations.id, input.orgId))
-      .limit(1);
-
-    if (!org) throw new Error("Organization not found");
-
-    const balanceAfter = org.creditBalanceCents + input.amountCents;
-    await tx
+    const [updated] = await tx
       .update(organizations)
-      .set({ creditBalanceCents: balanceAfter, updatedAt: new Date() })
-      .where(eq(organizations.id, input.orgId));
+      .set({
+        creditBalanceCents: sql`${organizations.creditBalanceCents} + ${input.amountCents}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(organizations.id, input.orgId))
+      .returning({ balanceAfter: organizations.creditBalanceCents });
+    if (!updated) throw new Error("Organization not found");
 
     await tx.insert(creditLedger).values({
       orgId: input.orgId,
@@ -145,9 +148,9 @@ export async function grantCredits(input: {
       reason: input.reason,
       refType: input.refType,
       refId: input.refId,
-      balanceAfter,
+      balanceAfter: updated.balanceAfter,
     });
 
-    return balanceAfter;
+    return updated.balanceAfter;
   });
 }

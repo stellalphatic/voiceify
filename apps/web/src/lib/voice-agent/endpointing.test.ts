@@ -20,7 +20,10 @@ describe('resolveEndpointDelay', () => {
   it('responds promptly to short complete answers', () => {
     expect(resolveEndpointDelay('yes')).toBe(ENDPOINT_COMPLETE_MS);
     expect(resolveEndpointDelay('seven pm')).toBe(ENDPOINT_COMPLETE_MS);
-    expect(resolveEndpointDelay('four people')).toBe(ENDPOINT_COMPLETE_MS);
+  });
+
+  it('does not treat three-word phrases as finished by default', () => {
+    expect(resolveEndpointDelay('four people please')).toBe(ENDPOINT_DEFAULT_MS);
   });
 
   it('responds promptly when punctuation ends the sentence', () => {

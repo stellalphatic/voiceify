@@ -56,6 +56,7 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
   const [newKeyName, setNewKeyName] = useState('Production');
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [embedAgentId, setEmbedAgentId] = useState('');
+  const [embedOrigins, setEmbedOrigins] = useState('');
   const [embedSnippet, setEmbedSnippet] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [accountEmail, setAccountEmail] = useState('');
@@ -207,6 +208,14 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
       setError('Create an agent first, then generate an embed key.');
       return;
     }
+    const allowedOrigins = embedOrigins
+      .split(/[\n,]/)
+      .map((origin) => origin.trim().replace(/\/$/, ''))
+      .filter(Boolean);
+    if (allowedOrigins.length === 0) {
+      setError('Add at least one website origin, for example https://www.example.com.');
+      return;
+    }
     setBusy(true);
     setError(null);
     setEmbedSnippet(null);
@@ -217,7 +226,7 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
           method: 'POST',
           body: JSON.stringify({
             agentId: embedAgentId,
-            allowedOrigins: ['*'],
+            allowedOrigins,
           }),
         },
       );
@@ -268,17 +277,17 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
             <User size={18} />
             Account
           </h3>
-          <div className="space-y-3">
-            <div>
-              <label className="vfy-label">Name</label>
-              <input className="vfy-field-input" value={accountName} readOnly aria-label="Account name" />
+          <div className="vfy-settings-readonly" aria-label="Account details">
+            <div className="vfy-settings-readonly-row">
+              <span className="vfy-label">Name</span>
+              <p className="vfy-settings-readonly-value">{accountName.trim() || '—'}</p>
             </div>
-            <div>
-              <label className="vfy-label">Email</label>
-              <input className="vfy-field-input" value={accountEmail} readOnly aria-label="Account email" />
+            <div className="vfy-settings-readonly-row">
+              <span className="vfy-label">Email</span>
+              <p className="vfy-settings-readonly-value">{accountEmail.trim() || '—'}</p>
             </div>
             <p className="vfy-settings-help">
-              Workspace ID: <code>{orgId ?? '—'}</code>
+              These details are read-only. Workspace ID: <code>{orgId ?? '—'}</code>
             </p>
           </div>
         </section>
@@ -371,8 +380,7 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
           </p>
           <p className="vfy-settings-help">{billingMessage}</p>
           <p className="vfy-settings-help">
-            Balance updates when voice turns debit usage (STT, LLM, TTS) and when an admin grants
-            credits. This is the live org balance from Postgres, not a demo counter.
+            Your balance updates automatically as your voice agents use STT, LLM, and TTS services.
           </p>
           <p className="vfy-settings-help">
             Need keys for your backend or website? Open{' '}
@@ -435,6 +443,23 @@ export default function SettingsWorkspace({ focus = 'settings' }: { focus?: Sett
             >
               Create key
             </button>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <label className="vfy-label" htmlFor="embed-origins">
+              Allowed website origins
+            </label>
+            <textarea
+              id="embed-origins"
+              className="vfy-field-textarea"
+              rows={3}
+              value={embedOrigins}
+              onChange={(event) => setEmbedOrigins(event.target.value)}
+              placeholder={'https://www.example.com\nhttps://app.example.com'}
+            />
+            <p className="vfy-settings-help">
+              One origin per line. Wildcard access is disabled by default so another site cannot
+              reuse your public embed key.
+            </p>
           </div>
 
           {revealedSecret && (

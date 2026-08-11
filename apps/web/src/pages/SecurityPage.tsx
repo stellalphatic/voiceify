@@ -48,15 +48,36 @@ const PRACTICES = [
   'You can export or delete your workspace data from the dashboard.',
 ];
 
-/** Named separately and explicitly so nothing here reads as already certified. */
+/** Named separately so roadmap items are never read as already certified. */
 const ROADMAP = [
-  'SOC 2 Type II — control programme not yet started; we hold no report today.',
-  'HIPAA — no BAA available yet.',
-  'GDPR tooling — export ships today; automated erasure SLAs and a DPA register are planned.',
-  'SSO (SAML / OIDC) — planned, not available.',
-  'VPC and on-premise deployment — planned, not available.',
-  'Third-party penetration test and immutable audit log — planned.',
-  'Telephony (PSTN / SIP) — not supported; Voiceify runs in the browser today.',
+  {
+    title: 'SOC 2 Type II',
+    desc: 'A formal control programme and independent Type II assessment are on the roadmap. Voiceify does not hold a SOC 2 report today.',
+  },
+  {
+    title: 'HIPAA readiness',
+    desc: 'Operational controls and a BAA process are planned. Voiceify cannot sign a BAA today.',
+  },
+  {
+    title: 'GDPR programme',
+    desc: 'Workspace data export ships today; automated erasure SLAs and a formal DPA register are next on the roadmap.',
+  },
+  {
+    title: 'SSO (SAML / OIDC)',
+    desc: 'Enterprise single sign-on is planned for teams that need IdP-backed access control.',
+  },
+  {
+    title: 'VPC and private deployment',
+    desc: 'Dedicated network and on-premise options are on the enterprise roadmap for regulated environments.',
+  },
+  {
+    title: 'Independent assurance',
+    desc: 'Third-party penetration testing and an immutable audit log are planned as part of our assurance programme.',
+  },
+  {
+    title: 'Telephony (PSTN / SIP)',
+    desc: 'Voiceify runs in the browser today; PSTN and SIP connectivity are future channel expansions.',
+  },
 ];
 
 export default function SecurityPage() {
@@ -84,11 +105,11 @@ export default function SecurityPage() {
             Security
           </span>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-5 leading-[1.05] tracking-tight">
-            What we protect, and what we haven&apos;t built yet.
+            Security you can inspect, with a clear compliance roadmap.
           </h1>
           <p className="text-lg text-voice-muted max-w-2xl mx-auto leading-relaxed">
-            Voice is some of the most sensitive data your customers will ever share, so we would rather
-            be precise than impressive. Below is exactly what ships today and exactly what is still on the roadmap.
+            Voice is some of the most sensitive data your customers will ever share. Here is what protects
+            every workspace today, and how our compliance programme is progressing for enterprise buyers.
           </p>
         </div>
       </div>
@@ -135,20 +156,24 @@ export default function SecurityPage() {
         </ul>
       </div>
 
-      {/* ── Roadmap: stated plainly so nothing above can be read as certified ── */}
+      {/* ── Compliance roadmap ── */}
       <div className="max-w-3xl mx-auto px-6 mb-20">
-        <h2 className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight">Not available yet</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight">Compliance roadmap</h2>
         <p className="text-voice-muted mb-8 leading-relaxed">
-          We hold no security certifications today. If your procurement process requires any of the
-          following, we are not a fit yet — and we would rather tell you now.
+          These are planned capabilities, not current certifications. Voiceify does not hold a SOC 2
+          report or offer a HIPAA BAA today. We publish the roadmap so procurement teams can evaluate
+          the product against what is available now.
         </p>
-        <ul className="space-y-3.5">
-          {ROADMAP.map((item) => (
-            <li key={item} className="flex items-start gap-3 text-base text-voice-muted leading-relaxed">
+        <ul className="space-y-4">
+          {ROADMAP.map(({ title, desc }) => (
+            <li key={title} className="flex items-start gap-3 text-base leading-relaxed">
               <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 border border-voice-frost-border bg-voice-surface">
                 <Clock className="w-3.5 h-3.5" aria-hidden />
               </div>
-              <span>{item}</span>
+              <div>
+                <p className="font-semibold text-voice-text mb-0.5">{title}</p>
+                <p className="text-voice-muted m-0">{desc}</p>
+              </div>
             </li>
           ))}
         </ul>
