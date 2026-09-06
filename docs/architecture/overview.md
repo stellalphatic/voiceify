@@ -29,7 +29,7 @@ Updated: 2026-07-14
                                │
          ┌─────────────────────┼─────────────────────┐
          ▼                     ▼                     ▼
-   ElevenLabs STT/TTS     Groq Llama 3.3         Stripe (optional)
+   ElevenLabs STT/TTS     Groq Qwen 3.8 27B      Stripe (optional)
    (or Coqui XTTS)        (+ Gemini failover)    Admin credit grants
                           Qdrant (optional)```
 

@@ -1,6 +1,6 @@
 # EC2 deployment (quick reference)
 
-Updated: 2026-07-14
+Updated: 2026-09-06
 
 **Full walkthrough (API keys, instance size, DNS, TLS, smoke tests):**  
 → **[GO_LIVE.md](./GO_LIVE.md)**
@@ -11,7 +11,7 @@ Updated: 2026-07-14
 git clone https://github.com/stellalphatic/voiceify.git && cd voiceify
 cp .env.example .env
 # Fill BETTER_AUTH_SECRET, AI keys, and for prod:
-# DOMAIN=voiceify.metapresence.co + https URL vars (see GO_LIVE.md)
+# DOMAIN=voiceify.online + https URL vars (see GO_LIVE.md)
 
 docker compose up -d --build
 docker compose exec api pnpm --filter @voiceify/db seed
@@ -22,7 +22,7 @@ docker compose --profile tls up -d --build
 ```
 
 - HTTP edge: `http://<ip>:8080`
-- HTTPS edge: `https://voiceify.metapresence.co` (Caddy profile `tls`)
+- HTTPS edge: `https://voiceify.online` (Caddy profile `tls`)
 
 ## Stripe
 

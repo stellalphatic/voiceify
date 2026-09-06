@@ -1,12 +1,14 @@
 # 007. Hybrid commercial + open-source voice backends
 Date: 2026-07-20
-Status: accepted
+Status: superseded in part by ADR 008
 
 ## Context
 Buyers and technical reviewers often dismiss voice SaaS products as thin wrappers around a single TTS vendor. Voiceify already owns orchestration (tenancy, tools, packs, credits). We need first-class hooks for open-weight LLMs and optional self-hosted TTS/vectors without abandoning the low-latency commercial speech path.
 
 ## Decision
-1. Default LLM to Groq-hosted **Llama 3.3** (`llama-3.3-70b-versatile`), with a latency profile for Llama 3.1 8B.
+At the time of this decision:
+
+1. Default LLM to Groq-hosted **Llama 3.3** (`llama-3.3-70b-versatile`), with a latency profile for Llama 3.1 8B. ADR 008 replaces these retired model defaults with Qwen 3.8 27B.
 2. Keep ElevenLabs Scribe/Flash as the default STT/TTS path.
 3. Add optional **Coqui XTTS** via `TTS_PROVIDER=coqui` and `COQUI_TTS_URL`.
 4. Add optional **Qdrant** via `QDRANT_URL` and Compose profile `vectors`, mirroring knowledge chunks while Postgres stays source of truth.

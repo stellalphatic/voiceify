@@ -17,8 +17,8 @@ Unlike a thin wrapper around a single speech vendor, Voiceify owns the
 orchestration layer: speech-to-text, open-weight large language models,
 text-to-speech, tool calling, knowledge retrieval, tenancy, billing
 primitives, and an operator console. The default live path uses
-ElevenLabs Scribe and Flash for sub-500ms speech, Groq-hosted **Meta
-Llama 3.3** (open weights) for replies with Google Gemini as failover,
+ElevenLabs Scribe and Flash for low-latency speech, Groq-hosted **Qwen
+3.8 27B** (open weights) for replies with optional Google Gemini failover,
 and Postgres for the system of record. Optional open-source backends —
 **Coqui XTTS** for self-hosted TTS and **Qdrant** for tenant-scoped
 vector search — plug in through configuration so teams can reduce
@@ -76,7 +76,7 @@ This report covers Voiceify as a shipping multi-tenant SaaS:
 - Functional and non-functional requirements.
 - Monorepo architecture (Turborepo + pnpm) and the voice turn pipeline.
 - Tenancy, credits, knowledge, tools, automation packs, and admin.
-- Hybrid model strategy (Llama 3.3, Coqui XTTS, Qdrant, ElevenLabs, Gemini).
+- Hybrid model strategy (Qwen 3.8, Coqui XTTS, Qdrant, ElevenLabs, optional Gemini).
 - Security, privacy export, and compliance roadmap.
 - Docker Compose deployment on a single EC2 host with TLS.
 - Honest limitations and next-phase work.
@@ -115,7 +115,7 @@ product UX; treat speech and LLM providers as swappable backends.
 
 ### 2.3 Why open weights and optional self-hosting matter
 
-Using **Llama 3.3** via Groq for generation, with optional **Coqui
+Using **Qwen 3.8 27B** via Groq for generation, with optional **Coqui
 XTTS** for speech synthesis and **Qdrant** for vectors, lets Voiceify
 position as a platform:
 
@@ -225,7 +225,7 @@ workspace + Automation Packs + hybrid open-source backends**.
                  ┌─────────────────┼─────────────────┐
                  ▼                 ▼                 ▼
            Postgres 16          Redis 7         Providers
-           (system of           (limits,        Groq Llama 3.3
+           (system of           (limits,        Groq Qwen 3.8
             record)              queues)        Gemini failover
                                                 ElevenLabs STT/TTS
                                                 Coqui XTTS (opt)
@@ -282,8 +282,8 @@ Authenticated path: `POST /api/voice/:orgId/agents/:agentId/turn`
 3. Persist user message; optionally create conversation.
 4. Retrieve knowledge (Qdrant if configured, else Postgres hybrid).
 5. Inject tool hints and **guardrails** from `agents.guardrails`.
-6. Run LLM (Groq Llama 3.3 / fast profile / Gemini fallback).
-7. Execute pack/HTTP tools when intents match.
+6. Run LLM (Groq Qwen 3.8 / fast profile / optional Gemini fallback).
+7. Execute model-selected, tenant-scoped pack/HTTP tools with confirmation gates.
 8. Sanitize reply text; synthesize speech (ElevenLabs or Coqui).
 9. Stream NDJSON events; debit credits (STT/LLM/TTS/tools).
 
@@ -410,7 +410,7 @@ Voiceify is intentionally **not** “ElevenLabs with a skin.”
 |---|---|---|
 | TTS | **Coqui XTTS v2** HTTP worker | `TTS_PROVIDER=coqui` + `COQUI_TTS_URL` |
 | Vectors | **Qdrant** | `QDRANT_URL` (+ Compose profile `vectors`) |
-| LLM | Llama family via Groq | Always open-weight models; self-hosted vLLM is roadmap |
+| LLM | Qwen 3.8 27B via Groq | Open-weight model; self-hosted vLLM is roadmap |
 
 Health (`/health`, `/api/health`) reports `coqui`, `qdrant`,
 `openSource` metadata alongside commercial flags.
@@ -543,7 +543,7 @@ contract tests for OpenAPI, load tests for concurrent turns.
 | Tools + packs | Met |
 | Credits ledger on turns | Met |
 | Docs + OpenAPI | Met |
-| Hybrid Llama 3.3 + Coqui/Qdrant hooks | Met (config-activated) |
+| Hybrid Qwen 3.8 + Coqui/Qdrant hooks | Met (Coqui/Qdrant are configuration-activated) |
 | Privacy export | Met |
 | Telephony | Not in v1 |
 | SOC2 / HIPAA certification | Not in v1 |
@@ -560,9 +560,11 @@ orchestration platform, not a single-vendor wrapper.
 ## 16. Limitations
 
 1. **Telephony absent** — no PSTN/SIP yet (ADR 004).
-2. **Widget voice** — bootstrap exists; Sandbox remains the richest mic UX.
-3. **Workflow graph runtime** — canvas is persisted UX; execution is
-   still LLM/tools/packs.
+2. **Widget voice** — text and microphone turns are implemented; browser
+   Web Speech API support varies by platform.
+3. **Workflow graph runtime** — active graphs are persisted server-side
+   and injected as conversation guidance. Deterministic branch traversal
+   and resumable node state remain future work.
 4. **Stripe live** — schema and modes exist; full Checkout/webhooks
    need completion for self-serve card top-ups.
 5. **Coqui/Qdrant** — require operator-run services; defaults stay on
@@ -615,7 +617,7 @@ orchestration platform, not a single-vendor wrapper.
 
 Voiceify is a multi-tenant voice-agent SaaS that owns orchestration,
 tenancy, tooling, knowledge, and metering while remaining flexible
-about speech and inference backends. By combining **Llama 3.3** for
+about speech and inference backends. By combining **Qwen 3.8 27B** for
 generation, optional **Coqui XTTS** and **Qdrant**, and a commercial
 low-latency speech path, the platform avoids the “wrapper” trap and
 presents a credible path from demo to enterprise requirements —
@@ -631,7 +633,7 @@ including the compliance and telephony work still ahead.
 - ElevenLabs integration boundaries: `docs/integrations/elevenlabs.md`
 - Open-source stack notes: `docs/integrations/open-source-stack.md`
 - Roadmap: `docs/roadmap.md`
-- Meta Llama model cards; Coqui TTS / XTTS documentation; Qdrant docs
+- Qwen model documentation; Coqui TTS / XTTS documentation; Qdrant docs
 - Groq inference API; Google Gemini API
 
 ---

@@ -155,7 +155,7 @@ export default function IntegrationsWorkspace() {
       <section className="vfy-settings-card">
         <h3 className="vfy-settings-card-title">Open-source backends</h3>
         <p className="vfy-settings-help">
-          Optional self-hosted path (Llama 3.3 via Groq by default, Coqui XTTS, Qdrant).
+          Open-weight Qwen 3.8 via Groq, with optional self-hosted Coqui XTTS and Qdrant.
         </p>
         <div className="grid gap-3 md:grid-cols-2">
           {openSource.map((p) => {

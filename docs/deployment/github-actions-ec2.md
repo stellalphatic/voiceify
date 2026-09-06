@@ -1,6 +1,6 @@
 # GitHub Actions → EC2 deploy
 
-Updated: 2026-07-15
+Updated: 2026-09-06
 
 On every push to `main` (except docs-only changes), [`.github/workflows/deploy-ec2.yml`](../../.github/workflows/deploy-ec2.yml) SSHs into your EC2 host, pulls `origin/main`, and rebuilds with Docker Compose.
 
@@ -44,7 +44,7 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 
 | Secret | Value |
 |--------|--------|
-| `EC2_HOST` | Public IP or hostname (e.g. `13.212.88.2` or `voiceify.metapresence.co` if SSH points there) |
+| `EC2_HOST` | Public IP or hostname (for example, the EC2 Elastic IP or `voiceify.online` if SSH points there) |
 | `EC2_USER` | `ubuntu` (or your AMI user) |
 | `EC2_SSH_KEY` | Full private key, including `-----BEGIN …-----` / `-----END …-----` |
 | `EC2_APP_DIR` | Optional. Defaults to `/home/ubuntu/voiceify` if unset |
@@ -67,7 +67,7 @@ The workflow does **not** overwrite `.env`. Edit `.env` on the instance over SSH
 2. Confirm the workflow file is on `main` and repository name matches the `if:` guard (`stellalphatic/voiceify`)
 3. Push to `main` **or** run **Actions → Deploy to EC2 → Run workflow**
 4. Watch the job log for `docker compose … up -d --build` and the health probe
-5. Open `https://voiceify.metapresence.co/health` (or your domain)
+5. Open `https://voiceify.online/health` (or your configured domain)
 6. Sign in as platform admin → you should land on `/admin`
 
 ---

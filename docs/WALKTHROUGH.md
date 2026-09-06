@@ -1,5 +1,5 @@
 # Voiceify Walkthrough
-Updated: 2026-07-20
+Updated: 2026-09-06
 
 ## What this is
 
@@ -7,7 +7,7 @@ Voiceify is a multi-tenant voice AI SaaS for support, sales, and operations. Ten
 
 ## Current phase
 
-**Phases 0–7 implemented** plus hybrid open-source backend hooks (Llama 3.3, Coqui XTTS, Qdrant). See [docs/roadmap.md](./roadmap.md).
+**Phases 0–7 implemented** plus hybrid open-source backend hooks (Qwen 3.8, Coqui XTTS, Qdrant). See [docs/roadmap.md](./roadmap.md).
 
 | Phase | Name | Status |
 |-------|------|--------|
@@ -31,7 +31,7 @@ Voiceify is a multi-tenant voice AI SaaS for support, sales, and operations. Ten
 | Worker | BullMQ (`apps/worker`) |
 | DB | Postgres 16 + Drizzle (`packages/db`) |
 | Auth | Better Auth (`packages/auth`) |
-| Voice | Llama 3.3 (Groq) + Gemini failover + ElevenLabs STT/TTS; optional Coqui XTTS + Qdrant |
+| Voice | Qwen 3.8 27B (Groq) + optional Gemini failover + ElevenLabs STT/TTS; optional Coqui XTTS + Qdrant |
 
 ## Active TODOs
 

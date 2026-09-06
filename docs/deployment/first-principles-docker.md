@@ -77,7 +77,7 @@ caddy:
 - Default: `docker compose up` starts everything **except** services that list a profile.
 - With TLS: `docker compose --profile tls up` also starts `caddy`.
 
-**Why?** Locally you often want `http://localhost:8080` (nginx) without fighting for ports 80/443 or needing a real domain. On EC2 with `voiceify.metapresence.co` you want Caddy on 80/443.
+**Why?** Locally you often want `http://localhost:8080` (nginx) without fighting for ports 80/443 or needing a real domain. On EC2 with `voiceify.online` you want Caddy on 80/443.
 
 `--profile tls` does **not** magically enable TLS by itself. It only starts the Caddy service. TLS works because:
 
@@ -98,7 +98,7 @@ caddy:
 | `--profile tls` | Enable services tagged with profile `tls` (Caddy) |
 | `docker compose exec -T api …` | Run a command **inside** the running `api` container (`-T` = no TTY, good for scripts) |
 | `docker compose logs -f api` | Follow API logs |
-| `git fetch` + `git reset --hard origin/main` | Make the server tree match GitHub `main` exactly (discards local edits on the server) |
+| `git pull --ff-only origin main` | Safely fast-forward the server checkout to GitHub `main`; it stops instead of discarding local edits |
 
 ### Env injection (critical)
 
@@ -152,19 +152,21 @@ Caddy terminates HTTPS: browser ↔ TLS ↔ Caddy ↔ plain HTTP to `api`/`web` 
 ```bash
 cd ~/voiceify   # or your EC2_APP_DIR
 
-git fetch origin main
-git reset --hard origin/main
+git pull --ff-only origin main
 
 # Edit .env on the server only (never commit it)
 # DOMAIN, ACME_EMAIL, BETTER_AUTH_*, RESEND_*, GROQ_*, ELEVENLABS_*, …
 
-docker compose --profile tls up -d --build
+export GIT_SHA="$(git rev-parse --short=12 HEAD)"
+export BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+docker compose --profile tls up -d --build --force-recreate
 
 # After auth/.env password changes:
 docker compose exec -T api pnpm --filter @voiceify/auth seed:admin
 
 # Sanity
-curl -sS https://voiceify.metapresence.co/api/health
+curl -sS https://voiceify.online/api/health
+curl -sS https://voiceify.online/version.json
 docker compose logs api --tail=80
 ```
 

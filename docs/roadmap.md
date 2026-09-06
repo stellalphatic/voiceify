@@ -1,6 +1,6 @@
 # Roadmap
 
-Updated: 2026-07-20
+Updated: 2026-09-06
 
 ## Shipped (current)
 
@@ -12,11 +12,13 @@ Updated: 2026-07-20
 - Usage metering + credit wallet + admin grants
 - Knowledge ingest (text/PDF/DOCX) + hybrid retrieval
 - Optional Qdrant mirror (`--profile vectors`)
-- Llama 3.3 default LLM + Coqui XTTS TTS router hooks
+- Qwen 3.8 27B default LLM + Coqui XTTS TTS router hooks
 - Guardrails synced to agent + injected on turns
 - Privacy JSON export
 - Conversations + analytics
-- Embed widget bootstrap
+- Embed widget with persisted, origin-bound sessions plus text and microphone modes
+- Server-persisted workflow graphs consumed as active conversation guidance
+- BullMQ webhook delivery and usage-rollup workers
 - OpenAPI + interactive `/docs`
 - Project report: `docs/PROJECT_REPORT.md`
 
@@ -24,7 +26,7 @@ Updated: 2026-07-20
 
 - Playwright smoke suite
 - Stronger embedding models for Qdrant
-- Workflow graph executor
+- Deterministic workflow node traversal, branch conditions, and resumable execution state
 - Live call monitor UI
 - Stripe Checkout + webhooks completion
 - Self-hosted vLLM / Ollama profile
