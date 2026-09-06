@@ -37,7 +37,7 @@ export interface ApiParamDoc {
 
 export interface ApiEndpointDoc {
   id: string;
-  method: 'GET' | 'POST';
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
   title: string;
   description: string;
@@ -88,7 +88,10 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
   },
   "targetLatencyMs": 500
 }`,
-    notes: ['Use before starting a voice session to verify keys and models.'],
+    notes: [
+      'Provider booleans report configuration presence, not live credential or connectivity checks.',
+      'Use an authenticated provider smoke test before a production release.',
+    ],
   },
   {
     id: 'voice-voices',
@@ -112,16 +115,19 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
       'Metered voice turn for a workspace agent. Accepts session cookies or Authorization: Bearer vfk_… API keys. Injects knowledge-base chunks and can dispatch installed tools.',
     auth: true,
     requestContentType: 'application/json',
-    responseContentType: 'application/json',
+    responseContentType: 'application/x-ndjson',
     body: [
       { name: 'message', type: 'string', required: true, desc: 'Caller utterance' },
       { name: 'history', type: 'array', desc: 'Prior turns for context' },
-      { name: 'language', type: 'string', desc: 'en | ur | auto / mixed' },
+      { name: 'conversationId', type: 'string', desc: 'Existing active conversation UUID for this agent and channel' },
+      { name: 'channel', type: 'string', desc: 'sandbox | embed | api (default: sandbox)' },
+      { name: 'textOnly', type: 'boolean', desc: 'Return text events without synthesizing TTS audio' },
+      { name: 'ttsOnly', type: 'boolean', desc: 'Speak message directly without running the LLM' },
     ],
     requestExample: `curl -X POST https://voiceify.online/api/voice/ORG_ID/agents/AGENT_ID/turn \\
   -H "Authorization: Bearer vfk_YOUR_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{ "message": "I need a table for two", "history": [], "language": "auto" }'`,
+  -d '{ "message": "I need a table for two", "history": [], "channel": "api" }'`,
     notes: [
       'Preferred path for production website backends and the dashboard sandbox.',
       'Credits are deducted per successful turn.',
@@ -150,33 +156,37 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
     ],
   },
   {
-    id: 'voice-chat',
+    id: 'embed-session-validate',
     method: 'POST',
-    path: '/api/voice-chat',
-    title: 'Text chat (LLM only)',
+    path: '/api/public/session/validate',
+    title: 'Validate public embed session',
     description:
-      'Get a text reply from the persona LLM without TTS. Fastest way to test prompts. Send message "__greeting__" for the persona greeting.',
-    auth: true,
+      'Validate an origin-bound emb_ session token before an interactive widget action.',
+    auth: false,
     requestContentType: 'application/json',
     responseContentType: 'application/json',
     body: [
-      { name: 'message', type: 'string', required: true, desc: 'User utterance (max 2000 chars)' },
-      { name: 'personaId', type: 'string', desc: 'restaurant | healthcare | support (default: restaurant)' },
-      { name: 'history', type: 'array', desc: 'Prior turns: [{ role: "user"|"assistant", content: string }]' },
-      { name: 'language', type: 'string', desc: 'Optional ISO code hint: en, ur, etc.' },
+      { name: 'sessionToken', type: 'string', required: true, desc: 'Short-lived token returned by public session bootstrap' },
+      { name: 'origin', type: 'string', desc: 'Calling page origin' },
     ],
-    requestExample: `curl -X POST http://localhost:5173/api/voice-chat \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "message": "I need a table for four tonight at eight",
-    "personaId": "restaurant",
-    "history": []
-  }'`,
-    responseExample: `{
-  "text": "Sure! What date, time, and how many guests?",
-  "personaId": "restaurant",
-  "usedGemini": true
-}`,
+  },
+  {
+    id: 'embed-session-turn',
+    method: 'POST',
+    path: '/api/public/session/turn',
+    title: 'Public embed conversation turn',
+    description:
+      'Run a text or voice turn for the agent bound to a validated embed session. The client cannot choose another organization or agent.',
+    auth: false,
+    requestContentType: 'application/json',
+    responseContentType: 'application/x-ndjson',
+    body: [
+      { name: 'sessionToken', type: 'string', required: true, desc: 'Short-lived emb_ session token' },
+      { name: 'message', type: 'string', required: true, desc: 'Visitor utterance or chat message' },
+      { name: 'conversationId', type: 'string', desc: 'Existing embed conversation UUID' },
+      { name: 'textOnly', type: 'boolean', desc: 'Do not synthesize audio' },
+      { name: 'origin', type: 'string', desc: 'Calling page origin' },
+    ],
   },
   {
     id: 'voice-respond',
@@ -195,7 +205,7 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
       { name: 'mode', type: 'string', desc: '"tts_only" skips LLM and streams TTS for message' },
       { name: 'language', type: 'string', desc: 'Reply language hint: en, ur, mixed, etc.' },
     ],
-    requestExample: `curl -N -X POST http://localhost:5173/api/voice/respond \\
+    requestExample: `curl -N -X POST https://voiceify.online/api/voice/respond \\
   -H "Content-Type: application/json" \\
   -d '{
     "message": "Book a table for two tomorrow at seven",
@@ -228,7 +238,7 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
       { name: 'diarize', type: 'boolean', desc: 'true enables multi-speaker segmentation (slower)' },
       { name: 'maxSpeakers', type: 'number', desc: '2–8 when diarize is true' },
     ],
-    requestExample: `curl -X POST http://localhost:5173/api/voice/transcribe \\
+    requestExample: `curl -X POST https://voiceify.online/api/voice/transcribe \\
   -H "Content-Type: application/json" \\
   -d '{ "audio": "<base64>", "mimeType": "audio/webm", "diarize": false }'`,
     responseExample: `{
@@ -252,37 +262,55 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
     responseExample: `{ "ok": true }`,
   },
   {
-    id: 'gemini',
+    id: 'knowledge-upload',
     method: 'POST',
-    path: '/api/gemini',
-    title: 'LLM text proxy',
-    description: 'Server-side LLM generateContent. Provider API keys never exposed to the browser.',
+    path: '/api/orgs/:orgId/knowledge/upload',
+    title: 'Upload a knowledge document',
+    description:
+      'Extract and index PDF, DOCX, or TXT content for the organization and selected agents.',
+    auth: true,
+    requestContentType: 'multipart/form-data',
+    responseContentType: 'application/json',
+  },
+  {
+    id: 'knowledge-search',
+    method: 'GET',
+    path: '/api/orgs/:orgId/knowledge/search',
+    title: 'Search organization knowledge',
+    description:
+      'Search ready knowledge using Qdrant when fully configured, otherwise Postgres retrieval.',
+    auth: true,
+    responseContentType: 'application/json',
+    query: [{ name: 'q', type: 'string', required: true, desc: 'Search query' }],
+  },
+  {
+    id: 'agent-workflow',
+    method: 'GET',
+    path: '/api/orgs/:orgId/workflows/:agentId',
+    title: 'Get an agent workflow',
+    description: 'Load the server-persisted draft or active workflow graph for an agent.',
+    auth: true,
+    responseContentType: 'application/json',
+  },
+  {
+    id: 'agent-workflow-save',
+    method: 'PUT',
+    path: '/api/orgs/:orgId/workflows/:agentId',
+    title: 'Save or activate an agent workflow',
+    description:
+      'Persist a validated workflow graph. Active graphs are included in live conversation guidance.',
     auth: true,
     requestContentType: 'application/json',
     responseContentType: 'application/json',
-    body: [
-      { name: 'prompt', type: 'string', required: true, desc: 'Text prompt (max 8000 chars)' },
-      { name: 'model', type: 'string', desc: 'Override model (default: gemini-2.5-flash)' },
-      { name: 'responseMimeType', type: 'string', desc: 'e.g. application/json for structured output' },
-    ],
-    requestExample: `curl -X POST http://localhost:5173/api/gemini \\
-  -H "Content-Type: application/json" \\
-  -d '{ "prompt": "Summarize Voiceify in one sentence." }'`,
-    responseExample: `{ "text": "Voiceify is a sub-500ms voice AI platform..." }`,
   },
   {
-    id: 'elevenlabs-tts',
-    method: 'POST',
-    path: '/api/elevenlabs-tts',
-    title: 'TTS (non-streaming)',
-    description: 'Synthesize speech as raw PCM audio. For streaming, use POST /api/voice/respond with mode tts_only.',
+    id: 'privacy-export',
+    method: 'GET',
+    path: '/api/orgs/:orgId/privacy/export',
+    title: 'Export organization privacy data',
+    description: 'Export organization-scoped account and conversation data as JSON.',
     auth: true,
-    requestContentType: 'application/json',
-    responseContentType: 'audio/pcm',
-    body: [
-      { name: 'text', type: 'string', required: true, desc: 'Text to speak (max 400 chars)' },
-      { name: 'voiceId', type: 'string', desc: 'Voice library ID from GET /api/voice/voices' },
-    ],
+    responseContentType: 'application/json',
   },
   {
     id: 'openapi',
@@ -316,17 +344,41 @@ export function getApiBaseUrl(origin = ''): string {
   return origin ? `${origin}/api` : '/api';
 }
 
-export function buildOpenApiSpec(origin = 'http://localhost:5173'): Record<string, unknown> {
+export function buildOpenApiSpec(origin = 'https://voiceify.online/api'): Record<string, unknown> {
   const paths: Record<string, unknown> = {};
 
   for (const ep of API_ENDPOINTS) {
-    const key = ep.path.replace('/api', '');
+    const pathParams = [...ep.path.matchAll(/:([A-Za-z0-9_]+)/g)].map(
+      (match) => match[1]!,
+    );
+    const key = ep.path
+      .replace(/^\/api/, '')
+      .replace(/:([A-Za-z0-9_]+)/g, '{$1}');
     const existing = (paths[key] as Record<string, unknown>) ?? {};
     const operation: Record<string, unknown> = {
       operationId: ep.id,
       summary: ep.title,
       description: ep.description,
       tags: [ep.auth ? 'protected' : 'public'],
+      ...(pathParams.length || ep.query?.length
+        ? {
+            parameters: [
+              ...pathParams.map((name) => ({
+                name,
+                in: 'path',
+                required: true,
+                schema: { type: 'string' },
+              })),
+              ...(ep.query ?? []).map((param) => ({
+                name: param.name,
+                in: 'query',
+                required: Boolean(param.required),
+                description: param.desc,
+                schema: { type: mapType(param.type) },
+              })),
+            ],
+          }
+        : {}),
       responses: {
         '200': {
           description: 'Success',
@@ -337,7 +389,7 @@ export function buildOpenApiSpec(origin = 'http://localhost:5173'): Record<strin
       },
     };
     if (ep.auth) {
-      operation.security = [{ VoiceifyApiKey: [] }];
+      operation.security = [{ VoiceifyApiKey: [] }, { cookieAuth: [] }];
     }
     if (ep.body?.length) {
       operation.requestBody = {
@@ -373,6 +425,11 @@ export function buildOpenApiSpec(origin = 'http://localhost:5173'): Record<strin
           in: 'header',
           name: 'x-voiceify-key',
           description: 'Optional. Required in production when VOICEIFY_API_KEY env is set.',
+        },
+        cookieAuth: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: 'better-auth.session_token',
         },
       },
     },

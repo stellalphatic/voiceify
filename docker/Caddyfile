@@ -1,5 +1,5 @@
 # Production TLS edge for Voiceify
-# Set DOMAIN=voiceify.metapresence.co (and ACME_EMAIL) in .env
+# Set DOMAIN=voiceify.online (and ACME_EMAIL) in .env
 
 {
 	email {$ACME_EMAIL:admin@metapresence.co}

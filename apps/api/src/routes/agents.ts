@@ -12,7 +12,9 @@ import {
   eq,
   inArray,
   isNull,
+  knowledgeDocs,
   sql,
+  tools,
 } from "@voiceify/db";
 import { buildDashboardSystemPrompt } from "@voiceify/shared";
 import { Hono } from "hono";
@@ -25,6 +27,42 @@ function asStringList(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(String).filter(Boolean);
   if (value && typeof value === "object") return Object.keys(value);
   return [];
+}
+
+async function validateAttachments(
+  orgId: string,
+  toolIds: string[],
+  knowledgeDocIds: string[],
+): Promise<{ toolIds: string[]; knowledgeDocIds: string[] } | null> {
+  const uniqueToolIds = [...new Set(toolIds)];
+  const uniqueDocIds = [...new Set(knowledgeDocIds)];
+  const [ownedTools, ownedDocs] = await Promise.all([
+    uniqueToolIds.length
+      ? db
+          .select({ id: tools.id })
+          .from(tools)
+          .where(and(eq(tools.orgId, orgId), inArray(tools.id, uniqueToolIds)))
+      : [],
+    uniqueDocIds.length
+      ? db
+          .select({ id: knowledgeDocs.id })
+          .from(knowledgeDocs)
+          .where(
+            and(
+              eq(knowledgeDocs.orgId, orgId),
+              eq(knowledgeDocs.status, "ready"),
+              inArray(knowledgeDocs.id, uniqueDocIds),
+            ),
+          )
+      : [],
+  ]);
+  if (
+    ownedTools.length !== uniqueToolIds.length ||
+    ownedDocs.length !== uniqueDocIds.length
+  ) {
+    return null;
+  }
+  return { toolIds: uniqueToolIds, knowledgeDocIds: uniqueDocIds };
 }
 
 function systemPromptFor(agent: {
@@ -90,6 +128,17 @@ agentsRoutes.post("/:orgId/agents", requireOrg("agents:write"), async (c) => {
   const orgId = c.get("orgId");
   const user = c.get("user");
   const input = parseAgentCreate(await c.req.json());
+  const attachments = await validateAttachments(
+    orgId,
+    input.toolIds,
+    input.knowledgeDocIds,
+  );
+  if (!attachments) {
+    return c.json(
+      { error: "Attached tools and ready knowledge documents must belong to this organization" },
+      400,
+    );
+  }
 
   const [agent] = await db
     .insert(agents)
@@ -132,8 +181,8 @@ agentsRoutes.post("/:orgId/agents", requireOrg("agents:write"), async (c) => {
       voiceId: agent.voiceId,
       greeting: agent.greeting,
       language: agent.language,
-      toolIds: input.toolIds,
-      knowledgeDocIds: input.knowledgeDocIds,
+      toolIds: attachments.toolIds,
+      knowledgeDocIds: attachments.knowledgeDocIds,
       config: {
         instructions: agent.instructions,
         capabilities: agent.capabilities,
@@ -185,6 +234,16 @@ agentsRoutes.patch(
     const user = c.get("user");
     const input = parseAgentUpdate(await c.req.json());
     const { toolIds, knowledgeDocIds, ...agentInput } = input;
+    const attachments =
+      toolIds !== undefined || knowledgeDocIds !== undefined
+        ? await validateAttachments(orgId, toolIds ?? [], knowledgeDocIds ?? [])
+        : null;
+    if ((toolIds !== undefined || knowledgeDocIds !== undefined) && !attachments) {
+      return c.json(
+        { error: "Attached tools and ready knowledge documents must belong to this organization" },
+        400,
+      );
+    }
 
     const [existing] = await db
       .select()
@@ -244,8 +303,14 @@ agentsRoutes.patch(
           voiceId: agent.voiceId,
           greeting: agent.greeting,
           language: agent.language,
-          toolIds: toolIds ?? latest?.toolIds ?? [],
-          knowledgeDocIds: knowledgeDocIds ?? latest?.knowledgeDocIds ?? [],
+          toolIds:
+            toolIds !== undefined
+              ? (attachments?.toolIds ?? [])
+              : (latest?.toolIds ?? []),
+          knowledgeDocIds:
+            knowledgeDocIds !== undefined
+              ? (attachments?.knowledgeDocIds ?? [])
+              : (latest?.knowledgeDocIds ?? []),
           config: {
             instructions: agent.instructions,
             capabilities: agent.capabilities,

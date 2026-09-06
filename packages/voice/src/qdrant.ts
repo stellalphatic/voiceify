@@ -93,6 +93,30 @@ export async function upsertPoints(
   }
 }
 
+export async function deleteDocumentPoints(
+  orgId: string,
+  docId: string,
+): Promise<void> {
+  const base = qdrantUrl();
+  if (!base) return;
+  const res = await fetch(
+    `${base}/collections/${collectionName(orgId)}/points/delete?wait=true`,
+    {
+      method: "POST",
+      headers: qdrantHeaders(),
+      body: JSON.stringify({
+        filter: {
+          must: [{ key: "docId", match: { value: docId } }],
+        },
+      }),
+      signal: AbortSignal.timeout(8_000),
+    },
+  );
+  if (res.ok || res.status === 404) return;
+  const text = await res.text().catch(() => "");
+  throw new Error(`Qdrant document cleanup failed: ${res.status} ${text}`);
+}
+
 export async function searchPoints(input: {
   orgId: string;
   vector: number[];

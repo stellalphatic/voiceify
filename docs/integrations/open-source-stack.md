@@ -9,16 +9,21 @@ Voiceify is an orchestration platform. Speech and inference providers are swappa
 |-------|--------|-----|
 | LLM | **Qwen 3.8 27B** via Groq (`qwen/qwen3.8-27b`) | Open weights and verified low-latency chat/tool calling |
 | LLM fallback | Gemini 2.5 Flash | Optional resilience when `GEMINI_API_KEY` is configured |
-| STT / TTS | ElevenLabs Scribe + Flash | Sub-500ms path for demos and SLAs |
+| STT / TTS | ElevenLabs Scribe + Flash | Low-latency managed speech path |
 
 ## Optional self-host
 
 | Layer | Choice | Enable |
 |-------|--------|--------|
 | TTS | **Coqui XTTS v2** HTTP worker | `TTS_PROVIDER=coqui` + `COQUI_TTS_URL` |
-| Vectors | **Qdrant** tenant collections | `QDRANT_URL` + `docker compose --profile vectors up -d qdrant` |
+| Vectors | **Qdrant** tenant collections | A semantic embedding provider, `QDRANT_URL`, and `docker compose --profile vectors up -d qdrant` |
 
 Postgres remains the system of record for knowledge chunks even when Qdrant is enabled.
+Starting Qdrant alone does not create vectors. Configure either an
+OpenAI-compatible embedding endpoint (`EMBEDDING_API_URL`,
+`EMBEDDING_API_KEY`, `EMBEDDING_MODEL`) or Gemini embeddings
+(`GEMINI_API_KEY`, optionally `GEMINI_EMBEDDING_MODEL`). Increment
+`EMBEDDING_COLLECTION_VERSION` when vector dimensions or models change.
 
 ## Code map
 
@@ -28,6 +33,9 @@ Postgres remains the system of record for knowledge chunks even when Qdrant is e
 - Qdrant client: `packages/voice/src/qdrant.ts`
 - Knowledge mirror/search: `apps/api/src/routes/knowledge.ts`
 - Health flags: `packages/voice/src/api-handlers.ts` (`coqui`, `qdrant`, `openSource`)
+
+Health provider flags mean configuration is present. They do not perform
+external credential or connectivity probes.
 
 ## What this is not
 

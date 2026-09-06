@@ -45,17 +45,22 @@ function parseAgentConfig(raw: unknown): CustomAgentConfig | undefined {
 }
 
 export function handleHealth(): Response {
-  return jsonResponse({
-    status: 'ok',
-    service: 'Voiceify Voice Agent',
+  const providersConfigured = {
     elevenlabs: Boolean(process.env.ELEVENLABS_API_KEY),
     groq: Boolean(process.env.GROQ_API_KEY),
     gemini: Boolean(process.env.GEMINI_API_KEY),
     coqui: isCoquiConfigured(),
     qdrant: isQdrantConfigured(),
-    scribeStt: Boolean(process.env.ELEVENLABS_API_KEY),
-    scribeRealtime: Boolean(process.env.ELEVENLABS_API_KEY),
-    diarization: Boolean(process.env.ELEVENLABS_API_KEY),
+  };
+  return jsonResponse({
+    status: 'ok',
+    service: 'Voiceify Voice Agent',
+    providerFlags: 'configured-not-probed',
+    providersConfigured,
+    ...providersConfigured,
+    scribeStt: providersConfigured.elevenlabs,
+    scribeRealtime: providersConfigured.elevenlabs,
+    diarization: providersConfigured.elevenlabs,
     bargeIn: true,
     models: VOICE_MODELS,
     pipeline: 'stream-pcm-flash',

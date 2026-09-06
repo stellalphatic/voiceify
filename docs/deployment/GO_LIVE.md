@@ -231,9 +231,9 @@ Open the site:
 
 ## Step 6 — Smoke test checklist
 
-1. Sign up a normal user → should see **pending approval**
-2. Sign in as platform admin → approve the user in `/admin`
-3. User signs in → dashboard loads
+1. Sign up a normal user → dashboard loads immediately
+2. Sign in as platform admin → verify the user appears in `/admin`
+3. Suspend and restore a test user → access changes on the next sign-in
 4. **Settings** → credit balance visible; demo top-up works without Stripe
 5. Create / edit an agent → persists after refresh
 6. Sandbox / demo voice turn with mic → STT + LLM + TTS
@@ -290,6 +290,6 @@ docker compose exec -T postgres pg_dump -U voiceify voiceify > backup-$(date +%F
 |---------|-----|
 | Auth cookies fail on HTTPS | Set `APP_URL` / `WEB_ORIGIN` / `BETTER_AUTH_URL` / `TRUSTED_ORIGINS` to `https://voiceify.online` |
 | Voice “API unavailable” | Check `/api/health` and AI keys in the **api** container env |
-| Signup cannot enter dashboard | Expected until `/admin` approves the user |
+| Signup cannot enter dashboard | Check Better Auth logs, trusted origins, cookies, and database connectivity |
 | Caddy certificate fails | DNS A record must point to this host; ports 80/443 open |
 | Migrations fail | Check Postgres health: `docker compose logs postgres` |

@@ -335,6 +335,7 @@ embedRoutes.post(
             eq(conversations.orgId, session.orgId),
             eq(conversations.agentId, agent.id),
             eq(conversations.channel, "embed"),
+            eq(conversations.status, "active"),
           ),
         )
         .limit(1);
@@ -409,7 +410,8 @@ embedRoutes.post(
             ttsChars: Math.max(ttsChars, assistantText.length),
             toolCalls: 0,
           });
-        } catch {
+        } catch (error) {
+          console.error("[embed] public session turn failed", error);
           controller.enqueue(
             encoder.encode(
               `${JSON.stringify({ type: "error", message: "Agent turn failed" })}\n`,

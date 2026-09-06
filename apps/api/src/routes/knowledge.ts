@@ -1,12 +1,16 @@
 import {
+  agents,
   and,
   db,
   eq,
+  inArray,
+  isNull,
   knowledgeChunks,
   knowledgeDocs,
   sql,
 } from "@voiceify/db";
 import {
+  deleteDocumentPoints,
   embedQuery,
   embedTexts,
   isQdrantConfigured,
@@ -14,7 +18,7 @@ import {
   searchPoints,
   upsertPoints,
 } from "@voiceify/voice";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { unlink, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { Hono } from "hono";
@@ -28,6 +32,25 @@ export const knowledgeRoutes = new Hono<AppEnv>();
 knowledgeRoutes.use("*", requireSession);
 
 const UPLOAD_ROOT = process.env.UPLOAD_DIR ?? path.resolve("data/uploads");
+
+async function normalizeAgentScope(
+  orgId: string,
+  agentIds: string[],
+): Promise<string[] | null> {
+  const uniqueIds = [...new Set(agentIds)];
+  if (uniqueIds.length === 0) return [];
+  const owned = await db
+    .select({ id: agents.id })
+    .from(agents)
+    .where(
+      and(
+        eq(agents.orgId, orgId),
+        isNull(agents.deletedAt),
+        inArray(agents.id, uniqueIds),
+      ),
+    );
+  return owned.length === uniqueIds.length ? uniqueIds : null;
+}
 
 function chunkText(text: string, size = 900, overlap = 140): string[] {
   const cleaned = text.replace(/\r\n/g, "\n").trim();
@@ -221,6 +244,13 @@ knowledgeRoutes.post(
       })
       .parse(await c.req.json());
 
+    const agentIds = await normalizeAgentScope(orgId, body.agentIds ?? []);
+    if (!agentIds) {
+      return c.json(
+        { error: "Every assigned agent must belong to this organization" },
+        400,
+      );
+    }
     const filename = body.filename ?? `${body.title.replace(/\s+/g, "-")}.txt`;
     const result = await ingestDocument({
       orgId,
@@ -228,7 +258,7 @@ knowledgeRoutes.post(
       filename,
       mimeType: "text/plain",
       content: body.content,
-      agentIds: body.agentIds,
+      agentIds,
     });
     return c.json(result, 201);
   },
@@ -242,7 +272,7 @@ knowledgeRoutes.post(
     const form = await c.req.parseBody();
     const file = form.file;
     const titleRaw = typeof form.title === "string" ? form.title.trim() : "";
-    const agentIds =
+    const parsedAgentIds =
       typeof form.agentIds === "string" && form.agentIds.trim()
         ? form.agentIds
             .split(",")
@@ -250,6 +280,17 @@ knowledgeRoutes.post(
             .filter(Boolean)
             .slice(0, 50)
         : [];
+    const agentIdsResult = z.array(z.string().uuid()).max(50).safeParse(parsedAgentIds);
+    if (!agentIdsResult.success) {
+      return c.json({ error: "agentIds must contain valid agent UUIDs" }, 400);
+    }
+    const agentIds = await normalizeAgentScope(orgId, agentIdsResult.data);
+    if (!agentIds) {
+      return c.json(
+        { error: "Every assigned agent must belong to this organization" },
+        400,
+      );
+    }
 
     if (!(file instanceof File)) {
       return c.json({ error: "file is required (PDF or DOCX)" }, 400);
@@ -258,31 +299,48 @@ knowledgeRoutes.post(
       return c.json({ error: "File too large (max 8MB)" }, 400);
     }
 
-    const filename = file.name || "upload.bin";
+    const filename =
+      (file.name || "upload.bin").split(/[\\/]/).pop()?.slice(0, 200) ||
+      "upload.bin";
     const lower = filename.toLowerCase();
     const mime = file.type || "application/octet-stream";
     const buffer = Buffer.from(await file.arrayBuffer());
+    const isPdf = buffer.subarray(0, 5).toString("ascii") === "%PDF-";
+    const isZip =
+      buffer.length >= 4 &&
+      buffer[0] === 0x50 &&
+      buffer[1] === 0x4b &&
+      buffer[2] === 0x03 &&
+      buffer[3] === 0x04;
+    const isPlainText = !buffer.includes(0);
 
     let content = "";
     let mimeType = mime;
     try {
-      if (lower.endsWith(".pdf") || mime.includes("pdf")) {
+      if ((lower.endsWith(".pdf") || mime.includes("pdf")) && isPdf) {
         content = await extractPdf(buffer);
         mimeType = "application/pdf";
       } else if (
-        lower.endsWith(".docx") ||
-        mime.includes("wordprocessingml") ||
-        mime.includes("officedocument")
+        (lower.endsWith(".docx") ||
+          mime.includes("wordprocessingml") ||
+          mime.includes("officedocument")) &&
+        isZip
       ) {
         content = await extractDocx(buffer);
         mimeType =
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-      } else if (lower.endsWith(".txt") || mime.startsWith("text/")) {
+      } else if (
+        (lower.endsWith(".txt") || mime.startsWith("text/")) &&
+        isPlainText
+      ) {
         content = buffer.toString("utf8");
         mimeType = "text/plain";
       } else {
         return c.json(
-          { error: "Unsupported type. Upload PDF, DOCX, or TXT." },
+          {
+            error:
+              "Unsupported or invalid file content. Upload a valid PDF, DOCX, or TXT file.",
+          },
           400,
         );
       }
@@ -312,7 +370,7 @@ knowledgeRoutes.post(
     // Optionally stage to disk then discard after ingest (no long-term file store).
     const dir = path.join(UPLOAD_ROOT, orgId, "tmp");
     await mkdir(dir, { recursive: true });
-    const tmpPath = path.join(dir, `${Date.now()}-${filename}`);
+    const tmpPath = path.join(dir, randomUUID());
     await writeFile(tmpPath, buffer);
     try {
       const title =
@@ -347,6 +405,25 @@ knowledgeRoutes.delete(
   async (c) => {
     const orgId = c.get("orgId");
     const docId = c.req.param("docId");
+    const [doc] = await db
+      .select({ id: knowledgeDocs.id })
+      .from(knowledgeDocs)
+      .where(and(eq(knowledgeDocs.id, docId), eq(knowledgeDocs.orgId, orgId)))
+      .limit(1);
+    if (!doc) return c.json({ error: "Document not found" }, 404);
+
+    try {
+      await deleteDocumentPoints(orgId, docId);
+    } catch (error) {
+      console.error("[knowledge] Qdrant document cleanup failed", error);
+      return c.json(
+        {
+          error:
+            "Could not remove the document from the vector index; no data was deleted",
+        },
+        502,
+      );
+    }
     await db
       .delete(knowledgeDocs)
       .where(and(eq(knowledgeDocs.id, docId), eq(knowledgeDocs.orgId, orgId)));
@@ -367,10 +444,17 @@ knowledgeRoutes.patch(
       })
       .parse(await c.req.json());
 
+    const agentIds = await normalizeAgentScope(orgId, body.agentIds);
+    if (!agentIds) {
+      return c.json(
+        { error: "Every assigned agent must belong to this organization" },
+        400,
+      );
+    }
     const [doc] = await db
       .update(knowledgeDocs)
       .set({
-        agentIds: body.agentIds,
+        agentIds,
         ...(body.title ? { title: body.title } : {}),
       })
       .where(and(eq(knowledgeDocs.id, docId), eq(knowledgeDocs.orgId, orgId)))

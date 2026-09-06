@@ -7,7 +7,10 @@
  */
 
 export type TtsProvider = "elevenlabs" | "coqui";
-export type EmbeddingProvider = "local" | "qdrant";
+export type EmbeddingBackend =
+  | "postgres-keyword"
+  | "postgres-semantic"
+  | "qdrant";
 export type LlmProfile = "quality" | "latency";
 
 function env(name: string, fallback = ""): string {
@@ -45,9 +48,12 @@ export function resolveTtsProvider(): TtsProvider {
   return raw === "coqui" ? "coqui" : "elevenlabs";
 }
 
-export function resolveEmbeddingBackend(): EmbeddingProvider {
-  if (env("QDRANT_URL")) return "qdrant";
-  return "local";
+export function resolveEmbeddingBackend(): EmbeddingBackend {
+  const semanticConfigured = Boolean(
+    env("EMBEDDING_API_URL") || env("GEMINI_API_KEY"),
+  );
+  if (env("QDRANT_URL") && semanticConfigured) return "qdrant";
+  return semanticConfigured ? "postgres-semantic" : "postgres-keyword";
 }
 
 /** LLM generation tuned for spoken replies. */
@@ -68,7 +74,7 @@ export const VOICE_STACK = {
   knowledge:
     resolveEmbeddingBackend() === "qdrant"
       ? "Qdrant vector store (tenant collections) + Postgres chunks"
-      : env("EMBEDDING_API_URL") || env("GEMINI_API_KEY")
+      : resolveEmbeddingBackend() === "postgres-semantic"
         ? "Postgres semantic vectors + full-text keyword"
         : "Postgres full-text keyword (semantic embeddings not configured)",
 } as const;

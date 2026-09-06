@@ -7,7 +7,8 @@ Updated: 2026-07-14
 | Layer | Tool | Location |
 |-------|------|----------|
 | Unit | Vitest | `packages/*/src/**/*.test.ts`, `apps/web/src/**/*.test.ts` |
-| API contract | Vitest + OpenAPI | `GET /api/openapi.json` |
+| API reference generation | Vitest | Shared endpoint metadata and generated OpenAPI shape |
+| Live route/OpenAPI parity | Planned integration test | Compare mounted API routes with `GET /api/openapi.json` |
 | Manual E2E | Browser | Auth → org → pack install → voice sandbox |
 
 ## Commands

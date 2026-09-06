@@ -256,7 +256,7 @@ units on EC2:
 Every business is an `organization`. Product rows carry `org_id`.
 API middleware resolves session (or org API key) → membership → org.
 Qdrant collections are named per organization when vectors are enabled
-(`voiceify_kb_{orgId}`), so retrieval stays tenant-scoped even if a
+(`voiceify_kb_{version}_{orgId}`), so retrieval stays tenant-scoped even if a
 query bug occurred at the SQL layer.
 
 ### 5.4 Trust boundaries
@@ -280,7 +280,8 @@ Authenticated path: `POST /api/voice/:orgId/agents/:agentId/turn`
 1. Credit gate (`assertOrgHasCredits`).
 2. Load agent + deployed version.
 3. Persist user message; optionally create conversation.
-4. Retrieve knowledge (Qdrant if configured, else Postgres hybrid).
+4. Retrieve knowledge (Qdrant when vectors and embeddings are configured,
+   otherwise Postgres semantic-hybrid or keyword retrieval).
 5. Inject tool hints and **guardrails** from `agents.guardrails`.
 6. Run LLM (Groq Qwen 3.8 / fast profile / optional Gemini fallback).
 7. Execute model-selected, tenant-scoped pack/HTTP tools with confirmation gates.
@@ -293,11 +294,13 @@ behavior stays consistent.
 ### 6.2 Knowledge and RAG
 
 - Ingest: paste text or upload PDF/DOCX (`pdf-parse`, `mammoth`).
-- Chunk (~800 chars), store in `knowledge_chunks`.
-- Local bag-of-hash embeddings stored alongside chunks.
+- Chunk (~900 chars with 140-character overlap), store in
+  `knowledge_chunks`.
+- Store semantic vectors only when an OpenAI-compatible or Gemini embedding
+  provider is configured; otherwise use honest keyword retrieval.
 - Optional mirror into **Qdrant**; original upload discarded after
   extraction.
-- Search modes: `qdrant` | `hybrid` | `keyword`.
+- Search modes: `qdrant` | `semantic-hybrid` | `keyword`.
 
 ### 6.3 Tools and Automation Packs
 
@@ -644,15 +647,20 @@ including the compliance and telephony work still ahead.
 
 | Variable | Purpose |
 |---|---|
-| `GROQ_API_KEY` | Llama inference |
+| `GROQ_API_KEY` | Qwen inference through Groq |
 | `GROQ_MODEL` | Default `qwen/qwen3.8-27b` |
 | `LLM_PROFILE` | `quality` \| `latency` |
 | `GEMINI_API_KEY` | Fallback LLM |
 | `ELEVENLABS_API_KEY` | Scribe + Flash |
 | `TTS_PROVIDER` | `elevenlabs` \| `coqui` |
 | `COQUI_TTS_URL` | Self-hosted XTTS base URL |
-| `QDRANT_URL` | Vector store |
+| `EMBEDDING_API_URL` | Optional OpenAI-compatible embedding endpoint |
+| `EMBEDDING_API_KEY` | Optional embedding endpoint credential |
+| `EMBEDDING_MODEL` | Embedding model identifier |
+| `GEMINI_EMBEDDING_MODEL` | Gemini embedding model override |
+| `QDRANT_URL` | Vector store; requires an embedding provider |
 | `QDRANT_API_KEY` | Optional Qdrant auth |
+| `EMBEDDING_COLLECTION_VERSION` | Qdrant collection namespace version |
 
 ### B. Compose profiles
 
