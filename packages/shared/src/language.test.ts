@@ -9,6 +9,7 @@ import {
   resolveConfiguredLanguage,
   resolveSttLocale,
   toScribeLanguageCode,
+  toScribeRealtimeLanguageCode,
 } from './language';
 
 describe('detectLanguage', () => {
@@ -119,6 +120,18 @@ describe('toScribeLanguageCode', () => {
 
   it('returns undefined for mixed language', () => {
     expect(toScribeLanguageCode('mixed', 'en')).toBeUndefined();
+  });
+});
+
+describe('toScribeRealtimeLanguageCode', () => {
+  it('hints Urdu in English/Urdu auto mode to prevent Hindi-script output', () => {
+    expect(toScribeRealtimeLanguageCode('en', 'auto')).toBe('urd');
+    expect(toScribeRealtimeLanguageCode('ur', 'auto')).toBe('urd');
+  });
+
+  it('respects explicit English and Urdu modes', () => {
+    expect(toScribeRealtimeLanguageCode('en', 'en')).toBe('eng');
+    expect(toScribeRealtimeLanguageCode('ur', 'ur')).toBe('urd');
   });
 });
 

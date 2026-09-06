@@ -80,7 +80,8 @@ export async function enqueueConversationEnded(input: {
     "daily",
     { orgId: input.orgId, day: new Date().toISOString().slice(0, 10) },
     {
-      jobId: `${input.orgId}:${new Date().toISOString().slice(0, 10)}`,
+      // BullMQ rejects ":" in custom job ids.
+      jobId: `${input.orgId}-${new Date().toISOString().slice(0, 10)}`,
       attempts: 3,
       backoff: { type: "exponential", delay: 1_000 },
       removeOnComplete: true,

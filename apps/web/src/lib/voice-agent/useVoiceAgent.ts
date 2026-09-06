@@ -6,6 +6,7 @@ import {
   normalizeLanguageCode,
   resolveSttLocale,
   toScribeLanguageCode,
+  toScribeRealtimeLanguageCode,
   isConfidentLanguageSwitch,
   type LanguageCode,
   type LanguageMode,
@@ -13,7 +14,7 @@ import {
 import { PcmStreamPlayer } from './pcm-player';
 import { consumeVoiceStream } from './stream-client';
 import { blobToBase64, UtteranceRecorder } from './utterance-recorder';
-import { BARGE_IN_COOLDOWN_MS, BARGE_IN_FINAL_WAIT_MS, INTERRUPT_MIN_CHARS, isLikelyEcho, isInterruptKeyword } from './interrupt';
+import { BARGE_IN_COOLDOWN_MS, BARGE_IN_FINAL_WAIT_MS, INTERRUPT_MIN_CHARS, isLikelyEcho, isInterruptKeyword, shouldTriggerBargeIn } from './interrupt';
 import { SCRIBE_DIARIZE_RACE_MS, SCRIBE_STT_RACE_MS, DUPLICATE_UTTERANCE_MS, MIN_UTTERANCE_CHARS, POST_GREETING_GRACE_MS, MIN_DIARIZE_CLIP_MS, MIN_DIARIZE_AUDIO_BYTES, THINKING_HOLD_MS, HOLD_PHRASES, VAD_CONFIRM_WINDOW_MS, ECHO_TAIL_MS, VOICE_FETCH_TIMEOUT_MS } from './constants';
 import { resolveEndpointDelay } from './endpointing';
 import { isLikelySttHallucination } from './stt-guard';
@@ -269,6 +270,7 @@ export function useVoiceAgent(
             channel: 'sandbox',
             ttsOnly: Boolean(ttsOnly),
             textOnly: Boolean(payload.textOnly),
+            language: payload.language,
             ...(conversationIdRef.current
               ? { conversationId: conversationIdRef.current }
               : {}),
@@ -1163,12 +1165,13 @@ export function useVoiceAgent(
 
       const agentText = getRecentAgentText();
       if (speakingRef.current || thinkingRef.current) {
-        // While the speakers are live, a full committed transcript is almost
-        // always the agent's own audio surviving AEC — frequently mis-transcribed
-        // into another language, so it does not match agentText and slips past
-        // the echo filter. Only an explicit interrupt keyword may cut the agent
-        // here; sustained real speech is confirmed by the VAD duck→confirm path.
-        if (isInterruptKeyword(fallback)) {
+        // Explicit keywords interrupt immediately. For ordinary speech, require
+        // both sustained mic energy and non-echo STT before committing barge-in.
+        // Previously this path discarded every non-keyword final even after VAD
+        // confirmation, which made natural interruption effectively impossible.
+        const confirmedSpeech =
+          vadDuckedRef.current && shouldTriggerBargeIn(fallback, agentText);
+        if (isInterruptKeyword(fallback) || confirmedSpeech) {
           handleBargeIn(fallback);
         }
         if (speakingRef.current || thinkingRef.current) return;
@@ -1271,7 +1274,9 @@ export function useVoiceAgent(
        */
       if (speakingRef.current || thinkingRef.current) {
         const candidate = interim || final;
-        if (isInterruptKeyword(candidate)) {
+        const confirmedSpeech =
+          vadDuckedRef.current && shouldTriggerBargeIn(candidate, agentText);
+        if (isInterruptKeyword(candidate) || confirmedSpeech) {
           handleBargeIn(candidate);
         }
       }
@@ -1354,20 +1359,22 @@ export function useVoiceAgent(
 
       void session
         .start({
-          // Always auto-detect on realtime. The only non-auto modes are 'en' and
-          // 'ur' — precisely the English↔Urdu pair testers code-switch between —
-          // so forcing either one mis-transcribes the other and is the root cause
-          // of "wrong language" in the sandbox. Reply language stays governed by
-          // languageMode; only the transcriber is freed to hear what was spoken.
-          languageCode: undefined,
+          // Unconstrained Scribe identifies spoken Urdu as Hindi and emits
+          // Devanagari. An Urdu hint preserves Urdu script while still correctly
+          // recognizing English and English/Urdu code-switching.
+          languageCode: toScribeRealtimeLanguageCode(
+            lastLanguageRef.current,
+            languageModeRef.current,
+          ),
           callbacks: {
             onPartial: (interim) => {
               const agentText = getRecentAgentText();
               setInterimTranscript(interim);
               const agentBusy = speakingRef.current || thinkingRef.current;
               if (agentBusy) {
-                /* Interims alone only cut on explicit interrupt words — see browser STT path. */
-                if (isInterruptKeyword(interim)) {
+                const confirmedSpeech =
+                  vadDuckedRef.current && shouldTriggerBargeIn(interim, agentText);
+                if (isInterruptKeyword(interim) || confirmedSpeech) {
                   handleBargeIn(interim);
                 }
               } else if (

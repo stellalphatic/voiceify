@@ -9,6 +9,7 @@ export {
   normalizeLanguageCode,
   resolveSttLocale,
   toScribeLanguageCode,
+  toScribeRealtimeLanguageCode,
   type LanguageCode,
   type LanguageMode,
   type SupportedLanguage,

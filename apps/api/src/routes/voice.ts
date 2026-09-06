@@ -106,6 +106,7 @@ const turnSchema = z.object({
   channel: z.enum(["sandbox", "embed", "api"]).default("sandbox"),
   ttsOnly: z.boolean().optional(),
   textOnly: z.boolean().optional(),
+  language: z.string().min(2).max(16).optional(),
 });
 
 /**
@@ -517,6 +518,7 @@ voiceRoutes.post(
             {
               ttsOnly: body.ttsOnly,
               skipTts: body.textOnly,
+              language: body.language,
               customAgent: agentConfig,
               systemContext,
               tools: voiceTools,

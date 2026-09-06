@@ -29,10 +29,14 @@ export const TTS_VOICE_SETTINGS = {
 } as const;
 
 export function ttsStreamUrl(voiceId: string): string {
-  return (
+  const base =
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream` +
-    `?output_format=pcm_${PCM_SAMPLE_RATE}&optimize_streaming_latency=${TTS_STREAM_LATENCY}`
-  );
+    `?output_format=pcm_${PCM_SAMPLE_RATE}`;
+  // Eleven v3 models reject optimize_streaming_latency. Flash models support
+  // it, so retain the low-latency option when operators explicitly select one.
+  return TTS_MODEL.startsWith('eleven_v3')
+    ? base
+    : `${base}&optimize_streaming_latency=${TTS_STREAM_LATENCY}`;
 }
 
 export function ttsRequestBody(text: string): string {

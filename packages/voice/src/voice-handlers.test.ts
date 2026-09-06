@@ -11,7 +11,7 @@ describe('PERSONAS', () => {
 
   it('each persona has system prompt with voice rules', () => {
     for (const persona of Object.values(PERSONAS)) {
-      expect(persona.systemPrompt).toContain('ONE sentence');
+      expect(persona.systemPrompt).toContain('natural spoken sentences');
       expect(persona.systemPrompt).toContain('speech-to-text');
       expect(persona.systemPrompt).toContain('NATO');
       expect(persona.greeting.length).toBeGreaterThan(10);

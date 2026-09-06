@@ -10,7 +10,7 @@ describe('VOICE_MODELS', () => {
   it('defaults to the verified open-weight Qwen voice model', () => {
     expect(VOICE_MODELS.llm).toBe(QWEN_38_VOICE);
     expect(VOICE_MODELS.llmFallback).toBe('gemini-2.5-flash');
-    expect(VOICE_MODELS.tts).toBe('eleven_flash_v2_5');
+    expect(VOICE_MODELS.tts).toBe('eleven_v3_conversational');
     expect(VOICE_MODELS.stt).toBe('scribe_v2');
     expect(VOICE_MODELS.sttRealtime).toBe('scribe_v2_realtime');
   });

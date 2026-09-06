@@ -132,7 +132,7 @@ export const LANGUAGE_LABELS: Record<string, string> = {
 };
 
 export const LANGUAGE_MODE_OPTIONS = [
-  { id: 'auto' as const, label: 'Auto', hint: 'Any language' },
+  { id: 'auto' as const, label: 'Auto', hint: 'English + Urdu' },
   { id: 'en' as const, label: 'English', hint: 'en-US' },
   { id: 'ur' as const, label: 'اردو', hint: 'ur-PK' },
 ] as const;
@@ -345,6 +345,19 @@ export function toScribeLanguageCode(code: LanguageCode, mode: LanguageMode = 'a
   return ISO1_TO_ISO3[normalized];
 }
 
+/**
+ * Realtime Scribe needs an Urdu hint for the English/Urdu auto mode.
+ * Unconstrained detection reliably confuses spoken Urdu with Hindi and emits
+ * Devanagari. The Urdu hint still preserves English words and code-switching.
+ */
+export function toScribeRealtimeLanguageCode(
+  code: LanguageCode,
+  mode: LanguageMode = 'auto',
+): string | undefined {
+  if (mode === 'auto') return 'urd';
+  return toScribeLanguageCode(code, mode);
+}
+
 export function resolveSttLocale(mode: LanguageMode, code: LanguageCode): string {
   if (mode === 'en') return 'en-US';
   if (mode === 'ur') return 'ur-PK';
@@ -355,10 +368,10 @@ export function resolveSttLocale(mode: LanguageMode, code: LanguageCode): string
 export function buildLanguageInstruction(code: LanguageCode): string {
   const normalized = normalizeLanguageCode(code);
   if (normalized === 'mixed') {
-    return 'CRITICAL: Match the user exactly — reply in the same language mix they used (e.g. English + Urdu). ONE sentence, max 18 words.';
+    return 'CRITICAL: Match the user exactly — reply in the same language mix they used (e.g. English + Urdu). Use one or two short, natural spoken sentences, maximum 30 words total.';
   }
   const label = getLanguageLabel(normalized);
-  return `CRITICAL: The user is speaking ${label}. Reply ONLY in ${label} — natural spoken style, same language as the user. ONE sentence, max 18 words. Never switch languages unless the user does.`;
+  return `CRITICAL: The user is speaking ${label}. Reply ONLY in ${label} — natural spoken style, same language as the user. Use one or two short sentences, maximum 30 words total. Never switch languages unless the user does.`;
 }
 
 /** @deprecated Use LanguageCode */

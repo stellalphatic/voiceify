@@ -40,7 +40,9 @@ export async function* runVoicePipeline(
   const runtime = resolveAgentRuntime(personaId, options?.customAgent);
   const t0 = Date.now();
   let ttfaMs: number | null = null;
-  const language = normalizeLanguageCode(options?.language) || detectLanguage(message);
+  const language = options?.language
+    ? normalizeLanguageCode(options.language)
+    : detectLanguage(message);
 
   try {
     kickTtsCachePreload();
@@ -104,6 +106,14 @@ export async function* runVoicePipeline(
     yield { type: 'done', totalMs: Date.now() - t0, ttfaMs };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Pipeline failed';
+    console.error('[voice-pipeline] failed', {
+      personaId,
+      language,
+      ttsOnly: Boolean(options?.ttsOnly),
+      skipTts: Boolean(options?.skipTts),
+      elapsedMs: Date.now() - t0,
+      error: msg,
+    });
     yield { type: 'error', message: msg };
   }
 }

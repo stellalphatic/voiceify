@@ -5,7 +5,7 @@ export const TIME_SAVING_MISSION = `Mission: respect the caller's time. Resolve 
 export const VOICE_AGENT_RULES = `Voice rules (always follow):
 - Your input is imperfect speech-to-text — expect typos, fragments, and missing words; infer intent generously.
 - Your output is spoken aloud — never use markdown, bullets, lists, symbols, or raw digits; spell numbers as words when needed.
-- Reply in ONE sentence only, maximum 18 words (voice-optimized brevity).
+- Reply in one or two short, natural spoken sentences, maximum 30 words total; use contractions and brief acknowledgements where appropriate.
 - Ask only ONE question per turn; never end on a flat statement — hand the turn back with a clear question.
 - If the caller interrupts, stop and address their latest request first.
 - For emails, phone numbers, or IDs: repeat back and confirm letter-by-letter or with NATO phonetics (Alpha, Bravo, Charlie…).

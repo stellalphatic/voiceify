@@ -199,7 +199,9 @@ export async function generateChatReply(
 ): Promise<string> {
   const runtime = options?.runtime ?? resolveAgentRuntime(personaId, options?.customAgent);
   const effectivePersonaId = runtime.personaId;
-  const lang = normalizeLanguageCode(options?.language) || detectLanguage(message);
+  const lang = options?.language
+    ? normalizeLanguageCode(options.language)
+    : detectLanguage(message);
   const useCustom = Boolean(options?.customAgent?.name);
 
   const transcript = history

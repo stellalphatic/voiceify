@@ -27,8 +27,8 @@ export const VOICE_MODELS = {
   llmFast: env("GROQ_MODEL_FAST", QWEN_38_VOICE),
   /** Google Gemini — LLM fallback when Groq fails. */
   llmFallback: env("GEMINI_MODEL", "gemini-2.5-flash"),
-  /** ElevenLabs Flash — streamed PCM TTS (commercial path). */
-  tts: env("TTS_MODEL", "eleven_flash_v2_5"),
+  /** Eleven v3 Conversational — natural, expressive streamed PCM TTS. */
+  tts: env("TTS_MODEL", "eleven_v3_conversational"),
   /** Coqui XTTS model id when TTS_PROVIDER=coqui. */
   ttsCoqui: env("COQUI_TTS_MODEL", "xtts_v2"),
   /** ElevenLabs Scribe — server-side batch STT. */
