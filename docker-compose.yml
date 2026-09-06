@@ -78,7 +78,7 @@ services:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       TTS_PROVIDER: ${TTS_PROVIDER:-elevenlabs}
       COQUI_TTS_URL: ${COQUI_TTS_URL:-}
-      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      GROQ_MODEL: ${GROQ_MODEL:-qwen/qwen3.8-27b}
       LLM_PROFILE: ${LLM_PROFILE:-quality}
     volumes:
       - uploads:/app/data/uploads
@@ -147,7 +147,7 @@ services:
       - api
       - web
 
-  # Production TLS for voiceify.metapresence.co (ports 80 + 443)
+  # Production TLS for voiceify.online (ports 80 + 443)
   # Start with: docker compose --profile tls up -d --build
   caddy:
     image: caddy:2.8-alpine
@@ -157,7 +157,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      DOMAIN: ${DOMAIN:-voiceify.metapresence.co}
+      DOMAIN: ${DOMAIN:-voiceify.online}
       ACME_EMAIL: ${ACME_EMAIL:-admin@metapresence.co}
     volumes:
       - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro

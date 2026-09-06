@@ -60,7 +60,7 @@ deeper compliance, and enterprise controls.
 
 ### 1.1 Product name
 
-**Voiceify** (`voiceify.metapresence.co`).
+**Voiceify** (`voiceify.online`).
 
 ### 1.2 Purpose
 
@@ -400,7 +400,7 @@ Voiceify is intentionally **not** “ElevenLabs with a skin.”
 |---|---|---|
 | STT live | ElevenLabs Scribe Realtime | Browser WebSocket |
 | STT batch | ElevenLabs Scribe v2 | Diarize / refine |
-| LLM | Groq **Llama 3.3 70B** (`llama-3.3-70b-versatile`) | Open weights; `LLM_PROFILE=latency` → Llama 3.1 8B |
+| LLM | Groq **Qwen 3.8 27B** (`qwen/qwen3.8-27b`) | Open weights; verified for low-latency chat and tool calling |
 | LLM fallback | Google Gemini 2.5 Flash | Automatic failover |
 | TTS | ElevenLabs Flash `eleven_flash_v2_5` | PCM stream |
 
@@ -496,7 +496,7 @@ GitHub Actions can fetch `main` and recreate `web`/`api` on EC2
 `.env` holds secrets. Model and backend selection:
 
 ```
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=qwen/qwen3.8-27b
 LLM_PROFILE=quality   # or latency
 TTS_PROVIDER=elevenlabs   # or coqui
 COQUI_TTS_URL=http://xtts:8020
@@ -643,7 +643,7 @@ including the compliance and telephony work still ahead.
 | Variable | Purpose |
 |---|---|
 | `GROQ_API_KEY` | Llama inference |
-| `GROQ_MODEL` | Default `llama-3.3-70b-versatile` |
+| `GROQ_MODEL` | Default `qwen/qwen3.8-27b` |
 | `LLM_PROFILE` | `quality` \| `latency` |
 | `GEMINI_API_KEY` | Fallback LLM |
 | `ELEVENLABS_API_KEY` | Scribe + Flash |

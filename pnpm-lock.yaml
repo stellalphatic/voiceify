@@ -104,6 +104,9 @@ importers:
       '@voiceify/voice':
         specifier: workspace:*
         version: link:../../packages/voice
+      bullmq:
+        specifier: ^5.53.0
+        version: 5.80.2
       dotenv:
         specifier: ^17.2.3
         version: 17.4.2
@@ -244,6 +247,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@voiceify/db':
+        specifier: workspace:^
+        version: link:../../packages/db
       '@voiceify/usage':
         specifier: workspace:*
         version: link:../../packages/usage

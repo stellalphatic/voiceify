@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@voiceify/db": "workspace:^",
     "@voiceify/usage": "workspace:*",
     "bullmq": "^5.53.0",
     "dotenv": "^17.2.3",

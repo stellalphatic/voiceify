@@ -82,7 +82,7 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
     responseExample: `{
   "status": "ok",
   "models": {
-    "llm": "llama-3.1-8b-instant",
+    "llm": "qwen/qwen3.8-27b",
     "tts": "flash_v2_5",
     "stt": "scribe_v2"
   },
@@ -118,7 +118,7 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
       { name: 'history', type: 'array', desc: 'Prior turns for context' },
       { name: 'language', type: 'string', desc: 'en | ur | auto / mixed' },
     ],
-    requestExample: `curl -X POST https://voiceify.metapresence.co/api/voice/ORG_ID/agents/AGENT_ID/turn \\
+    requestExample: `curl -X POST https://voiceify.online/api/voice/ORG_ID/agents/AGENT_ID/turn \\
   -H "Authorization: Bearer vfk_YOUR_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{ "message": "I need a table for two", "history": [], "language": "auto" }'`,
@@ -141,12 +141,12 @@ export const API_ENDPOINTS: ApiEndpointDoc[] = [
       { name: 'publicKey', type: 'string', required: true, desc: 'Embed token starting with vw_' },
       { name: 'origin', type: 'string', desc: 'Calling page origin (validated against allowlist)' },
     ],
-    requestExample: `curl -X POST https://voiceify.metapresence.co/api/public/session \\
+    requestExample: `curl -X POST https://voiceify.online/api/public/session \\
   -H "Content-Type: application/json" \\
   -d '{ "publicKey": "vw_…", "origin": "https://your-site.com" }'`,
     notes: [
       'Create tokens in Dashboard → API keys → Embed widget.',
-      'Load https://voiceify.metapresence.co/widget.js with data-token="vw_…". Preview: the widget bootstraps and displays agent state; it does not yet capture microphone audio.',
+      'Load https://voiceify.online/widget.js with data-token="vw_…". The widget supports text chat and browser microphone voice turns.',
     ],
   },
   {

@@ -25,7 +25,7 @@ export type AppAgent = StoredVoiceAgent & { serverId?: string };
 interface AgentStoreValue {
   agents: AppAgent[];
   setAgents: React.Dispatch<React.SetStateAction<AppAgent[]>>;
-  updateAgent: (agent: AppAgent) => void;
+  updateAgent: (agent: AppAgent) => Promise<AppAgent>;
   createAgent: (agent: AppAgent) => Promise<AppAgent>;
   deleteAgent: (agent: AppAgent) => Promise<void>;
   getAgentById: (id: number) => AppAgent | undefined;
@@ -69,7 +69,10 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
           language: string;
           status: string;
           greeting: string | null;
+          instructions: string;
           voiceId: string | null;
+          toolIds: string[];
+          knowledgeDocIds: string[];
           capabilities: Record<string, unknown>;
           triggers: Record<string, unknown>;
         }>;
@@ -83,7 +86,10 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
         language: a.language,
         status: a.status === "active" ? "Active" : "Inactive",
         greeting: a.greeting ?? undefined,
+        instructions: a.instructions,
         voice: a.voiceId ?? undefined,
+        toolIds: a.toolIds,
+        knowledgeDocIds: a.knowledgeDocIds,
         capabilities: Object.keys(a.capabilities ?? {}),
         triggers: Object.keys(a.triggers ?? {}),
         isDemoDefault: false,
@@ -130,28 +136,35 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const updateAgent = useCallback((agent: AppAgent) => {
+  const updateAgent = useCallback(async (agent: AppAgent): Promise<AppAgent> => {
     // Callers may build a fresh object and drop serverId; recover it from the
     // stored record so the edit still reaches the API.
     let serverId = agent.serverId;
-    setAgents((prev) =>
-      prev.map((a) => {
-        if (a.id !== agent.id) return a;
-        serverId = serverId ?? a.serverId;
-        return { ...a, ...agent, serverId };
-      }),
-    );
+    const current = agents.find((item) => item.id === agent.id);
+    serverId = serverId ?? current?.serverId;
 
     const activeOrg = getActiveOrgId();
     if (activeOrg && serverId) {
-      void apiJson(`/api/orgs/${activeOrg}/agents/${serverId}`, {
+      const data = await apiJson<{
+        agent: {
+          id: string;
+          status: string;
+          instructions: string;
+          voiceId: string | null;
+        };
+        version: { toolIds: string[]; knowledgeDocIds: string[] };
+      }>(`/api/orgs/${activeOrg}/agents/${serverId}`, {
         method: "PATCH",
         body: JSON.stringify({
           name: agent.name,
           type: agent.type,
           language: agent.language,
           greeting: agent.greeting,
+          instructions: agent.instructions ?? "",
           voiceId: agent.voice,
+          status: agent.status === "Active" ? "active" : "paused",
+          toolIds: agent.toolIds ?? [],
+          knowledgeDocIds: agent.knowledgeDocIds ?? [],
           capabilities: Object.fromEntries(
             (agent.capabilities ?? []).map((c) => [c, true]),
           ),
@@ -159,11 +172,24 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
             (agent.triggers ?? []).map((t) => [t, true]),
           ),
         }),
-      }).catch(() => {
-        /* keep optimistic local state; refresh later */
       });
+      const saved: AppAgent = {
+        ...current,
+        ...agent,
+        serverId: data.agent.id,
+        status: data.agent.status === "active" ? "Active" : "Inactive",
+        instructions: data.agent.instructions,
+        voice: data.agent.voiceId ?? undefined,
+        toolIds: data.version.toolIds,
+        knowledgeDocIds: data.version.knowledgeDocIds,
+      };
+      setAgents((prev) => prev.map((item) => (item.id === saved.id ? saved : item)));
+      return saved;
     }
-  }, []);
+    const saved = { ...current, ...agent, serverId };
+    setAgents((prev) => prev.map((item) => (item.id === saved.id ? saved : item)));
+    return saved;
+  }, [agents]);
 
   const createAgent = useCallback(async (agent: AppAgent): Promise<AppAgent> => {
     const activeOrg = getActiveOrgId();
@@ -180,6 +206,7 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
         language: string;
         status: string;
         greeting: string | null;
+        instructions: string;
         voiceId: string | null;
       };
     }>(`/api/orgs/${activeOrg}/agents`, {
@@ -189,7 +216,10 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
         type: agent.type,
         language: agent.language,
         greeting: agent.greeting,
+        instructions: agent.instructions ?? "",
         voiceId: agent.voice,
+        toolIds: agent.toolIds ?? [],
+        knowledgeDocIds: agent.knowledgeDocIds ?? [],
         capabilities: Object.fromEntries(
           (agent.capabilities ?? []).map((c) => [c, true]),
         ),
@@ -208,6 +238,7 @@ export function AgentStoreProvider({ children }: { children: ReactNode }) {
       language: created.agent.language,
       status: created.agent.status === "active" ? "Active" : "Inactive",
       greeting: created.agent.greeting ?? undefined,
+      instructions: created.agent.instructions,
       voice: created.agent.voiceId ?? undefined,
       isDemoDefault: false,
     };

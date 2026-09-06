@@ -12,8 +12,12 @@ import {
   messages,
   sql,
   tools,
+  toolInvocations,
+  workflows,
 } from "@voiceify/db";
 import { resolveBasePersonaId } from "@voiceify/shared";
+import { executePackTool } from "@voiceify/automations";
+import { executeHttpTool } from "@voiceify/tools";
 import {
   handleElevenLabsTts,
   handleScribeRealtimeToken,
@@ -37,6 +41,19 @@ import { rateLimit } from "../middleware/rate-limit.js";
 import { requireSession } from "../middleware/session.js";
 
 export const voiceRoutes = new Hono<AppEnv>();
+
+const READ_ONLY_PACK_TOOLS = new Set([
+  "check_availability",
+  "list_menu",
+  "lookup_faq",
+]);
+const EXPLICIT_CONFIRMATION =
+  /^(yes|yes please|confirm|confirmed|go ahead|do it|proceed|جی|ہاں|کر دیں|ٹھیک ہے)[.! ]*$/iu;
+
+function toolParameters(inputSchema: Record<string, unknown>): Record<string, unknown> {
+  if (inputSchema.type === "object") return inputSchema;
+  return { type: "object", properties: inputSchema, additionalProperties: false };
+}
 
 voiceRoutes.use("*", rateLimit({ prefix: "voice", limit: 60 }));
 
@@ -88,6 +105,7 @@ const turnSchema = z.object({
   conversationId: z.string().uuid().optional(),
   channel: z.enum(["sandbox", "embed", "api"]).default("sandbox"),
   ttsOnly: z.boolean().optional(),
+  textOnly: z.boolean().optional(),
 });
 
 /**
@@ -162,7 +180,7 @@ voiceRoutes.post(
     const enabledOrgTools =
       versionToolIds.length > 0
         ? allOrgTools.filter((t) => versionToolIds.includes(t.id))
-        : allOrgTools;
+        : [];
 
     // Agent-scoped semantic retrieval, with lexical Postgres degradation.
     let knowledgeHint = "";
@@ -238,8 +256,15 @@ voiceRoutes.post(
       knowledgeHint = "";
     }
 
+    const versionConfig = (version?.config ?? {}) as Record<string, unknown>;
+    const effectiveGuardrails = (
+      versionConfig.guardrails ??
+      agent.guardrails ??
+      {}
+    ) as Record<string, unknown>;
+
     /* Guardrail switch: when tools are disabled the agent must not see or run them. */
-    const toolsAllowed = (agent.guardrails as Record<string, unknown> | null)?.allowTools !== false;
+    const toolsAllowed = effectiveGuardrails.allowTools !== false;
     const orgTools = toolsAllowed ? enabledOrgTools : [];
 
     const toolHint =
@@ -248,10 +273,32 @@ voiceRoutes.post(
             .map((t) => `- ${t.slug}`)
             .join(
               "\n",
-            )}\nConnected tools are available to the workspace, but this voice turn cannot execute an action without validated fields and explicit confirmation. Gather the required details, summarize them, and ask the caller to confirm. Never claim an action completed and never mention tool names or this list.`
+            )}\nUse tools when they are needed. Mutating actions require the caller's explicit confirmation after all required fields are collected. Never claim success unless the tool result confirms it, and never mention internal tool names.`
         : "";
 
-    const guardrails = (agent.guardrails ?? {}) as Record<string, unknown>;
+    const [activeWorkflow] = await db
+      .select({ graph: workflows.graph, name: workflows.name })
+      .from(workflows)
+      .where(
+        and(
+          eq(workflows.orgId, orgId),
+          eq(workflows.agentId, agentId),
+          eq(workflows.status, "active"),
+        ),
+      )
+      .limit(1);
+    const workflowHint = activeWorkflow
+      ? `\n\n[Active server workflow: ${activeWorkflow.name}]\n${activeWorkflow.graph.nodes
+          .map((node) => String(node.label ?? "").trim())
+          .filter(Boolean)
+          .slice(0, 30)
+          .map((label, index) => `${index + 1}. ${label}`)
+          .join(
+            "\n",
+          )}\nFollow this conversation flow in order when relevant. Use attached tools for tool steps and only advance after each required value or tool result is complete.`
+      : "";
+
+    const guardrails = effectiveGuardrails;
     const guardrailLines: string[] = [];
     if (guardrails.blockPii) {
       guardrailLines.push("Never collect full card numbers, CVV, or government IDs.");
@@ -306,8 +353,23 @@ voiceRoutes.post(
       language: version?.language ?? agent.language,
       greeting: version?.greeting ?? agent.greeting ?? undefined,
       voiceId: version?.voiceId ?? agent.voiceId ?? undefined,
-      capabilities: Object.keys(agent.capabilities ?? {}),
-      triggers: Object.keys(agent.triggers ?? {}),
+      // The immutable deployed prompt is the runtime authority. Rebuilding from
+      // the mutable agent row made deployed versions ineffective.
+      systemPrompt: version?.systemPrompt,
+      instructions:
+        typeof versionConfig.instructions === "string"
+          ? versionConfig.instructions
+          : agent.instructions,
+      capabilities: Object.keys(
+        (versionConfig.capabilities as Record<string, unknown> | undefined) ??
+          agent.capabilities ??
+          {},
+      ),
+      triggers: Object.keys(
+        (versionConfig.triggers as Record<string, unknown> | undefined) ??
+          agent.triggers ??
+          {},
+      ),
     };
     const personaId = resolveBasePersonaId(agent.type);
 
@@ -317,6 +379,7 @@ voiceRoutes.post(
      */
     const systemContext = [
       toolHint,
+      workflowHint,
       knowledgeHint,
       guardrailHint,
     ]
@@ -324,6 +387,67 @@ voiceRoutes.post(
       .join("");
 
     const turnStartedAt = Date.now();
+    let executedToolCalls = 0;
+    const voiceTools = orgTools.map((tool) => ({
+      name: tool.slug,
+      description: `${tool.description || tool.name}${
+        tool.type === "pack" && !READ_ONLY_PACK_TOOLS.has(tool.slug)
+          ? " This changes business data and must only be called after explicit user confirmation."
+          : ""
+      }`,
+      parameters: toolParameters(tool.inputSchema),
+    }));
+    const executeVoiceTool = async (
+      name: string,
+      args: Record<string, unknown>,
+    ): Promise<unknown> => {
+      const startedAt = Date.now();
+      const tool = orgTools.find((candidate) => candidate.slug === name);
+      if (!tool) return { ok: false, error: "Tool is not attached to this agent" };
+
+      const isReadOnly =
+        tool.type === "pack"
+          ? READ_ONLY_PACK_TOOLS.has(tool.slug)
+          : String((tool.config as Record<string, unknown>).method ?? "POST").toUpperCase() ===
+            "GET";
+      let result: unknown;
+      if (!isReadOnly && !EXPLICIT_CONFIRMATION.test(body.message.trim())) {
+        result = {
+          ok: false,
+          error:
+            "Explicit caller confirmation is required. Summarize the action and ask the caller to confirm.",
+        };
+      } else if (tool.type === "pack") {
+        result = await executePackTool(orgId, tool.slug, args);
+      } else if (tool.type === "http") {
+        result = await executeHttpTool(
+          {
+            name: tool.slug,
+            description: tool.description || tool.name,
+            ...(tool.config as Record<string, unknown>),
+          },
+          args,
+        );
+      } else {
+        result = { ok: false, error: "Unsupported tool type" };
+      }
+
+      const resultObject =
+        result && typeof result === "object" && !Array.isArray(result)
+          ? (result as Record<string, unknown>)
+          : { value: result };
+      await db.insert(toolInvocations).values({
+        conversationId: conversationId!,
+        orgId,
+        toolId: tool.id,
+        name: tool.slug,
+        args,
+        result: resultObject,
+        status: resultObject.ok === true ? "success" : "error",
+        durationMs: Date.now() - startedAt,
+      });
+      return result;
+    };
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -338,8 +462,14 @@ voiceRoutes.post(
             body.history,
             {
               ttsOnly: body.ttsOnly,
+              skipTts: body.textOnly,
               customAgent: agentConfig,
               systemContext,
+              tools: voiceTools,
+              executeTool: executeVoiceTool,
+              onToolCalls: (count) => {
+                executedToolCalls += count;
+              },
             },
           )) {
             if (event.type === "text" && "text" in event) {
@@ -388,7 +518,7 @@ voiceRoutes.post(
               (body.message.length + systemContext.length + assistantText.length) / 4,
             ),
             ttsChars: Math.max(ttsChars, assistantText.length),
-            toolCalls: 0,
+            toolCalls: executedToolCalls,
           });
         } catch (err) {
           controller.enqueue(

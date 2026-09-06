@@ -15,6 +15,7 @@ import { z } from "zod";
 import type { AppEnv } from "../lib/types.js";
 import { requireOrg } from "../middleware/org.js";
 import { requireSession } from "../middleware/session.js";
+import { enqueueConversationEnded } from "../lib/queue-events.js";
 
 export const conversationsRoutes = new Hono<AppEnv>();
 
@@ -113,6 +114,12 @@ conversationsRoutes.post(
       if (!existing) return c.json({ error: "Not found" }, 404);
       return c.json({ conversation: existing });
     }
+
+    await enqueueConversationEnded({
+      orgId,
+      conversationId: updated.id,
+      status: updated.status,
+    });
 
     return c.json({ conversation: updated });
   },

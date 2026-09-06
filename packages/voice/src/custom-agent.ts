@@ -32,7 +32,7 @@ export function resolveAgentRuntime(
   return {
     personaId: mappedId,
     voiceId: custom.voiceId || mapped.voiceId,
-    systemPrompt: buildDashboardSystemPrompt(custom),
+    systemPrompt: custom.systemPrompt?.trim() || buildDashboardSystemPrompt(custom),
     greeting:
       custom.greeting?.trim() ||
       `Hi, I'm ${custom.name}, your ${custom.type} assistant. How can I help?`,

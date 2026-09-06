@@ -13,7 +13,11 @@ import type { CustomAgentConfig } from '@voiceify/shared';
 import { buildPersonaPrompt } from './prompt-utils';
 import { LLM_VOICE_CONFIG, VOICE_MODELS } from './voice-models';
 import { sanitizeVoiceReply } from './voice-sanitize';
-import { generateGroqReply } from './groq-llm';
+import {
+  generateGroqAgentReply,
+  generateGroqReply,
+  type VoiceToolDefinition,
+} from './groq-llm';
 import {
   PCM_SAMPLE_RATE,
   TTS_MAX_CHARS,
@@ -188,6 +192,9 @@ export async function generateChatReply(
     customAgent?: CustomAgentConfig | null;
     /** Server-side context (tools, knowledge, guardrails) — never part of the caller turn. */
     systemContext?: string;
+    tools?: VoiceToolDefinition[];
+    executeTool?: (name: string, args: Record<string, unknown>) => Promise<unknown>;
+    onToolCalls?: (count: number) => void;
   },
 ): Promise<string> {
   const runtime = options?.runtime ?? resolveAgentRuntime(personaId, options?.customAgent);
@@ -205,6 +212,18 @@ export async function generateChatReply(
     : '';
 
   const prompt = `${runtime.systemPrompt}${context}\n${buildLanguageInstruction(lang)}\n${transcript}\nU: ${message}\nA:`;
+
+  if (options?.tools?.length && options.executeTool) {
+    const agentResult = await generateGroqAgentReply(
+      prompt,
+      options.tools,
+      options.executeTool,
+    );
+    if (agentResult) {
+      options.onToolCalls?.(agentResult.toolCalls);
+      return agentResult.text;
+    }
+  }
 
   const groqText = await generateGroqReply(prompt);
   if (groqText) return groqText;

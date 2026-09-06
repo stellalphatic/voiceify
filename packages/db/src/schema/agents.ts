@@ -28,6 +28,8 @@ export const automationPackEnum = pgEnum("automation_pack", [
   "appointments",
 ]);
 
+export const workflowStatusEnum = pgEnum("workflow_status", ["draft", "active"]);
+
 export const agents = pgTable(
   "agents",
   {
@@ -40,6 +42,7 @@ export const agents = pgTable(
     language: text("language").notNull().default("en"),
     status: agentStatusEnum("status").notNull().default("draft"),
     greeting: text("greeting"),
+    instructions: text("instructions").notNull().default(""),
     voiceId: text("voice_id"),
     capabilities: jsonb("capabilities")
       .$type<Record<string, unknown>>()
@@ -143,6 +146,34 @@ export const automationInstalls = pgTable(
   ],
 );
 
+export const workflows = pgTable(
+  "workflows",
+  {
+    id: idColumn(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    agentId: uuid("agent_id")
+      .notNull()
+      .references(() => agents.id, { onDelete: "cascade" }),
+    name: text("name").notNull().default("Conversation flow"),
+    status: workflowStatusEnum("status").notNull().default("draft"),
+    graph: jsonb("graph")
+      .$type<{
+        nodes: Array<Record<string, unknown>>;
+        edges: Array<Record<string, unknown>>;
+      }>()
+      .notNull()
+      .default({ nodes: [], edges: [] }),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    uniqueIndex("workflows_org_agent_uidx").on(table.orgId, table.agentId),
+    index("workflows_org_status_idx").on(table.orgId, table.status),
+  ],
+);
+
 export const agentsRelations = relations(agents, ({ one, many }) => ({
   organization: one(organizations, {
     fields: [agents.orgId],
@@ -173,3 +204,5 @@ export type Tool = typeof tools.$inferSelect;
 export type NewTool = typeof tools.$inferInsert;
 export type AutomationInstall = typeof automationInstalls.$inferSelect;
 export type NewAutomationInstall = typeof automationInstalls.$inferInsert;
+export type Workflow = typeof workflows.$inferSelect;
+export type NewWorkflow = typeof workflows.$inferInsert;

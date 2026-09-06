@@ -12,6 +12,7 @@ import type { CustomAgentConfig } from '@voiceify/shared';
 import { detectLanguage, normalizeLanguageCode, type LanguageCode } from './language';
 import { kickTtsCachePreload, getCachedPcm, yieldCachedPcm } from './tts-cache';
 import { sanitizeVoiceReply } from './voice-sanitize';
+import type { VoiceToolDefinition } from './groq-llm';
 
 export type PipelineEvent =
   | { type: 'text'; text: string; llmMs: number; language?: LanguageCode }
@@ -26,10 +27,14 @@ export async function* runVoicePipeline(
   history: ChatMessage[],
   options?: {
     ttsOnly?: boolean;
+    skipTts?: boolean;
     language?: LanguageCode;
     customAgent?: CustomAgentConfig | null;
     /** Tool/knowledge/guardrail context injected into the system prompt, not the caller turn. */
     systemContext?: string;
+    tools?: VoiceToolDefinition[];
+    executeTool?: (name: string, args: Record<string, unknown>) => Promise<unknown>;
+    onToolCalls?: (count: number) => void;
   },
 ): AsyncGenerator<PipelineEvent> {
   const runtime = resolveAgentRuntime(personaId, options?.customAgent);
@@ -48,12 +53,20 @@ export async function* runVoicePipeline(
           customAgent: options?.customAgent,
           runtime,
           systemContext: options?.systemContext,
+          tools: options?.tools,
+          executeTool: options?.executeTool,
+          onToolCalls: options?.onToolCalls,
         });
     const text =
       sanitizeVoiceReply(rawText) ||
       'Sorry, could you say that again?';
     const llmMs = Date.now() - llmStart;
     yield { type: 'text', text, llmMs, language };
+
+    if (options?.skipTts) {
+      yield { type: 'done', totalMs: Date.now() - t0, ttfaMs: null };
+      return;
+    }
 
     const cached = getCachedPcm(runtime.voiceId, text);
     const pcmStream = cached ? yieldCachedPcm(cached) : streamSpeechPcm(text, runtime.voiceId);

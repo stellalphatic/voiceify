@@ -497,8 +497,7 @@ export default function KnowledgeWorkspace() {
               busy ||
               !orgId ||
               !title.trim() ||
-              !content.trim() ||
-              scopeIsIncomplete(ingestScope)
+              !content.trim()
             }
             onClick={() => void createDoc()}
           >

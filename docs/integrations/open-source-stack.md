@@ -1,5 +1,5 @@
 # Open-source and hybrid AI stack
-Updated: 2026-07-20
+Updated: 2026-09-06
 
 Voiceify is an orchestration platform. Speech and inference providers are swappable backends, not the product itself.
 
@@ -7,8 +7,8 @@ Voiceify is an orchestration platform. Speech and inference providers are swappa
 
 | Layer | Choice | Why |
 |-------|--------|-----|
-| LLM | Meta **Llama 3.3 70B** via Groq (`llama-3.3-70b-versatile`) | Open weights, strong quality; set `LLM_PROFILE=latency` for Llama 3.1 8B |
-| LLM fallback | Gemini 2.5 Flash | Resilience when Groq is down |
+| LLM | **Qwen 3.8 27B** via Groq (`qwen/qwen3.8-27b`) | Open weights and verified low-latency chat/tool calling |
+| LLM fallback | Gemini 2.5 Flash | Optional resilience when `GEMINI_API_KEY` is configured |
 | STT / TTS | ElevenLabs Scribe + Flash | Sub-500ms path for demos and SLAs |
 
 ## Optional self-host

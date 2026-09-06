@@ -25,11 +25,17 @@ const PACK_ICONS: Record<string, typeof Utensils> = {
 
 export default function WorkflowsWorkspace() {
   const orgId = getActiveOrgId();
-  const { refreshFromApi } = useAgentStore();
+  const { agents, refreshFromApi } = useAgentStore();
   const [packs, setPacks] = useState<Pack[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState('');
+
+  useEffect(() => {
+    if (selectedAgentId && agents.some((agent) => agent.serverId === selectedAgentId)) return;
+    setSelectedAgentId(agents.find((agent) => agent.serverId)?.serverId ?? '');
+  }, [agents, selectedAgentId]);
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -100,6 +106,23 @@ export default function WorkflowsWorkspace() {
         <Link to="/dashboard/tools" className="vfy-btn vfy-btn-ghost">
           Manage tools and connectors
         </Link>
+        <label className="vfy-field" style={{ display: 'block', marginTop: 16 }}>
+          <span className="vfy-field-label">Workflow agent</span>
+          <select
+            className="vfy-field-select"
+            value={selectedAgentId}
+            onChange={(event) => setSelectedAgentId(event.target.value)}
+          >
+            <option value="">Select an agent</option>
+            {agents
+              .filter((agent) => agent.serverId)
+              .map((agent) => (
+                <option key={agent.serverId} value={agent.serverId}>
+                  {agent.name}
+                </option>
+              ))}
+          </select>
+        </label>
       </section>
 
       <section className="vfy-settings-card">
@@ -107,7 +130,7 @@ export default function WorkflowsWorkspace() {
           <GitBranch size={18} />
           Conversation flow canvas
         </h3>
-        <WorkflowCanvas />
+        <WorkflowCanvas agentId={selectedAgentId || undefined} />
       </section>
 
       <section className="vfy-settings-card">

@@ -20,6 +20,7 @@
     "@voiceify/tools": "workspace:*",
     "@voiceify/usage": "workspace:*",
     "@voiceify/voice": "workspace:*",
+    "bullmq": "^5.53.0",
     "dotenv": "^17.2.3",
     "hono": "^4.8.3",
     "ioredis": "^5.6.1",

@@ -268,6 +268,7 @@ export function useVoiceAgent(
             history: payload.history ?? [],
             channel: 'sandbox',
             ttsOnly: Boolean(ttsOnly),
+            textOnly: Boolean(payload.textOnly),
             ...(conversationIdRef.current
               ? { conversationId: conversationIdRef.current }
               : {}),
@@ -893,16 +894,19 @@ export function useVoiceAgent(
       userText: string,
       speechEndAt: number,
       historyBeforeTurn: TranscriptLine[],
+      textOnly = false,
     ): Promise<void> => {
       const turnId = ++turnIdRef.current;
       thinkingRef.current = true;
       setStatus('thinking');
       syncVadMonitor();
 
-      let holdTimer: number | null = window.setTimeout(() => {
-        if (turnId !== turnIdRef.current || !thinkingRef.current) return;
-        void playThinkingHold(turnId);
-      }, THINKING_HOLD_MS);
+      let holdTimer: number | null = textOnly
+        ? null
+        : window.setTimeout(() => {
+            if (turnId !== turnIdRef.current || !thinkingRef.current) return;
+            void playThinkingHold(turnId);
+          }, THINKING_HOLD_MS);
 
       const cancelHoldPlayback = () => {
         if (holdTimer != null) {
@@ -934,6 +938,7 @@ export function useVoiceAgent(
             message: userText,
             personaId: persona.id,
             history: toChatHistory(historyBeforeTurn),
+            textOnly,
             language: languageForRequest(
               languageModeRef.current,
               lastLanguageRef.current,
@@ -986,9 +991,9 @@ export function useVoiceAgent(
               historyRef.current = [...historyRef.current, agentLine];
               setMessages((prev) => [...prev, agentLine]);
               thinkingRef.current = false;
-              speakingRef.current = true;
-              setStatus('speaking');
-              syncVadMonitor();
+              speakingRef.current = !textOnly;
+              setStatus(textOnly ? 'thinking' : 'speaking');
+              if (!textOnly) syncVadMonitor();
             }
             if (event.type === 'audio') {
               if (!speakingRef.current) {
@@ -1055,6 +1060,7 @@ export function useVoiceAgent(
       transcript: string,
       speechEndAt: number,
       audioCapture: { blob: Blob; mimeType: string; durationMs: number } | null,
+      textOnly = false,
     ) => {
       const fallback = transcript.trim();
       if (!fallback || !activeRef.current) return;
@@ -1067,7 +1073,7 @@ export function useVoiceAgent(
       trackSpeakers(userLines);
 
       try {
-        await runTurn(llmText, speechEndAt, priorHistory);
+        await runTurn(llmText, speechEndAt, priorHistory, textOnly);
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;
         const msg = err instanceof Error ? err.message : 'Turn failed';
@@ -1570,22 +1576,45 @@ export function useVoiceAgent(
    * Starts a session (greeting TTS) if idle, then runs the LLM+TTS pipeline.
    */
   const sendTextTurn = useCallback(
-    async (text: string) => {
+    async (text: string, options?: { speak?: boolean }) => {
       const trimmed = text.trim();
       if (!trimmed || processingRef.current) return;
       processingRef.current = true;
       setError(null);
       try {
         if (!activeRef.current) {
-          await startSession();
+          if (options?.speak === false) {
+            activeRef.current = true;
+            setIsActive(true);
+            setStatus('listening');
+            const greeting =
+              customGreetingRef.current?.trim() ||
+              greetingForMode(persona, languageModeRef.current);
+            const agentLine: TranscriptLine = {
+              role: 'assistant',
+              text: greeting,
+              speakerId: 'agent',
+              speakerLabel: displayName(),
+            };
+            historyRef.current = [agentLine];
+            setMessages([agentLine]);
+            setActiveSpeakers(['agent']);
+          } else {
+            await startSession();
+          }
         }
         if (!activeRef.current) return;
-        await processUserMessage(trimmed, performance.now(), null);
+        await processUserMessage(
+          trimmed,
+          performance.now(),
+          null,
+          options?.speak === false,
+        );
       } finally {
         processingRef.current = false;
       }
     },
-    [processUserMessage, startSession],
+    [displayName, persona, processUserMessage, startSession],
   );
 
   /**

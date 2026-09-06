@@ -11,6 +11,7 @@ import {
   reservations,
   services,
 } from "@voiceify/db";
+import { z } from "zod";
 
 export type PackToolResult = {
   ok: boolean;
@@ -49,33 +50,52 @@ export async function executePackTool(
   try {
     switch (toolName) {
       case "create_reservation": {
-        const guestName = String(args.guestName ?? args.name ?? "").trim();
-        const partySize = Number(args.partySize ?? args.party_size ?? 2);
-        const reservedAt = new Date(
-          String(args.reservedAt ?? args.datetime ?? Date.now()),
-        );
-        if (!guestName) return { ok: false, error: "guestName required" };
+        const parsed = z
+          .object({
+            guestName: z.string().trim().min(1).max(120),
+            partySize: z.coerce.number().int().min(1).max(50),
+            reservedAt: z.coerce.date(),
+            guestPhone: z.string().trim().max(40).optional(),
+            guestEmail: z.string().email().optional(),
+            notes: z.string().max(1000).optional(),
+          })
+          .safeParse(args);
+        if (!parsed.success) {
+          return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid reservation" };
+        }
+        const { guestName, partySize, reservedAt, guestPhone, guestEmail, notes } =
+          parsed.data;
         const [row] = await db
           .insert(reservations)
           .values({
             orgId,
             guestName,
-            guestPhone: args.guestPhone ? String(args.guestPhone) : null,
-            guestEmail: args.guestEmail ? String(args.guestEmail) : null,
-            partySize: Number.isFinite(partySize) ? partySize : 2,
+            guestPhone: guestPhone ?? null,
+            guestEmail: guestEmail ?? null,
+            partySize,
             reservedAt,
-            notes: args.notes ? String(args.notes) : null,
+            notes: notes ?? null,
             status: "confirmed",
           })
           .returning();
         return { ok: true, data: row };
       }
       case "check_availability": {
+        const parsed = z
+          .object({
+            partySize: z.coerce.number().int().min(1).max(50),
+            reservedAt: z.coerce.date(),
+          })
+          .safeParse(args);
+        if (!parsed.success) {
+          return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid request" };
+        }
         return {
           ok: true,
           data: {
             available: true,
-            partySize: Number(args.partySize ?? 2),
+            partySize: parsed.data.partySize,
+            requestedAt: parsed.data.reservedAt.toISOString(),
             suggestedTimes: ["18:00", "19:00", "20:00"],
           },
         };
@@ -163,13 +183,23 @@ export async function executePackTool(
         return { ok: true, data: { hits } };
       }
       case "book_appointment": {
+        const parsed = z
+          .object({
+            serviceId: z.string().uuid().optional(),
+            startsAt: z.coerce.date(),
+            customerName: z.string().trim().min(1).max(120),
+            customerContact: z.string().trim().min(1).max(160),
+            notes: z.string().max(1000).optional(),
+          })
+          .safeParse(args);
+        if (!parsed.success) {
+          return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid appointment" };
+        }
         const serviceId =
-          (args.serviceId ? String(args.serviceId) : null) ||
+          parsed.data.serviceId ||
           (await ensureDefaultService(orgId));
-        const startsAt = new Date(
-          String(args.startsAt ?? args.datetime ?? Date.now()),
-        );
-        const customerName = String(args.customerName ?? args.name ?? "Guest");
+        const startsAt = parsed.data.startsAt;
+        const customerName = parsed.data.customerName;
         const svcRows = await db
           .select()
           .from(services)
@@ -177,22 +207,17 @@ export async function executePackTool(
           .limit(1);
         const duration = svcRows[0]?.durationMinutes ?? 30;
         const endsAt = new Date(startsAt.getTime() + duration * 60_000);
-        const contact =
-          args.customerContact ||
-          args.customerPhone ||
-          args.customerEmail ||
-          null;
         const [row] = await db
           .insert(appointments)
           .values({
             orgId,
             serviceId,
             customerName,
-            customerContact: contact ? String(contact) : null,
+            customerContact: parsed.data.customerContact,
             startsAt,
             endsAt,
             status: "confirmed",
-            notes: args.notes ? String(args.notes) : null,
+            notes: parsed.data.notes ?? null,
           })
           .returning();
         return { ok: true, data: row };

@@ -46,6 +46,21 @@ type EmbedSession = {
 
 type ResolvedTheme = "light" | "dark";
 
+type WidgetMessage = { role: "user" | "assistant"; content: string };
+
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((event: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
 const THEME_STYLES: Record<
   ResolvedTheme,
   { panel: string; title: string; status: string; button: string }
@@ -92,7 +107,15 @@ export class VoiceifyWidget {
   private titleEl: HTMLElement | null = null;
   private statusEl: HTMLElement | null = null;
   private talkBtn: HTMLButtonElement | null = null;
+  private chatBtn: HTMLButtonElement | null = null;
+  private inputEl: HTMLInputElement | null = null;
+  private messagesEl: HTMLElement | null = null;
   private session: EmbedSession | null = null;
+  private conversationId: string | null = null;
+  private messages: WidgetMessage[] = [];
+  private recognition: SpeechRecognitionLike | null = null;
+  private mediaStream: MediaStream | null = null;
+  private audioContext: AudioContext | null = null;
   private themeMql: MediaQueryList | null = null;
   private themeObserver: MutationObserver | null = null;
 
@@ -128,15 +151,54 @@ export class VoiceifyWidget {
     status.textContent = "Connecting…";
     this.statusEl = status;
 
+    const modeRow = document.createElement("div");
+    modeRow.style.cssText = "display:flex;gap:8px;margin-bottom:10px;";
+
     const talkBtn = document.createElement("button");
     talkBtn.type = "button";
-    talkBtn.textContent = "Preview embed";
+    talkBtn.textContent = "Start voice";
     talkBtn.addEventListener("click", () => {
-      void this.startSession();
+      void this.startVoiceSession();
     });
     this.talkBtn = talkBtn;
 
-    panel.append(title, status, talkBtn);
+    const chatBtn = document.createElement("button");
+    chatBtn.type = "button";
+    chatBtn.textContent = "Chat";
+    chatBtn.addEventListener("click", () => this.inputEl?.focus());
+    this.chatBtn = chatBtn;
+    modeRow.append(talkBtn, chatBtn);
+
+    const messages = document.createElement("div");
+    messages.setAttribute("aria-live", "polite");
+    messages.style.cssText =
+      "display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto;margin:10px 0;font-size:13px;line-height:1.4;";
+    this.messagesEl = messages;
+
+    const inputRow = document.createElement("form");
+    inputRow.style.cssText = "display:flex;gap:8px;";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Type a message";
+    input.setAttribute("aria-label", "Message the voice agent");
+    input.style.cssText =
+      "min-width:0;flex:1;border:1px solid currentColor;border-radius:8px;padding:9px 10px;background:transparent;color:inherit;font:inherit;";
+    this.inputEl = input;
+    const send = document.createElement("button");
+    send.type = "submit";
+    send.textContent = "Send";
+    send.style.cssText =
+      "border:0;border-radius:8px;padding:9px 12px;background:#16a34a;color:white;font:inherit;font-weight:600;cursor:pointer;";
+    inputRow.append(input, send);
+    inputRow.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      void this.sendTurn(text, true);
+    });
+
+    panel.append(title, status, modeRow, messages, inputRow);
     el.appendChild(panel);
     this.root = panel;
     this.applyThemeStyles();
@@ -152,7 +214,10 @@ export class VoiceifyWidget {
     this.root.dataset.theme = this.resolvedTheme;
     this.titleEl.style.cssText = styles.title;
     this.statusEl.style.cssText = styles.status;
-    this.talkBtn.style.cssText = styles.button;
+    this.talkBtn.style.cssText = `${styles.button}flex:1;`;
+    if (this.chatBtn) {
+      this.chatBtn.style.cssText = `${styles.button}flex:1;background:transparent;color:inherit;`;
+    }
   }
 
   private setResolvedTheme(next: ResolvedTheme): void {
@@ -212,18 +277,34 @@ export class VoiceifyWidget {
           this.session.agent.greeting ? ` — ${this.session.agent.greeting}` : ""
         }`,
       );
+      if (this.session.agent.greeting && this.messages.length === 0) {
+        this.appendMessage("assistant", this.session.agent.greeting);
+      }
     } catch {
       this.setStatus("Unable to reach Voiceify API");
     }
   }
 
-  private async startSession(): Promise<void> {
+  private appendMessage(role: WidgetMessage["role"], content: string): void {
+    this.messages.push({ role, content });
+    if (!this.messagesEl) return;
+    const bubble = document.createElement("div");
+    bubble.textContent = content;
+    bubble.style.cssText =
+      role === "user"
+        ? "align-self:flex-end;max-width:85%;padding:8px 10px;border-radius:10px 10px 2px 10px;background:#16a34a;color:white;"
+        : "align-self:flex-start;max-width:85%;padding:8px 10px;border-radius:10px 10px 10px 2px;background:rgba(127,127,127,.16);";
+    this.messagesEl.appendChild(bubble);
+    this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+  }
+
+  private async validateSession(): Promise<boolean> {
     if (!this.session) {
       await this.bootstrap();
     }
     if (!this.session) {
       this.setStatus("Session unavailable");
-      return;
+      return false;
     }
     try {
       const validation = await fetch(
@@ -241,22 +322,155 @@ export class VoiceifyWidget {
         this.session = null;
         this.setStatus("Session expired. Reconnecting…");
         await this.bootstrap();
-        return;
+        return false;
       }
-
-      /**
-       * In-widget audio is not implemented yet. Say so plainly instead of
-       * implying a voice call started.
-       */
-      this.setStatus(
-        `${this.session.agent.name} is authenticated, but in-widget voice is still in preview. Use the dashboard Sandbox for a live conversation.`,
-      );
+      return true;
     } catch {
       this.setStatus("Unable to validate the embed session");
+      return false;
     }
   }
 
+  private async startVoiceSession(): Promise<void> {
+    if (this.recognition) {
+      this.recognition.stop();
+      return;
+    }
+    if (!(await this.validateSession()) || !this.session) return;
+
+    const Recognition = (
+      window as Window & {
+        SpeechRecognition?: SpeechRecognitionConstructor;
+        webkitSpeechRecognition?: SpeechRecognitionConstructor;
+      }
+    ).SpeechRecognition ??
+      (
+        window as Window & {
+          webkitSpeechRecognition?: SpeechRecognitionConstructor;
+        }
+      ).webkitSpeechRecognition;
+    if (!Recognition) {
+      this.setStatus("Voice input is not supported in this browser. Use chat instead.");
+      return;
+    }
+
+    try {
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      const recognition = new Recognition();
+      recognition.lang = this.session.agent.language === "Urdu" ? "ur-PK" : "en-US";
+      recognition.interimResults = false;
+      recognition.continuous = false;
+      recognition.onresult = (event) => {
+        const result = event.results[event.results.length - 1];
+        const text = result?.[0]?.transcript?.trim();
+        if (text) void this.sendTurn(text, false);
+      };
+      recognition.onerror = () => this.setStatus("I could not hear that. Try again.");
+      recognition.onend = () => {
+        this.recognition = null;
+        this.mediaStream?.getTracks().forEach((track) => track.stop());
+        this.mediaStream = null;
+        if (this.talkBtn) this.talkBtn.textContent = "Start voice";
+      };
+      this.recognition = recognition;
+      this.talkBtn!.textContent = "Listening…";
+      this.setStatus("Listening");
+      recognition.start();
+    } catch {
+      this.setStatus("Microphone permission is required for voice mode.");
+    }
+  }
+
+  private async sendTurn(text: string, textOnly: boolean): Promise<void> {
+    if (!(await this.validateSession()) || !this.session) return;
+    this.appendMessage("user", text);
+    this.setStatus("Thinking…");
+    try {
+      const response = await fetch(`${this.apiBase}/api/public/session/turn`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sessionToken: this.session.sessionToken,
+          origin: window.location.origin,
+          message: text,
+          history: this.messages.slice(-12, -1),
+          textOnly,
+          ...(this.conversationId ? { conversationId: this.conversationId } : {}),
+        }),
+      });
+      if (!response.ok || !response.body) {
+        const error = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(error.error ?? "Agent unavailable");
+      }
+      this.conversationId = response.headers.get("x-conversation-id") ?? this.conversationId;
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let reply = "";
+      const audio: Uint8Array[] = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line) as {
+            type: string;
+            text?: string;
+            data?: string;
+            message?: string;
+          };
+          if (event.type === "text" && event.text) reply = event.text;
+          if (event.type === "audio" && event.data) {
+            const raw = atob(event.data);
+            const bytes = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i += 1) bytes[i] = raw.charCodeAt(i);
+            audio.push(bytes);
+          }
+          if (event.type === "error") throw new Error(event.message ?? "Agent turn failed");
+        }
+      }
+      if (reply) this.appendMessage("assistant", reply);
+      if (!textOnly && audio.length > 0) await this.playPcm(audio);
+      this.setStatus(`${this.session.agent.name} ready`);
+    } catch (error) {
+      this.setStatus(error instanceof Error ? error.message : "Agent turn failed");
+    }
+  }
+
+  private async playPcm(chunks: Uint8Array[]): Promise<void> {
+    const size = chunks.reduce((total, chunk) => total + chunk.byteLength, 0);
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    const samples = new Int16Array(bytes.buffer);
+    const context = this.audioContext ?? new AudioContext({ sampleRate: 22_050 });
+    this.audioContext = context;
+    if (context.state === "suspended") await context.resume();
+    const audioBuffer = context.createBuffer(1, samples.length, 22_050);
+    const channel = audioBuffer.getChannelData(0);
+    for (let i = 0; i < samples.length; i += 1) channel[i] = (samples[i] ?? 0) / 32768;
+    const source = context.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(context.destination);
+    source.start();
+  }
+
   unmount(): void {
+    this.recognition?.stop();
+    this.recognition = null;
+    this.mediaStream?.getTracks().forEach((track) => track.stop());
+    this.mediaStream = null;
+    void this.audioContext?.close();
+    this.audioContext = null;
     this.themeObserver?.disconnect();
     this.themeObserver = null;
     this.themeMql = null;
@@ -265,7 +479,12 @@ export class VoiceifyWidget {
     this.titleEl = null;
     this.statusEl = null;
     this.talkBtn = null;
+    this.chatBtn = null;
+    this.inputEl = null;
+    this.messagesEl = null;
     this.session = null;
+    this.conversationId = null;
+    this.messages = [];
   }
 }
 

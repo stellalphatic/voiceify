@@ -13,6 +13,8 @@ export interface PackToolDefinition {
   description: string;
   /** Storage the tool reads and writes, surfaced in the UI. */
   writesTo: string;
+  /** JSON Schema sent to the LLM and used to collect complete arguments. */
+  inputSchema: Record<string, unknown>;
 }
 
 export const packIdSchema = z.enum(["restaurant", "receptionist", "appointments"]);
@@ -59,11 +61,33 @@ export const RESTAURANT_PACK: AutomationPack = {
       name: "create_reservation",
       description: "Create a restaurant reservation",
       writesTo: "Reservations table",
+      inputSchema: {
+        type: "object",
+        properties: {
+          guestName: { type: "string" },
+          partySize: { type: "integer", minimum: 1, maximum: 50 },
+          reservedAt: { type: "string", description: "ISO 8601 date and time" },
+          guestPhone: { type: "string" },
+          guestEmail: { type: "string" },
+          notes: { type: "string" },
+        },
+        required: ["guestName", "partySize", "reservedAt"],
+        additionalProperties: false,
+      },
     },
     {
       name: "check_availability",
       description: "Check table availability for a party size and time",
       writesTo: "Reservations table",
+      inputSchema: {
+        type: "object",
+        properties: {
+          partySize: { type: "integer", minimum: 1, maximum: 50 },
+          reservedAt: { type: "string", description: "ISO 8601 date and time" },
+        },
+        required: ["partySize", "reservedAt"],
+        additionalProperties: false,
+      },
     },
   ],
   checklist: [
@@ -94,11 +118,28 @@ export const RECEPTIONIST_PACK: AutomationPack = {
       name: "create_intake",
       description: "Capture a new caller intake record",
       writesTo: "Intake messages table",
+      inputSchema: {
+        type: "object",
+        properties: {
+          body: { type: "string" },
+          fromName: { type: "string" },
+          fromContact: { type: "string" },
+          subject: { type: "string" },
+        },
+        required: ["body", "fromName", "fromContact"],
+        additionalProperties: false,
+      },
     },
     {
       name: "route_to_department",
       description: "Route the caller to a department queue",
       writesTo: "Departments table",
+      inputSchema: {
+        type: "object",
+        properties: { department: { type: "string" } },
+        required: ["department"],
+        additionalProperties: false,
+      },
     },
   ],
   checklist: [
@@ -129,16 +170,42 @@ export const APPOINTMENTS_PACK: AutomationPack = {
       name: "book_appointment",
       description: "Book a new appointment slot",
       writesTo: "Appointments table",
+      inputSchema: {
+        type: "object",
+        properties: {
+          customerName: { type: "string" },
+          customerContact: { type: "string" },
+          startsAt: { type: "string", description: "ISO 8601 date and time" },
+          notes: { type: "string" },
+        },
+        required: ["customerName", "customerContact", "startsAt"],
+        additionalProperties: false,
+      },
     },
     {
       name: "reschedule_appointment",
       description: "Move an existing appointment to a new time",
       writesTo: "Appointments table",
+      inputSchema: {
+        type: "object",
+        properties: {
+          appointmentId: { type: "string", format: "uuid" },
+          startsAt: { type: "string", description: "ISO 8601 date and time" },
+        },
+        required: ["appointmentId", "startsAt"],
+        additionalProperties: false,
+      },
     },
     {
       name: "cancel_appointment",
       description: "Cancel an existing appointment",
       writesTo: "Appointments table",
+      inputSchema: {
+        type: "object",
+        properties: { appointmentId: { type: "string", format: "uuid" } },
+        required: ["appointmentId"],
+        additionalProperties: false,
+      },
     },
   ],
   checklist: [

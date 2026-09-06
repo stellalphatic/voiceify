@@ -33,6 +33,7 @@ import {
   Calendar,
   Filter,
   MessageSquarePlus,
+  Send,
   UserPlus,
   LogOut,
   Upload,
@@ -758,6 +759,8 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
   const [filterStartTime, setFilterStartTime] = useState('');
   const [filterEndTime, setFilterEndTime] = useState('');
   const [latencySamples, setLatencySamples] = useState<{ name: string; latency: number }[]>([]);
+  const [interactionMode, setInteractionMode] = useState<'voice' | 'chat'>('voice');
+  const [chatDraft, setChatDraft] = useState('');
 
   const activeAgent = agents.find(a => a.id === activeAgentId) || agents[0];
   const orgId = getActiveOrgId();
@@ -779,6 +782,7 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
     startSession,
     endSession,
     resetConversation,
+    sendTextTurn,
   } = useVoiceAgentFromRecord(activeAgent, undefined, {
     autoStart: false,
     orgId,
@@ -947,6 +951,27 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
         </div>
 
         <div className="vfy-sandbox-controls">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className={cn('vfy-btn', interactionMode === 'voice' ? 'vfy-btn-primary' : 'vfy-btn-ghost')}
+              onClick={() => setInteractionMode('voice')}
+            >
+              <Phone size={14} />
+              Call
+            </button>
+            <button
+              type="button"
+              className={cn('vfy-btn', interactionMode === 'chat' ? 'vfy-btn-primary' : 'vfy-btn-ghost')}
+              onClick={() => {
+                if (isActive) endSession({ userInitiated: true });
+                setInteractionMode('chat');
+              }}
+            >
+              <MessageSquare size={14} />
+              Chat
+            </button>
+          </div>
           <div className="vfy-select-wrap" style={{ minWidth: 200 }}>
             <select value={activeAgent.id} onChange={(e) => handleAgentSwitch(Number(e.target.value))}>
               {agents.map(agent => (
@@ -1133,8 +1158,37 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
         {/* Controls */}
         <div className="p-6 bg-voice-scrim border-t border-voice-frost-border backdrop-blur-sm">
           <div className="flex flex-col items-center gap-6">
+            {interactionMode === 'chat' && (
+              <form
+                className="flex items-center gap-2 w-full max-w-2xl"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const message = chatDraft.trim();
+                  if (!message) return;
+                  setChatDraft('');
+                  void sendTextTurn(message, { speak: false });
+                }}
+              >
+                <input
+                  className="vfy-field-input"
+                  value={chatDraft}
+                  onChange={(event) => setChatDraft(event.target.value)}
+                  placeholder={`Message ${activeAgent.name}`}
+                  aria-label={`Message ${activeAgent.name}`}
+                  disabled={status === 'thinking'}
+                />
+                <button
+                  type="submit"
+                  className="vfy-btn vfy-btn-primary"
+                  disabled={!chatDraft.trim() || status === 'thinking'}
+                >
+                  <Send size={14} />
+                  Send
+                </button>
+              </form>
+            )}
             {/* Visualizer */}
-            <div
+            {interactionMode === 'voice' && <div
               className={cn(
                 'sandbox-visualizer flex items-center justify-center gap-1 h-12 w-64',
                 isLive && (status === 'listening' || status === 'speaking') && 'is-active',
@@ -1148,7 +1202,7 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
                   style={{ animationDelay: `${i * 35}ms` }}
                 />
               ))}
-            </div>
+            </div>}
 
             <div className="flex items-center gap-8">
               <button
@@ -1161,7 +1215,7 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
                 <Settings className="w-6 h-6 group-hover:rotate-45 transition-transform" />
               </button>
               
-              <button 
+              {interactionMode === 'voice' && <button
                 type="button"
                 onClick={toggleRecording}
                 disabled={status === 'connecting'}
@@ -1176,7 +1230,7 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
                 ) : (
                   <Mic className="vfy-sandbox-mic-icon" strokeWidth={2.25} />
                 )}
-              </button>
+              </button>}
 
               <button 
                 type="button"
@@ -1189,7 +1243,11 @@ const SandboxView = ({ agents, onUpdateAgent }: { agents: Agent[], onUpdateAgent
               </button>
             </div>
             <p className="text-xs text-voice-muted font-medium tracking-wide uppercase">
-              {status === 'connecting'
+              {interactionMode === 'chat'
+                ? status === 'thinking'
+                  ? 'Generating reply…'
+                  : 'Text chat ready'
+                : status === 'connecting'
                 ? 'Connecting…'
                 : isActive
                   ? status === 'listening'
@@ -1307,6 +1365,7 @@ const AgentsView = ({
   const [packBusy, setPackBusy] = useState(false);
   const [packError, setPackError] = useState<string | null>(null);
   const [packMessage, setPackMessage] = useState<string | null>(null);
+  const [deployingAgentId, setDeployingAgentId] = useState<number | null>(null);
 
   const templates = [
     {
@@ -1345,6 +1404,28 @@ const AgentsView = ({
       setPackError(err instanceof Error ? err.message : 'Could not install template');
     } finally {
       setPackBusy(false);
+    }
+  };
+
+  const deployAgent = async (agent: Agent) => {
+    if (!orgId || !agent.serverId) {
+      setPackError('This agent is not synced to the server yet.');
+      return;
+    }
+    setDeployingAgentId(agent.id);
+    setPackError(null);
+    setPackMessage(null);
+    try {
+      await apiJson(`/api/orgs/${orgId}/agents/${agent.serverId}/deploy`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      await refreshFromApi();
+      setPackMessage(`${agent.name} is deployed and ready for Sandbox, chat, and embed traffic.`);
+    } catch (err) {
+      setPackError(err instanceof Error ? err.message : 'Could not deploy agent');
+    } finally {
+      setDeployingAgentId(null);
     }
   };
 
@@ -1469,6 +1550,16 @@ const AgentsView = ({
               </div>
               <p className="ac-stats-note">Metrics appear after Sandbox or live traffic.</p>
               <div className="ac-footer">
+                {!isActive && (
+                  <button
+                    type="button"
+                    className="vfy-btn vfy-btn-primary"
+                    disabled={deployingAgentId === agent.id || !agent.serverId}
+                    onClick={() => void deployAgent(agent)}
+                  >
+                    {deployingAgentId === agent.id ? 'Deploying…' : 'Deploy'}
+                  </button>
+                )}
                 <button type="button" className="btn-sandbox" onClick={() => navigate('/dashboard/sandbox', { state: { agentId: agent.id } })}>
                   Test in Sandbox
                 </button>
@@ -1949,7 +2040,12 @@ export default function DashboardLayout() {
   const handleSaveAgent = (agentData: AppAgent) => {
     void (async () => {
       if (editingAgent) {
-        updateAgent(agentData);
+        try {
+          await updateAgent(agentData);
+        } catch (err) {
+          window.alert(err instanceof Error ? err.message : 'Could not save agent');
+          return;
+        }
       } else {
         try {
           await createAgent({ ...agentData, tasks: agentData.tasks ?? [], isDemoDefault: false });
@@ -1963,7 +2059,9 @@ export default function DashboardLayout() {
 
   const handleUpdateTasks = (agentId: number, tasks: Task[]) => {
     const current = agents.find((a) => a.id === agentId);
-    if (current) updateAgent({ ...current, tasks });
+    if (current) {
+      setAgents((items) => items.map((item) => (item.id === agentId ? { ...item, tasks } : item)));
+    }
     if (taskAgent && taskAgent.id === agentId) {
       setTaskAgent({ ...taskAgent, tasks });
     }
@@ -1993,7 +2091,7 @@ export default function DashboardLayout() {
   };
 
   const handleAgentUpdate = (updatedAgent: Agent) => {
-    updateAgent(updatedAgent);
+    void updateAgent(updatedAgent).catch(() => undefined);
   };
 
   const handleManageTasks = (agent: Agent) => {

@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { Queue, Worker, type Job } from "bullmq";
 import { createHmac } from "node:crypto";
+import { db, eq, sql, webhookDeliveries } from "@voiceify/db";
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
 
@@ -11,7 +12,7 @@ const connection = {
 } as any;
 
 type WebhookJob = {
-  deliveryId?: string;
+  deliveryId: string;
   orgId: string;
   url: string;
   secret: string;
@@ -25,7 +26,14 @@ type UsageRollupJob = {
 };
 
 async function deliverWebhook(job: Job<WebhookJob>): Promise<{ ok: boolean; status?: number }> {
-  const { url, secret, event, payload } = job.data;
+  const { deliveryId, url, secret, event, payload } = job.data;
+  await db
+    .update(webhookDeliveries)
+    .set({
+      attempts: sql`${webhookDeliveries.attempts} + 1`,
+      lastError: null,
+    })
+    .where(eq(webhookDeliveries.id, deliveryId));
   const body = JSON.stringify({
     event,
     ...payload,
@@ -34,21 +42,34 @@ async function deliverWebhook(job: Job<WebhookJob>): Promise<{ ok: boolean; stat
   });
   const signature = createHmac("sha256", secret).update(body).digest("hex");
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-voiceify-signature": signature,
-      "x-voiceify-event": event,
-    },
-    body,
-    signal: AbortSignal.timeout(10_000),
-  });
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-voiceify-signature": signature,
+        "x-voiceify-event": event,
+      },
+      body,
+      signal: AbortSignal.timeout(10_000),
+    });
 
-  if (!res.ok) {
-    throw new Error(`Webhook delivery failed: HTTP ${res.status}`);
+    if (!res.ok) {
+      throw new Error(`Webhook delivery failed: HTTP ${res.status}`);
+    }
+    await db
+      .update(webhookDeliveries)
+      .set({ status: "success", lastError: null })
+      .where(eq(webhookDeliveries.id, deliveryId));
+    return { ok: true, status: res.status };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Webhook delivery failed";
+    await db
+      .update(webhookDeliveries)
+      .set({ status: "failed", lastError: message.slice(0, 1_000) })
+      .where(eq(webhookDeliveries.id, deliveryId));
+    throw error;
   }
-  return { ok: true, status: res.status };
 }
 
 async function processUsageRollup(job: Job<UsageRollupJob>): Promise<{ ok: true }> {

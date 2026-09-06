@@ -9,7 +9,7 @@ import {
   CircleDot,
   Flag,
 } from 'lucide-react';
-import { getActiveOrgId } from '../../lib/auth/client';
+import { apiJson, getActiveOrgId } from '../../lib/auth/client';
 import { SMB_CONNECTORS, type ConnectorBrand } from '../../lib/connectors/catalog';
 import { BrandIcon } from '../connectors/BrandIcons';
 
@@ -71,24 +71,6 @@ const DEFAULT_GRAPH: Graph = {
   ],
 };
 
-function storageKey(orgId: string | null) {
-  return `voiceify.workflow.canvas.v2.${orgId ?? 'local'}`;
-}
-
-function loadGraph(orgId: string | null): Graph {
-  try {
-    const raw = window.localStorage.getItem(storageKey(orgId));
-    if (!raw) return structuredClone(DEFAULT_GRAPH);
-    const parsed = JSON.parse(raw) as Graph;
-    if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
-      return structuredClone(DEFAULT_GRAPH);
-    }
-    return parsed;
-  } catch {
-    return structuredClone(DEFAULT_GRAPH);
-  }
-}
-
 function portCenter(node: WfNode, side: 'in' | 'out') {
   return {
     x: side === 'out' ? node.x + NODE_W : node.x,
@@ -109,10 +91,12 @@ const LOGIC_NODES: Array<{ type: WfNodeType; label: string; icon: typeof Mic }> 
   { type: 'end', label: 'End', icon: Flag },
 ];
 
-export default function WorkflowCanvas() {
+export default function WorkflowCanvas({ agentId }: { agentId?: string }) {
   const orgId = getActiveOrgId();
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [graph, setGraph] = useState<Graph>(() => loadGraph(orgId));
+  const [graph, setGraph] = useState<Graph>(() => structuredClone(DEFAULT_GRAPH));
+  const [workflowStatus, setWorkflowStatus] = useState<'draft' | 'active'>('draft');
+  const [saving, setSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ fromId: string; x: number; y: number } | null>(null);
@@ -125,12 +109,27 @@ export default function WorkflowCanvas() {
   } | null>(null);
 
   useEffect(() => {
-    setGraph(loadGraph(orgId));
-  }, [orgId]);
-
-  useEffect(() => {
-    window.localStorage.setItem(storageKey(orgId), JSON.stringify(graph));
-  }, [graph, orgId]);
+    if (!orgId || !agentId) {
+      setGraph(structuredClone(DEFAULT_GRAPH));
+      setWorkflowStatus('draft');
+      return;
+    }
+    let cancelled = false;
+    void apiJson<{ workflow: { graph: Graph; status: 'draft' | 'active' } | null }>(
+      `/api/orgs/${orgId}/workflows/${agentId}`,
+    )
+      .then(({ workflow }) => {
+        if (cancelled) return;
+        setGraph(workflow?.graph ?? structuredClone(DEFAULT_GRAPH));
+        setWorkflowStatus(workflow?.status ?? 'draft');
+      })
+      .catch((error) => {
+        if (!cancelled) flash(error instanceof Error ? error.message : 'Could not load workflow');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [agentId, orgId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -165,6 +164,26 @@ export default function WorkflowCanvas() {
   const flash = (msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast(null), 1800);
+  };
+
+  const saveWorkflow = async (status: 'draft' | 'active') => {
+    if (!orgId || !agentId) {
+      flash('Select a synced agent first');
+      return;
+    }
+    setSaving(true);
+    try {
+      await apiJson(`/api/orgs/${orgId}/workflows/${agentId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name: 'Conversation flow', status, graph }),
+      });
+      setWorkflowStatus(status);
+      flash(status === 'active' ? 'Workflow deployed to the server' : 'Draft saved to the server');
+    } catch (error) {
+      flash(error instanceof Error ? error.message : 'Could not save workflow');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const onPointerMove = useCallback(
@@ -316,6 +335,22 @@ export default function WorkflowCanvas() {
               Delete
             </button>
           )}
+          <button
+            type="button"
+            className="vfy-btn vfy-btn-ghost"
+            disabled={saving || !agentId}
+            onClick={() => void saveWorkflow('draft')}
+          >
+            {saving ? 'Saving…' : 'Save draft'}
+          </button>
+          <button
+            type="button"
+            className="vfy-btn vfy-btn-primary"
+            disabled={saving || !agentId}
+            onClick={() => void saveWorkflow('active')}
+          >
+            {workflowStatus === 'active' ? 'Redeploy' : 'Deploy workflow'}
+          </button>
         </div>
 
         <div

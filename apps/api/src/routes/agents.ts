@@ -10,10 +10,13 @@ import {
   db,
   desc,
   eq,
+  inArray,
   isNull,
+  sql,
 } from "@voiceify/db";
 import { buildDashboardSystemPrompt } from "@voiceify/shared";
 import { Hono } from "hono";
+import { z } from "zod";
 import type { AppEnv } from "../lib/types.js";
 import { requireOrg } from "../middleware/org.js";
 import { requireSession } from "../middleware/session.js";
@@ -29,6 +32,7 @@ function systemPromptFor(agent: {
   type: string;
   language: string;
   greeting: string | null;
+  instructions: string;
   capabilities: unknown;
   triggers: unknown;
   voiceId?: string | null;
@@ -38,6 +42,7 @@ function systemPromptFor(agent: {
     type: agent.type,
     language: agent.language,
     greeting: agent.greeting ?? undefined,
+    instructions: agent.instructions,
     capabilities: asStringList(agent.capabilities),
     triggers: asStringList(agent.triggers),
     voiceId: agent.voiceId ?? undefined,
@@ -55,7 +60,30 @@ agentsRoutes.get("/:orgId/agents", requireOrg("agents:read"), async (c) => {
     .from(agents)
     .where(and(eq(agents.orgId, orgId), isNull(agents.deletedAt)))
     .orderBy(desc(agents.updatedAt));
-  return c.json({ agents: rows });
+  if (rows.length === 0) return c.json({ agents: [] });
+
+  const versions = await db
+    .select()
+    .from(agentVersions)
+    .where(inArray(agentVersions.agentId, rows.map((row) => row.id)))
+    .orderBy(desc(agentVersions.version));
+  const latestByAgent = new Map<string, (typeof versions)[number]>();
+  for (const version of versions) {
+    if (!latestByAgent.has(version.agentId)) {
+      latestByAgent.set(version.agentId, version);
+    }
+  }
+
+  return c.json({
+    agents: rows.map((agent) => {
+      const latest = latestByAgent.get(agent.id);
+      return {
+        ...agent,
+        toolIds: latest?.toolIds ?? [],
+        knowledgeDocIds: latest?.knowledgeDocIds ?? [],
+      };
+    }),
+  });
 });
 
 agentsRoutes.post("/:orgId/agents", requireOrg("agents:write"), async (c) => {
@@ -71,6 +99,7 @@ agentsRoutes.post("/:orgId/agents", requireOrg("agents:write"), async (c) => {
       type: input.type,
       language: input.language,
       greeting: input.greeting,
+      instructions: input.instructions,
       voiceId: input.voiceId,
       capabilities: input.capabilities,
       triggers: input.triggers,
@@ -103,7 +132,10 @@ agentsRoutes.post("/:orgId/agents", requireOrg("agents:write"), async (c) => {
       voiceId: agent.voiceId,
       greeting: agent.greeting,
       language: agent.language,
+      toolIds: input.toolIds,
+      knowledgeDocIds: input.knowledgeDocIds,
       config: {
+        instructions: agent.instructions,
         capabilities: agent.capabilities,
         triggers: agent.triggers,
         guardrails: agent.guardrails,
@@ -152,6 +184,7 @@ agentsRoutes.patch(
     const agentId = c.req.param("agentId");
     const user = c.get("user");
     const input = parseAgentUpdate(await c.req.json());
+    const { toolIds, knowledgeDocIds, ...agentInput } = input;
 
     const [existing] = await db
       .select()
@@ -162,73 +195,84 @@ agentsRoutes.patch(
       .limit(1);
     if (!existing) return c.json({ error: "Agent not found" }, 404);
 
-    const [agent] = await db
-      .update(agents)
-      .set({
-        ...input,
-        updatedAt: new Date(),
-      })
-      .where(eq(agents.id, agentId))
-      .returning();
-    if (!agent) return c.json({ error: "Failed to update agent" }, 500);
+    const result = await db.transaction(async (tx) => {
+      // Two UI saves can arrive together. Serializing per agent prevents both
+      // requests from choosing the same next version number.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${agentId}))`);
 
-    const [latest] = await db
-      .select()
-      .from(agentVersions)
-      .where(eq(agentVersions.agentId, agentId))
-      .orderBy(desc(agentVersions.version))
-      .limit(1);
-
-    const systemPrompt = systemPromptFor(agent);
-
-    const snapshot = buildAgentVersionSnapshot(
-      {
-        name: agent.name,
-        type: agent.type,
-        language: agent.language,
-        greeting: agent.greeting ?? undefined,
-        voiceId: agent.voiceId ?? undefined,
-        capabilities: agent.capabilities ?? {},
-        triggers: agent.triggers ?? {},
-        guardrails: agent.guardrails ?? {},
-      },
-      latest?.version,
-    );
-
-    const [version] = await db
-      .insert(agentVersions)
-      .values({
-        agentId,
-        orgId,
-        version: snapshot.version,
-        systemPrompt,
-        voiceId: agent.voiceId,
-        greeting: agent.greeting,
-        language: agent.language,
-        toolIds: latest?.toolIds ?? [],
-        knowledgeDocIds: latest?.knowledgeDocIds ?? [],
-        config: {
-          capabilities: agent.capabilities,
-          triggers: agent.triggers,
-          guardrails: agent.guardrails,
-        },
-        createdBy: user.id,
-      })
-      .returning();
-
-    // Runtime reads the deployed version first, so an already-live agent would
-    // keep serving its old voice/greeting until this pointer moves forward.
-    let deployed = agent;
-    if (version && existing.deployedVersionId) {
-      const [redeployed] = await db
+      const [agent] = await tx
         .update(agents)
-        .set({ deployedVersionId: version.id, updatedAt: new Date() })
-        .where(eq(agents.id, agentId))
+        .set({ ...agentInput, updatedAt: new Date() })
+        .where(
+          and(
+            eq(agents.id, agentId),
+            eq(agents.orgId, orgId),
+            isNull(agents.deletedAt),
+          ),
+        )
         .returning();
-      if (redeployed) deployed = redeployed;
-    }
+      if (!agent) throw new Error("Agent disappeared during update");
 
-    return c.json({ agent: deployed, version });
+      const [latest] = await tx
+        .select()
+        .from(agentVersions)
+        .where(eq(agentVersions.agentId, agentId))
+        .orderBy(desc(agentVersions.version))
+        .limit(1);
+
+      const snapshot = buildAgentVersionSnapshot(
+        {
+          name: agent.name,
+          type: agent.type,
+          language: agent.language,
+          greeting: agent.greeting ?? undefined,
+          voiceId: agent.voiceId ?? undefined,
+          capabilities: agent.capabilities ?? {},
+          triggers: agent.triggers ?? {},
+          guardrails: agent.guardrails ?? {},
+        },
+        latest?.version,
+      );
+
+      const [version] = await tx
+        .insert(agentVersions)
+        .values({
+          agentId,
+          orgId,
+          version: snapshot.version,
+          systemPrompt: systemPromptFor(agent),
+          voiceId: agent.voiceId,
+          greeting: agent.greeting,
+          language: agent.language,
+          toolIds: toolIds ?? latest?.toolIds ?? [],
+          knowledgeDocIds: knowledgeDocIds ?? latest?.knowledgeDocIds ?? [],
+          config: {
+            instructions: agent.instructions,
+            capabilities: agent.capabilities,
+            triggers: agent.triggers,
+            guardrails: agent.guardrails,
+          },
+          createdBy: user.id,
+        })
+        .returning();
+      if (!version) throw new Error("Failed to create agent version");
+
+      // Active agents immediately advance to the newly saved immutable version.
+      // Draft agents still require the explicit Deploy action.
+      let savedAgent = agent;
+      if (existing.deployedVersionId && agent.status === "active") {
+        const [redeployed] = await tx
+          .update(agents)
+          .set({ deployedVersionId: version.id, updatedAt: new Date() })
+          .where(eq(agents.id, agentId))
+          .returning();
+        if (redeployed) savedAgent = redeployed;
+      }
+
+      return { agent: savedAgent, version };
+    });
+
+    return c.json(result);
   },
 );
 
@@ -238,9 +282,9 @@ agentsRoutes.post(
   async (c) => {
     const orgId = c.get("orgId");
     const agentId = c.req.param("agentId");
-    const body = (await c.req.json().catch(() => ({}))) as {
-      versionId?: string;
-    };
+    const body = z
+      .object({ versionId: z.string().uuid().optional() })
+      .parse(await c.req.json().catch(() => ({})));
 
     const [agent] = await db
       .select()
@@ -250,15 +294,19 @@ agentsRoutes.post(
     if (!agent) return c.json({ error: "Agent not found" }, 404);
 
     let versionId = body.versionId;
-    if (!versionId) {
-      const [latest] = await db
+    const [selectedVersion] = await db
         .select()
         .from(agentVersions)
-        .where(eq(agentVersions.agentId, agentId))
+        .where(
+          and(
+            eq(agentVersions.agentId, agentId),
+            eq(agentVersions.orgId, orgId),
+            ...(versionId ? [eq(agentVersions.id, versionId)] : []),
+          ),
+        )
         .orderBy(desc(agentVersions.version))
         .limit(1);
-      versionId = latest?.id;
-    }
+    versionId = selectedVersion?.id;
     if (!versionId) return c.json({ error: "No version to deploy" }, 400);
 
     const [updated] = await db

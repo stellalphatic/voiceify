@@ -2,7 +2,7 @@
 
 Updated: 2026-07-14
 
-End-to-end instructions to get API keys, pick an EC2 instance, deploy Docker Compose, and attach **voiceify.metapresence.co**.
+End-to-end instructions to get API keys, pick an EC2 instance, deploy Docker Compose, and attach **voiceify.online**.
 
 Repository: [stellalphatic/voiceify](https://github.com/stellalphatic/voiceify)
 
@@ -118,7 +118,7 @@ Also set:
 
 ---
 
-## Step 3 — DNS for voiceify.metapresence.co
+## Step 3 — DNS for voiceify.online
 
 In your DNS provider for `metapresence.co`:
 
@@ -129,7 +129,7 @@ In your DNS provider for `metapresence.co`:
 Wait until it resolves:
 
 ```bash
-nslookup voiceify.metapresence.co
+nslookup voiceify.online
 ```
 
 ---
@@ -153,13 +153,13 @@ nano .env
 ### Production `.env` (HTTPS subdomain)
 
 ```bash
-DOMAIN="voiceify.metapresence.co"
+DOMAIN="voiceify.online"
 ACME_EMAIL="admin@metapresence.co"
 
-APP_URL="https://voiceify.metapresence.co"
-WEB_ORIGIN="https://voiceify.metapresence.co"
-BETTER_AUTH_URL="https://voiceify.metapresence.co"
-BETTER_AUTH_TRUSTED_ORIGINS="https://voiceify.metapresence.co"
+APP_URL="https://voiceify.online"
+WEB_ORIGIN="https://voiceify.online"
+BETTER_AUTH_URL="https://voiceify.online"
+BETTER_AUTH_TRUSTED_ORIGINS="https://voiceify.online"
 
 BETTER_AUTH_SECRET="<openssl rand -base64 32>"
 
@@ -217,15 +217,15 @@ Caddy terminates TLS for `DOMAIN` and proxies to `api` + `web`.
 Verify:
 
 ```bash
-curl -sf https://voiceify.metapresence.co/health
-curl -I https://voiceify.metapresence.co/
+curl -sf https://voiceify.online/health
+curl -I https://voiceify.online/
 ```
 
 Open the site:
 
-- App: https://voiceify.metapresence.co  
-- Admin: https://voiceify.metapresence.co/admin  
-- OpenAPI: https://voiceify.metapresence.co/api/openapi.json  
+- App: https://voiceify.online
+- Admin: https://voiceify.online/admin
+- OpenAPI: https://voiceify.online/api/openapi.json
 
 ---
 
@@ -288,7 +288,7 @@ docker compose exec -T postgres pg_dump -U voiceify voiceify > backup-$(date +%F
 
 | Symptom | Fix |
 |---------|-----|
-| Auth cookies fail on HTTPS | Set `APP_URL` / `WEB_ORIGIN` / `BETTER_AUTH_URL` / `TRUSTED_ORIGINS` to `https://voiceify.metapresence.co` |
+| Auth cookies fail on HTTPS | Set `APP_URL` / `WEB_ORIGIN` / `BETTER_AUTH_URL` / `TRUSTED_ORIGINS` to `https://voiceify.online` |
 | Voice “API unavailable” | Check `/api/health` and AI keys in the **api** container env |
 | Signup cannot enter dashboard | Expected until `/admin` approves the user |
 | Caddy certificate fails | DNS A record must point to this host; ports 80/443 open |

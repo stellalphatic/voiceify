@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Mic2 } from 'lucide-react';
 import type { AppAgent } from '../../lib/agents/AgentStoreContext';
 import { validateAgentName } from '../../lib/dashboard/settings';
-import { apiJson } from '../../lib/auth/client';
+import { apiJson, getActiveOrgId } from '../../lib/auth/client';
 import Modal from './Modal';
 
 const AGENT_TYPES = [
@@ -61,6 +61,11 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
   const [status, setStatus] = useState('Active');
   const [voice, setVoice] = useState<string>(FALLBACK_VOICES[0].id);
   const [greeting, setGreeting] = useState('');
+  const [instructions, setInstructions] = useState('');
+  const [toolIds, setToolIds] = useState<string[]>([]);
+  const [knowledgeDocIds, setKnowledgeDocIds] = useState<string[]>([]);
+  const [availableTools, setAvailableTools] = useState<Array<{ id: string; name: string }>>([]);
+  const [availableDocs, setAvailableDocs] = useState<Array<{ id: string; title: string }>>([]);
   const [nameError, setNameError] = useState<string | undefined>();
   const [voices, setVoices] = useState<VoiceOption[]>([...FALLBACK_VOICES]);
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -75,6 +80,9 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
       setStatus(initialData.status || 'Active');
       setVoice(initialData.voice || FALLBACK_VOICES[0].id);
       setGreeting(initialData.greeting || '');
+      setInstructions(initialData.instructions || '');
+      setToolIds(initialData.toolIds ?? []);
+      setKnowledgeDocIds(initialData.knowledgeDocIds ?? []);
     } else {
       setName('');
       setType(AGENT_TYPES[0]);
@@ -82,6 +90,9 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
       setStatus('Active');
       setVoice(FALLBACK_VOICES[0].id);
       setGreeting('');
+      setInstructions('');
+      setToolIds([]);
+      setKnowledgeDocIds([]);
     }
     setNameError(undefined);
     setVoiceOpen(false);
@@ -93,14 +104,27 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
     let cancelled = false;
     void (async () => {
       try {
-        const data = await apiJson<{
+        const orgId = getActiveOrgId();
+        const [data, toolsData, docsData] = await Promise.all([
+          apiJson<{
           voices: Array<{
             id?: string;
             voice_id?: string;
             name: string;
             labels?: Record<string, string>;
           }>;
-        }>('/api/voice/voices');
+          }>('/api/voice/voices'),
+          orgId
+            ? apiJson<{ tools: Array<{ id: string; name: string }> }>(
+                `/api/orgs/${orgId}/tools`,
+              )
+            : Promise.resolve({ tools: [] }),
+          orgId
+            ? apiJson<{ docs: Array<{ id: string; title: string }> }>(
+                `/api/orgs/${orgId}/knowledge`,
+              )
+            : Promise.resolve({ docs: [] }),
+        ]);
         if (cancelled) return;
         const mapped: VoiceOption[] = [];
         for (const v of data.voices ?? []) {
@@ -112,6 +136,8 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
           mapped.push({ id, label: bits, accent, language: lang });
         }
         if (mapped.length) setVoices(mapped);
+        setAvailableTools(toolsData.tools);
+        setAvailableDocs(docsData.docs);
       } catch {
         /* keep fallback voices */
       }
@@ -157,6 +183,9 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
       status,
       voice,
       greeting: greeting.trim(),
+      instructions: instructions.trim(),
+      toolIds,
+      knowledgeDocIds,
       capabilities: initialData?.capabilities ?? [],
       triggers: initialData?.triggers ?? [],
       tasks: initialData?.tasks ?? [],
@@ -348,6 +377,24 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
             )}
 
             <div>
+              <label className="vfy-label" htmlFor="agent-instructions">
+                Instructions / system prompt
+              </label>
+              <textarea
+                id="agent-instructions"
+                className="vfy-field-textarea"
+                rows={7}
+                maxLength={20_000}
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                placeholder="Define the agent's role, business rules, tone, escalation policy, and information it must never invent."
+              />
+              <p className="vfy-settings-help" style={{ marginTop: 6 }}>
+                These instructions are compiled into an immutable version when you save.
+              </p>
+            </div>
+
+            <div>
               <label className="vfy-label" htmlFor="agent-greeting">
                 Greeting <span style={{ color: 'var(--d-dim)', fontWeight: 400 }}>(optional)</span>
               </label>
@@ -361,11 +408,59 @@ export default function AgentModal({ isOpen, onClose, onSave, initialData }: Age
               />
             </div>
 
-            {!isEdit && (
-              <p className="text-xs" style={{ color: 'var(--d-muted)', margin: 0, lineHeight: 1.5 }}>
-                After create, open Knowledge, Tools, Workflows, and Guardrails to deepen the agent.
-              </p>
-            )}
+            <div>
+              <span className="vfy-label">Attached knowledge</span>
+              <div className="vfy-scope-chips">
+                {availableDocs.map((doc) => {
+                  const selected = knowledgeDocIds.includes(doc.id);
+                  return (
+                    <button
+                      key={doc.id}
+                      type="button"
+                      className={`vfy-scope-chip${selected ? ' is-selected' : ''}`}
+                      aria-pressed={selected}
+                      onClick={() =>
+                        setKnowledgeDocIds((ids) =>
+                          selected ? ids.filter((id) => id !== doc.id) : [...ids, doc.id],
+                        )
+                      }
+                    >
+                      {doc.title}
+                    </button>
+                  );
+                })}
+                {availableDocs.length === 0 && (
+                  <p className="vfy-settings-help">No indexed documents are available yet.</p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <span className="vfy-label">Attached tools</span>
+              <div className="vfy-scope-chips">
+                {availableTools.map((tool) => {
+                  const selected = toolIds.includes(tool.id);
+                  return (
+                    <button
+                      key={tool.id}
+                      type="button"
+                      className={`vfy-scope-chip${selected ? ' is-selected' : ''}`}
+                      aria-pressed={selected}
+                      onClick={() =>
+                        setToolIds((ids) =>
+                          selected ? ids.filter((id) => id !== tool.id) : [...ids, tool.id],
+                        )
+                      }
+                    >
+                      {tool.name}
+                    </button>
+                  );
+                })}
+                {availableTools.length === 0 && (
+                  <p className="vfy-settings-help">No tools are available yet.</p>
+                )}
+              </div>
+            </div>
       </div>
     </Modal>
   );

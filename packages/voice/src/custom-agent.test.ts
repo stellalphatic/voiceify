@@ -24,4 +24,16 @@ describe('resolveAgentRuntime', () => {
     expect(runtime.systemPrompt).toContain('Dr. Sarah');
     expect(runtime.systemPrompt).toContain('Booking');
   });
+
+  it('uses the immutable deployed system prompt when provided', () => {
+    const runtime = resolveAgentRuntime('support', {
+      name: 'Billing concierge',
+      type: 'Customer Service',
+      language: 'English',
+      systemPrompt: 'DEPLOYED VERSION SEVEN PROMPT',
+      instructions: 'mutable draft instructions',
+    });
+
+    expect(runtime.systemPrompt).toBe('DEPLOYED VERSION SEVEN PROMPT');
+  });
 });

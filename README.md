@@ -58,7 +58,7 @@ pnpm docker:up
 
 ## Deployment
 
-**Full go-live (API keys, EC2 size, DNS, TLS for voiceify.metapresence.co):**  
+**Full go-live (API keys, EC2 size, DNS, TLS for voiceify.online):**
 [docs/deployment/GO_LIVE.md](docs/deployment/GO_LIVE.md)
 
 Quick EC2 notes: [docs/deployment/ec2.md](docs/deployment/ec2.md)

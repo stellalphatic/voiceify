@@ -7,6 +7,10 @@ export interface CustomAgentConfig {
   type: string;
   language: string;
   greeting?: string;
+  /** User-authored operating instructions. */
+  instructions?: string;
+  /** Fully compiled immutable prompt from a deployed agent version. */
+  systemPrompt?: string;
   capabilities?: string[];
   triggers?: string[];
   voiceId?: string;
@@ -19,8 +23,11 @@ export interface DashboardAgentRecord {
   language: string;
   status: string;
   greeting?: string;
+  instructions?: string;
   capabilities?: string[];
   triggers?: string[];
+  toolIds?: string[];
+  knowledgeDocIds?: string[];
   voice?: string;
 }
 
@@ -73,7 +80,11 @@ export function buildDashboardSystemPrompt(agent: CustomAgentConfig): string {
     `You are ${agent.name}, a ${agent.type} voice agent powered by Voiceify.\n` +
     `Capabilities: ${caps}\n` +
     `Trigger context: ${triggers}\n` +
-    `Match the caller's language (${agent.language}).\n\n` +
+    `Match the caller's language (${agent.language}).\n` +
+    (agent.instructions?.trim()
+      ? `\nBusiness instructions:\n${agent.instructions.trim()}\n`
+      : '') +
+    `\n` +
     VOICE_AGENT_RULES
   );
 }
@@ -86,6 +97,7 @@ export function toCustomAgentConfig(agent: DashboardAgentRecord): CustomAgentCon
     type: agent.type,
     language: agent.language,
     greeting: agent.greeting?.trim() || undefined,
+    instructions: agent.instructions?.trim() || undefined,
     capabilities: agent.capabilities,
     triggers: agent.triggers,
     voiceId: selectedVoice || DEFAULT_VOICE_IDS[personaId],

@@ -1,8 +1,8 @@
 /**
  * Hybrid voice stack — commercial low-latency path + open-source self-host path.
  *
- * Defaults favour Groq Llama 3.3 for quality replies with a fast 8B option for
- * sub-500ms turns. TTS/STT can run on ElevenLabs Flash/Scribe or on a self-hosted
+ * Defaults favour Groq-hosted Qwen for quality, low-latency replies. TTS/STT
+ * can run on ElevenLabs Flash/Scribe or on a self-hosted
  * Coqui XTTS HTTP worker. Knowledge can use Postgres hybrid search or Qdrant.
  */
 
@@ -14,16 +14,14 @@ function env(name: string, fallback = ""): string {
   return process.env[name]?.trim() || fallback;
 }
 
-/** Preferred quality LLM on Groq (open-weight Llama 3.3). */
-export const LLAMA_33_QUALITY = "llama-3.3-70b-versatile";
-/** Low-latency LLM for live voice turns. */
-export const LLAMA_31_FAST = "llama-3.1-8b-instant";
+/** Current open-weight Groq model verified for chat and tool calling. */
+export const QWEN_38_VOICE = "qwen/qwen3.8-27b";
 
 export const VOICE_MODELS = {
-  /** Groq — primary voice LLM. Default: Llama 3.3 70B (open weights via Groq). */
-  llm: env("GROQ_MODEL", LLAMA_33_QUALITY),
+  /** Groq primary voice LLM. */
+  llm: env("GROQ_MODEL", QWEN_38_VOICE),
   /** Fast profile override when LLM_PROFILE=latency. */
-  llmFast: env("GROQ_MODEL_FAST", LLAMA_31_FAST),
+  llmFast: env("GROQ_MODEL_FAST", QWEN_38_VOICE),
   /** Google Gemini — LLM fallback when Groq fails. */
   llmFallback: env("GEMINI_MODEL", "gemini-2.5-flash"),
   /** ElevenLabs Flash — streamed PCM TTS (commercial path). */
@@ -62,7 +60,7 @@ export const LLM_VOICE_CONFIG = {
 
 export const VOICE_STACK = {
   stt: `ElevenLabs ${VOICE_MODELS.sttRealtime} (live) + ${VOICE_MODELS.stt} (batch)`,
-  llm: `Groq ${resolveLlmModel()} (Llama open weights) · Gemini ${VOICE_MODELS.llmFallback} fallback`,
+  llm: `Groq ${resolveLlmModel()} (Qwen open weights) · Gemini ${VOICE_MODELS.llmFallback} fallback`,
   tts:
     resolveTtsProvider() === "coqui"
       ? `Coqui XTTS (${VOICE_MODELS.ttsCoqui}) self-hosted`
@@ -70,11 +68,13 @@ export const VOICE_STACK = {
   knowledge:
     resolveEmbeddingBackend() === "qdrant"
       ? "Qdrant vector store (tenant collections) + Postgres chunks"
-      : "Postgres hybrid (local embeddings + keyword)",
+      : env("EMBEDDING_API_URL") || env("GEMINI_API_KEY")
+        ? "Postgres semantic vectors + full-text keyword"
+        : "Postgres full-text keyword (semantic embeddings not configured)",
 } as const;
 
 export const OPEN_SOURCE_STACK = {
-  llm: "Meta Llama 3.3 / 3.1 via Groq (open weights, commercial inference)",
+  llm: "Qwen 3.8 via Groq (open weights, commercial inference)",
   ttsOptional: "Coqui XTTS v2 (self-hosted HTTP worker)",
   vectorsOptional: "Qdrant (tenant-scoped collections)",
   rationale:

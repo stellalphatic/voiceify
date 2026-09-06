@@ -36,6 +36,13 @@
       "when": 1786420000000,
       "tag": "0004_embed_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788720000000,
+      "tag": "0005_agent_instructions_workflows",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,7 @@ import {
   isNull,
   sql,
   tools,
+  workflows,
 } from "@voiceify/db";
 import { buildDashboardSystemPrompt } from "@voiceify/shared";
 import { Hono } from "hono";
@@ -32,6 +33,7 @@ export const automationsRoutes = new Hono<AppEnv>();
 automationsRoutes.use("/automations/*", requireSession);
 automationsRoutes.use("/orgs/:orgId/automations", requireSession);
 automationsRoutes.use("/orgs/:orgId/automations/*", requireSession);
+automationsRoutes.use("/orgs/:orgId/workflows/*", requireSession);
 
 automationsRoutes.get("/automations/packs", async (c) => {
   return c.json({ packs: listPacks() });
@@ -53,6 +55,90 @@ automationsRoutes.get(
         installed: installs.some((i) => i.packId === p.id),
       })),
     });
+  },
+);
+
+const workflowGraphSchema = z.object({
+  nodes: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(120),
+        type: z.enum(["start", "collect", "tool", "branch", "end", "speak"]),
+        label: z.string().min(1).max(240),
+        x: z.number().finite(),
+        y: z.number().finite(),
+        connectorId: z.string().max(120).optional(),
+        brand: z.string().max(120).optional(),
+      }),
+    )
+    .max(100),
+  edges: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(120),
+        from: z.string().min(1).max(120),
+        to: z.string().min(1).max(120),
+      }),
+    )
+    .max(200),
+});
+
+automationsRoutes.get(
+  "/orgs/:orgId/workflows/:agentId",
+  requireOrg("agents:read"),
+  async (c) => {
+    const orgId = c.get("orgId");
+    const agentId = z.string().uuid().parse(c.req.param("agentId"));
+    const [workflow] = await db
+      .select()
+      .from(workflows)
+      .where(and(eq(workflows.orgId, orgId), eq(workflows.agentId, agentId)))
+      .limit(1);
+    return c.json({ workflow: workflow ?? null });
+  },
+);
+
+automationsRoutes.put(
+  "/orgs/:orgId/workflows/:agentId",
+  requireOrg("agents:write"),
+  async (c) => {
+    const orgId = c.get("orgId");
+    const agentId = z.string().uuid().parse(c.req.param("agentId"));
+    const body = z
+      .object({
+        name: z.string().trim().min(1).max(120).default("Conversation flow"),
+        status: z.enum(["draft", "active"]).default("draft"),
+        graph: workflowGraphSchema,
+      })
+      .parse(await c.req.json());
+
+    const [agent] = await db
+      .select({ id: agents.id })
+      .from(agents)
+      .where(
+        and(
+          eq(agents.id, agentId),
+          eq(agents.orgId, orgId),
+          isNull(agents.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!agent) return c.json({ error: "Agent not found" }, 404);
+
+    const [workflow] = await db
+      .insert(workflows)
+      .values({ orgId, agentId, ...body })
+      .onConflictDoUpdate({
+        target: [workflows.orgId, workflows.agentId],
+        set: {
+          name: body.name,
+          status: body.status,
+          graph: body.graph,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return c.json({ workflow });
   },
 );
 
@@ -98,7 +184,18 @@ automationsRoutes.post(
         .where(and(eq(tools.orgId, orgId), eq(tools.slug, tool.name)))
         .limit(1);
       if (found[0]) {
-        createdToolIds.push(found[0].id);
+        const [updated] = await db
+          .update(tools)
+          .set({
+            name: tool.name,
+            description: tool.description,
+            config: { packId: body.packId, ...tool },
+            inputSchema: tool.inputSchema,
+            updatedAt: new Date(),
+          })
+          .where(eq(tools.id, found[0].id))
+          .returning();
+        createdToolIds.push((updated ?? found[0]).id);
       } else {
         const [inserted] = await db
           .insert(tools)
@@ -109,7 +206,7 @@ automationsRoutes.post(
             description: tool.description,
             type: "pack",
             config: { packId: body.packId, ...tool },
-            inputSchema: {},
+            inputSchema: tool.inputSchema,
           })
           .returning();
         if (inserted) createdToolIds.push(inserted.id);

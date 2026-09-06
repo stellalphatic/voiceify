@@ -150,15 +150,23 @@ export default function VoicesWorkspace() {
   const [loading, setLoading] = useState(true);
   const [selectedAgentId, setSelectedAgentId] = useState('');
 
-  const assignVoice = (voiceId: string, voiceName: string) => {
+  const assignVoice = async (voiceId: string, voiceName: string) => {
     const agent = agents.find((item) => String(item.id) === selectedAgentId);
     if (!agent) {
       setError('Select an agent before assigning a voice.');
       return;
     }
     setError(null);
-    updateAgent({ ...agent, voice: voiceId });
-    setMessage(`${voiceName} assigned to ${agent.name}.`);
+    setMessage(null);
+    setLoading(true);
+    try {
+      await updateAgent({ ...agent, voice: voiceId });
+      setMessage(`${voiceName} assigned to ${agent.name} and saved on the server.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not assign this voice');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const load = useCallback(async () => {
@@ -281,7 +289,7 @@ export default function VoicesWorkspace() {
                   type="button"
                   className="vfy-btn vfy-btn-primary"
                   disabled={!selectedAgentId}
-                  onClick={() => assignVoice(p.voiceId, p.name)}
+                  onClick={() => void assignVoice(p.voiceId, p.name)}
                 >
                   Assign
                 </button>
@@ -348,7 +356,7 @@ export default function VoicesWorkspace() {
                   type="button"
                   className="vfy-btn vfy-btn-primary"
                   disabled={!selectedAgentId}
-                  onClick={() => assignVoice(v.id, v.name)}
+                  onClick={() => void assignVoice(v.id, v.name)}
                 >
                   Assign
                 </button>
