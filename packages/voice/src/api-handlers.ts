@@ -63,7 +63,7 @@ export function handleHealth(): Response {
     diarization: providersConfigured.elevenlabs,
     bargeIn: true,
     models: VOICE_MODELS,
-    pipeline: 'stream-pcm-flash',
+    pipeline: 'stream-pcm',
     targetLatencyMs: 500,
     stack: VOICE_STACK,
     openSource: OPEN_SOURCE_STACK,
